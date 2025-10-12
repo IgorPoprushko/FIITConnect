@@ -1,0 +1,43 @@
+.mini-drawer {
+  width: 80px;
+  background: var(--chat-dark);
+
+  .q-item {
+    justify-content: center;
+    padding: 8px 0;
+
+    .q-avatar {
+      border-radius: 8px;
+      overflow: hidden;
+    }
+  }
+
+  .q-icon {
+    cursor: pointer;
+  }
+}
+
+.main-drawer {
+  // width: 280px;
+  background: var(--chat-primary);
+
+  .q-item {
+    background: transparent;
+    border-radius: 6px;
+    margin-bottom: 6px;
+    padding: 6px;
+
+    &:hover {
+      background: color-mix(in srgb, var(--chat-primary) 10%, transparent);
+      background: rgba(95, 133, 219, 0.10);
+      /* fallback */
+    }
+  }
+}
+
+.q-scrollarea {
+  &__thumb {
+    width: 3px !important;
+    background: rgba(255, 255, 255, 0.7) !important;
+  }
+}
