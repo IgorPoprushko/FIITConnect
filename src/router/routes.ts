@@ -11,6 +11,10 @@ const routes: RouteRecordRaw[] = [
     component: () => import('layouts/ChatLayout.vue'),
     children: [{ path: '', component: () => import('pages/MainPage.vue') }],
   },
+  {
+    path: '/test',
+    children: [{ path: '', component: () => import('layouts/TestLayout.vue') }],
+  },
 
 
   // Always leave this as last one,

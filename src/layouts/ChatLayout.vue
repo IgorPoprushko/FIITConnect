@@ -9,47 +9,77 @@
         </q-header>
 
         <!-- SINGLE LEFT DRAWER -->
-        <q-drawer show-if-above side="left" :width="280" class="row no-wrap">
+        <q-drawer show-if-above side="left" :width="390" class="row no-wrap">
             <!-- LEFT SECTION (Mini Drawer) -->
-            <!-- <div class="col-auto scroll q-pa-sm bg-grey-2 mini-drawer" style="width: 80px;"> -->
             <div class="mini-drawer">
                 <q-scroll-area class="fit" :horizontal-offset="[0, 2]">
                     <q-item clickable v-ripple>
                         <q-avatar size="48px">
                             <img :src="`https://picsum.photos/seed/left-0/64/64`" :alt="`Picture 0`" />
-                            <q-tooltip>All Chats</q-tooltip>
                         </q-avatar>
+                        <q-tooltip anchor="center right" self="center left" :offset="[-10, 0]">
+                            All Chats
+                        </q-tooltip>
                     </q-item>
+
                     <q-separator spaced />
 
-                    <q-list>
-                        <q-item v-for="i in 20" :key="'left-' + i" clickable v-ripple>
-                            <q-avatar size="48px">
-                                <img :src="`https://picsum.photos/seed/left-${i}/64/64`" :alt="`Picture ${i}`" />
-                                <q-tooltip>Picture {{ i }}</q-tooltip>
-                            </q-avatar>
-                        </q-item>
-                    </q-list>
+                    <q-item v-for="i in 20" :key="'left-' + i" clickable v-ripple>
+                        <q-avatar size="48px">
+                            <img :src="`https://picsum.photos/seed/left-${i}/64/64`" :alt="`Picture ${i}`" />
+                        </q-avatar>
+                        <q-tooltip anchor="center right" self="center left" :offset="[-10, 0]">
+                            Picture{{ i }}
+                        </q-tooltip>
+                    </q-item>
                 </q-scroll-area>
             </div>
 
             <q-separator vertical />
 
             <!-- RIGHT SECTION (Main Drawer) -->
-            <div class="col scroll q-pa-sm main-drawer">
-                <q-scroll-area class="fit" :horizontal-offset="[0, 2]">
-                    <q-item>
-                        <q-item-section>
-                            <q-item-label header>Overlay Area</q-item-label>
-                        </q-item-section>
-                    </q-item>
+            <div class="main-drawer">
+                <!-- HEADER (fixed at top) -->
+                <q-toolbar class="column q-pa-md">
+                    <h6>Private Messages</h6>
 
-                    <q-item v-for="i in 30" :key="'right-' + i" clickable v-ripple>
-                        <q-item-section>
-                            Item {{ i }}
-                        </q-item-section>
+                    <!-- Search input -->
+                    <q-input rounded standout="bg-primary" dense clearable placeholder="Search" class="fit"
+                        input-class="text-white" v-model="search">
+                        <template v-slot:prepend>
+                            <q-icon name="search" color="grey-5" />
+                        </template>
+                    </q-input>
+                </q-toolbar>
+
+                <q-separator />
+
+                <!-- CHAT LIST (scrollable) -->
+                <q-scroll-area style="flex: 1 1 auto;">
+                    <q-item v-for="n in 20" :key="n" clickable class="chat-item">
+                        <!-- LEFT SIDE: avatar + text -->
+                        <div class="row items-center no-wrap">
+                            <q-avatar size="40px" class="q-mr-sm">
+                                <q-icon name="person" />
+                                <q-badge class="online-badge" v-if="n % 3 != 1" />
+                            </q-avatar>
+
+                            <div class="column">
+                                <div class="text-white text-body1">Random name</div>
+                                <div class="text-grey text-caption ellipsis" style="max-width: 160px;">
+                                    Message which was sended...
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- RIGHT SIDE: time + unread badge -->
+                        <div class="column items-end justify-center">
+                            <div class="text-grey text-caption">4:10</div>
+                            <q-badge class="" v-if="n > 6 && n < 10" color="blue" :label="n % 3 + 3" rounded />
+                        </div>
                     </q-item>
                 </q-scroll-area>
+
             </div>
         </q-drawer>
 
@@ -62,6 +92,9 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
+
+const search = ref<string>('')
 </script>
 
 <style lang="scss" src="../css/chat-layout.scss"></style>

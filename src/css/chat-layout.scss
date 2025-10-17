@@ -1,3 +1,7 @@
+.q-drawer {
+  background: var(--chat-dark);
+}
+
 .mini-drawer {
   width: 80px;
   background: var(--chat-dark);
@@ -18,20 +22,35 @@
 }
 
 .main-drawer {
-  // width: 280px;
+  width: 320px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
   background: var(--chat-primary);
 
-  .q-item {
-    background: transparent;
-    border-radius: 6px;
-    margin-bottom: 6px;
-    padding: 6px;
+  h6 {
+    margin: 0 0 16px 0;
+  }
 
-    &:hover {
-      background: color-mix(in srgb, var(--chat-primary) 10%, transparent);
-      background: rgba(95, 133, 219, 0.10);
-      /* fallback */
-    }
+  .q-toolbar {
+    flex: 0 0 auto;
+  }
+
+  .chat-item {
+    margin-bottom: 6px;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .online-badge {
+    position: absolute;
+    top: auto;
+    bottom: 2px;
+    right: 2px;
+    cursor: inherit;
+
+    background-color: var(--chat-positive);
+    border-radius: 1em;
   }
 }
 
