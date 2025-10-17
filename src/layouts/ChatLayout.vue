@@ -75,7 +75,8 @@
                         <!-- RIGHT SIDE: time + unread badge -->
                         <div class="column items-end justify-center">
                             <div class="text-grey text-caption">4:10</div>
-                            <q-badge class="" v-if="n > 6 && n < 10" color="blue" :label="n % 3 + 3" rounded />
+                            <q-badge class="notification-badge" v-if="n > 6 && n < 10" color="blue"
+                                :label="n % 3 + 3" />
                         </div>
                     </q-item>
                 </q-scroll-area>

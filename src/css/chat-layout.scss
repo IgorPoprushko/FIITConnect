@@ -52,6 +52,11 @@
     background-color: var(--chat-positive);
     border-radius: 1em;
   }
+
+  .notification-badge {
+    background-color: var(--chat-secondary);
+    border-radius: 1em;
+  }
 }
 
 .q-scrollarea {
