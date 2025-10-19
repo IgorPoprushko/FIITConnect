@@ -2,14 +2,8 @@
     <div class="row items-center q-pa-sm text-white bg-grey-9">
         <q-btn class="q-mr-sm" round color="primary" icon="attach_file" @click="handleAttach" />
         <q-btn class="q-mr-sm" round color="primary" icon="emoji_emotions" @click="onEmojiClick" />
-
-        <q-input v-model="messageText" placeholder="Type your message here..." class="col q-mr-sm" dense borderless
-            @keyup.enter="handleSend">
-            <template v-slot:prepend>
-                <q-icon name="insert_emotion" class="cursor-pointer" @click="onEmojiClick" />
-            </template>
-        </q-input>
-
+        <q-input v-model="messageText" placeholder="Type your message here..." class="chat-input col q-mr-sm q-ml-md"
+            dense borderless type="textarea" autogrow rows="1" max-rows="6" maxlength="1024" />
         <q-btn round color="primary" icon="send" @click="handleSend" :disable="!messageText.trim()" />
     </div>
 </template>
@@ -42,4 +36,9 @@ const onEmojiClick = () => {
 };
 </script>
 
-<style scoped></style>
+<style scoped>
+.chat-input {
+    max-height: 150px;
+    overflow: auto;
+}
+</style>

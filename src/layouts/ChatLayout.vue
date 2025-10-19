@@ -2,9 +2,10 @@
     <q-layout view="lHh Lpr lFf">
 
         <!-- HEADER -->
-        <q-header elevated>
+        <q-header>
             <q-toolbar>
                 <q-toolbar-title>Drawer with Two Horizontal Scroll Areas</q-toolbar-title>
+                <q-btn icon="menu" flat dense round @click="toggleChatDrawer" />
             </q-toolbar>
         </q-header>
 
@@ -93,7 +94,9 @@
 </template>
 
 <script setup lang="ts">
+import { useChatDrawer } from 'src/composables/useChatDrawer';
 import { ref } from 'vue'
+const { toggleChatDrawer } = useChatDrawer()
 
 const search = ref<string>('')
 </script>
