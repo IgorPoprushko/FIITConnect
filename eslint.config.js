@@ -67,6 +67,28 @@ export default defineConfigWithVueTs(
 
       // allow debugger during development only
       'no-debugger': process.env.NODE_ENV === 'production' ? 'error' : 'off',
+
+      "vue/max-attributes-per-line": [
+        "error",
+          {
+            singleline: 3, 
+            multiline: {
+              max: 1,
+              allowFirstLine: true, 
+            },
+          },
+      ],
+      "vue/html-indent": "off",
+      "vue/html-self-closing": "off",
+      "vue/html-closing-bracket-newline": "off",
+      "vue/singleline-html-element-content-newline": "off",
+      "vue/multiline-html-element-content-newline": "off",
+      "indent": "off",
+
+      "@typescript-eslint/consistent-type-imports": [
+        "error",
+        { prefer: "type-imports" },
+      ],
     },
   },
 
