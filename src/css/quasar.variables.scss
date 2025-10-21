@@ -15,14 +15,36 @@
 $primary: #353941;
 $secondary: #5F85DB;
 $accent: #90B8F8;
-
 $dark: #26282B;
 $dark-page: #121212;
-
 $positive: #21BA45;
 $negative: #C10015;
 $info: #31CCEC;
 $warning: #F2C037;
+
+:root {
+    /* 🌞 Light mode */
+    --q-color-primary: #ffffff;
+    --q-color-secondary: #353941;
+    --q-color-accent: #5F85DB;
+    --q-color-positive: #21ba45;
+    --q-color-negative: #c10015;
+    --q-color-info: #31ccec;
+    --q-color-warning: #f2c037;
+    --q-color-dark: #1d1d1d;
+}
+
+.body--dark {
+    /* 🌚 Dark mode */
+    --q-color-primary: #353941;
+    --q-color-secondary: #5F85DB;
+    --q-color-accent: #90B8F8;
+    --q-color-positive: #21ba45;
+    --q-color-negative: #C10015;
+    --q-color-info: #31CCEC;
+    --q-color-warning: #F2C037;
+    --q-color-dark: #121212;
+}
 
 .body--dark {
     --chat-primary: #353941;
