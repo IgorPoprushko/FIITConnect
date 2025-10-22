@@ -1,5 +1,5 @@
 <template>
-    <div class="row items-center q-pa-sm">
+    <div class="row items-center q-pa-sm bg-dark">
         <q-btn class="q-mr-sm" round icon="attach_file" @click="handleAttach" />
         <q-btn class="q-mr-sm" round icon="emoji_emotions" @click="onEmojiClick" />
         <q-input v-model="messageText" placeholder="Type your message here..." class="chat-input col q-mx-md" dense

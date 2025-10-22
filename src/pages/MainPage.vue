@@ -8,7 +8,7 @@
         <MessageInput @send="sendMessage" class="chat-input-footer" />
 
         <!--Profile drawer-->
-        <q-drawer class="q-pa-md" v-model="chatDrawer" side="right" :width="300" bordered>
+        <q-drawer class="q-pa-md bg-primary" v-model="chatDrawer" side="right" :width="300" bordered>
             <div class="text-center q-mb-md">
                 <q-avatar size="80px">
                     <img src="https://cdn.quasar.dev/img/avatar2.jpg" alt="User" />

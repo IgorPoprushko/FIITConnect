@@ -4,13 +4,17 @@
         <!-- HEADER -->
         <q-header>
             <q-toolbar>
-                <q-toolbar-title>Drawer with Two Horizontal Scroll Areas</q-toolbar-title>
-                <q-btn icon="menu" flat dense round @click="toggleChatDrawer" />
+
+                <q-btn icon="menu" flat dense round @click="chatDrawer = !chatDrawer" />
+                <q-toolbar-title>FIITConnect</q-toolbar-title>
+                <q-btn icon="info" flat dense round @click="toggleChatDrawer" />
             </q-toolbar>
         </q-header>
 
         <!-- SINGLE LEFT DRAWER -->
-        <q-drawer show-if-above side="left" :width="390" class="row no-wrap">
+        <q-drawer v-model="chatDrawer" side="left" :width="isMobile ? $q.screen.width : 390" :overlay="isMobile"
+            :behavior="isMobile ? 'mobile' : 'desktop'" bordered swipe-close
+            :class="isMobile ? 'bg-primary row no-wrap' : 'row no-wrap'" :style="isMobile ? 'max-width: 100vw' : ''">
             <!-- LEFT SECTION (Mini Drawer) -->
             <div class="mini-drawer">
                 <q-scroll-area class="fit" :horizontal-offset="[0, 2]">
@@ -39,7 +43,7 @@
             <q-separator vertical />
 
             <!-- RIGHT SECTION (Main Drawer) -->
-            <div class="main-drawer">
+            <div class="main-drawer q-px-md">
                 <!-- HEADER (fixed at top) -->
                 <q-toolbar class="column q-pa-md">
                     <h6>Private Messages</h6>
@@ -93,9 +97,14 @@
 </template>
 
 <script setup lang="ts">
+import { useQuasar } from 'quasar'
 import { useChatDrawer } from 'src/composables/useChatDrawer';
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 const { toggleChatDrawer } = useChatDrawer()
+
+const $q = useQuasar()
+const chatDrawer = ref(false)
+const isMobile = computed(() => $q.screen.lt.sm)
 
 const search = ref<string>('')
 </script>
