@@ -1,30 +1,35 @@
 <template>
-    <!-- Content of chat -->
-    <div class="q-pa-md scroll message-container">
-        <MessageList />
-    </div>
-
-    <MessageInput @send="sendMessage" class="chat-input-footer" />
-
-    <!--Profile drawer-->
-    <q-drawer class="q-pa-md" v-model="chatDrawer" side="right" :width="300" bordered>
-        <div class="text-center q-mb-md">
-            <q-avatar size="80px">
-                <img src="https://cdn.quasar.dev/img/avatar2.jpg" alt="User" />
-            </q-avatar>
-            <div class="text-h6 q-mt-sm">Alice</div>
-            <div class="text-caption text-grey-5">Online</div>
+    <div class="fit">
+        <!-- Content of chat -->
+        <div class="scroll message-container">
+            <MessageList />
         </div>
 
-        <q-separator spaced />
+        <MessageInput @send="sendMessage" class="chat-input-footer" />
 
-        <q-list>
-            <q-item clickable v-ripple>
-                <q-item-section avatar><q-icon name="info" /></q-item-section>
-                <q-item-section>About</q-item-section>
-            </q-item>
-        </q-list>
-    </q-drawer>
+        <!--Profile drawer-->
+        <q-drawer class="q-pa-md" v-model="chatDrawer" side="right" :width="300" bordered>
+            <div class="text-center q-mb-md">
+                <q-avatar size="80px">
+                    <img src="https://cdn.quasar.dev/img/avatar2.jpg" alt="User" />
+                </q-avatar>
+                <div class="text-h6 q-mt-sm">Alice</div>
+                <div class="text-caption">Online</div>
+            </div>
+
+            <q-separator spaced />
+
+            <q-list>
+                <q-item clickable v-ripple>
+                    <q-item-section avatar>
+                        <q-icon name="info" />
+                    </q-item-section>
+                    <q-item-section>About</q-item-section>
+                </q-item>
+            </q-list>
+        </q-drawer>
+    </div>
+
 </template>
 
 <script setup lang="ts">

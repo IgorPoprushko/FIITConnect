@@ -7,18 +7,18 @@
             <div class="column items-center q-mb-md">
                 <q-icon :name="logo" size="80px" class="q-mb-md text-secondary" />
                 <div class="text-h5 text-weight-bold text-center">Welcome back !</div>
-                <div class="text-caption text-grey-7 text-center">Log in to your account</div>
+                <div class="text-caption text-center">Log in to your account</div>
             </div>
             <q-separator inset class="q-mb-lg" color="primary" />
 
             <!--Form: inputs and buttons-->
             <q-form @submit.prevent="onSubmit" class="colunm q-gutter-md">
-                <q-input v-model="email" color="secondary" filled label="Email address" type="email" dense
+                <q-input v-model="email" color="accent" filled label="Email address" type="email" dense
                     :rules="rules.email">
                     <template v-slot:prepend><q-icon name="mail" /></template>
                 </q-input>
-                <q-input v-model="password" color="secondary" filled label="Password"
-                    :type="isPwd ? 'password' : 'text'" dense :rules="rules.passwordCorrect">
+                <q-input v-model="password" color="accent" filled label="Password" :type="isPwd ? 'password' : 'text'"
+                    dense :rules="rules.passwordCorrect">
                     <template v-slot:prepend><q-icon name="lock" /></template>
                     <template v-slot:append>
                         <q-icon :name="isPwd ? 'visibility_off' : 'visibility'" class="cursor-pointer"
@@ -29,9 +29,9 @@
                     Forgot password?
                 </div>
                 <div class="column q-gutter-sm q-mt-md">
-                    <q-btn label="Log In" color="secondary" unelevated class="q-mt-md full-width text-weight-bold"
+                    <q-btn label="Log In" color="accent" unelevated class="q-mt-md full-width text-weight-bold"
                         type="submit" />
-                    <q-btn label="Sing Up" color="secondary" flat class="full-width" @click="goToRegister" />
+                    <q-btn label="Sing Up" color="accent" flat class="full-width" @click="goToRegister" />
                 </div>
             </q-form>
         </q-card>

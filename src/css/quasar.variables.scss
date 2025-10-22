@@ -12,9 +12,9 @@
 // to match your app's branding.
 // Tip: Use the "Theme Builder" on Quasar's documentation website.
 
-$primary: #353941;
+$primary: #1c1d20;
 $secondary: #5F85DB;
-$accent: #90B8F8;
+$accent: #1f5ec3;
 $dark: #26282B;
 $dark-page: #121212;
 $positive: #21BA45;
@@ -23,10 +23,10 @@ $info: #31CCEC;
 $warning: #F2C037;
 
 :root {
-    /* 🌞 Light mode */
+    /* Light mode */
     --q-color-primary: #ffffff;
-    --q-color-secondary: #353941;
-    --q-color-accent: #5F85DB;
+    --q-color-secondary: #1c1d20;
+    --q-color-accent: #1d4e9d;
     --q-color-positive: #21ba45;
     --q-color-negative: #c10015;
     --q-color-info: #31ccec;
@@ -35,35 +35,13 @@ $warning: #F2C037;
 }
 
 .body--dark {
-    /* 🌚 Dark mode */
-    --q-color-primary: #353941;
-    --q-color-secondary: #5F85DB;
+    /* Dark mode */
+    --q-color-primary: #1c1d20;
+    --q-color-secondary: #006e42;
     --q-color-accent: #90B8F8;
     --q-color-positive: #21ba45;
     --q-color-negative: #C10015;
     --q-color-info: #31CCEC;
     --q-color-warning: #F2C037;
     --q-color-dark: #121212;
-}
-
-.body--dark {
-    --chat-primary: #353941;
-    --chat-secondary: #5F85DB;
-    --chat-accent: #90B8F8;
-    --chat-dark: #26282B;
-    --chat-positive: #21BA45; // Positive color
-    --chat-negative: #C10015; // Negative color
-    --chat-info: #31CCEC; // Info color
-    --chat-warning: #F2C037; // Warning colors
-}
-
-.body--light {
-    --chat-primary: #1976d2;
-    --chat-secondary: #26a69a;
-    --chat-accent: #9c27b0;
-    --chat-dark: #1d1d1d;
-    --chat-positive: #21ba45; // Positive color
-    --chat-negative: #C10015; // Negative color
-    --chat-info: #31CCEC; // Info color
-    --chat-warning: #F2C037; // Warning colors
 }

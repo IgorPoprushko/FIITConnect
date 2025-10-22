@@ -45,10 +45,10 @@
                     <h6>Private Messages</h6>
 
                     <!-- Search input -->
-                    <q-input rounded standout="bg-primary" dense clearable placeholder="Search" class="fit"
-                        input-class="text-white" v-model="search">
+                    <q-input rounded standout dense clearable placeholder="Search" v-model="search"
+                        class="fit text-accent">
                         <template v-slot:prepend>
-                            <q-icon name="search" color="grey-5" />
+                            <q-icon name="search" color="accent" />
                         </template>
                     </q-input>
                 </q-toolbar>
@@ -62,12 +62,12 @@
                         <div class="row items-center no-wrap">
                             <q-avatar size="40px" class="q-mr-sm">
                                 <q-icon name="person" />
-                                <q-badge class="online-badge" v-if="n % 3 != 1" />
+                                <q-badge class="online-badge bg-green" v-if="n % 3 != 1" />
                             </q-avatar>
 
                             <div class="column">
-                                <div class="text-white text-body1">Random name</div>
-                                <div class="text-grey text-caption ellipsis" style="max-width: 160px;">
+                                <div class="text-body">Random name</div>
+                                <div class="text-caption ellipsis" style="max-width: 160px;">
                                     Message which was sended...
                                 </div>
                             </div>
@@ -75,13 +75,12 @@
 
                         <!-- RIGHT SIDE: time + unread badge -->
                         <div class="column items-end justify-center">
-                            <div class="text-grey text-caption">4:10</div>
+                            <div class="text-caption">4:10</div>
                             <q-badge class="notification-badge" v-if="n > 6 && n < 10" color="blue"
                                 :label="n % 3 + 3" />
                         </div>
                     </q-item>
                 </q-scroll-area>
-
             </div>
         </q-drawer>
 

@@ -5,32 +5,32 @@
 
             <!-- Header -->
             <div class="column items-center q-mb-md">
-                <q-icon :name="logo" size="80px" class="q-mb-md text-secondary" />
+                <q-icon :name="logo" size="80px" class="q-mb-md" />
                 <div class="text-h5 text-weight-bold text-center">Create your account</div>
-                <div class="text-caption text-grey-7 text-center">Join us and get started in seconds</div>
+                <div class="text-caption text-center">Join us and get started in seconds</div>
             </div>
             <q-separator inset class="q-mb-lg" color="primary" />
 
             <!--Form: inputs and buttons-->
             <q-form @submit.prevent="onSubmit" class="column q-gutter-md">
-                <q-input v-model="name" color="secondary" filled label="First name" dense :rules="rules.required" />
-                <q-input v-model="surname" color="secondary" filled label="Last name" dense :rules="rules.required" />
-                <q-input v-model="nickname" color="secondary" filled label="Nickname" dense :rules="rules.required">
+                <q-input v-model="name" color="accent" filled label="First name" dense :rules="rules.required" />
+                <q-input v-model="surname" color="accent" filled label="Last name" dense :rules="rules.required" />
+                <q-input v-model="nickname" color="accent" filled label="Nickname" dense :rules="rules.required">
                     <template v-slot:prepend><q-icon name="person" /></template>
                 </q-input>
-                <q-input v-model="email" color="secondary" filled label="Email address" type="email" dense
+                <q-input v-model="email" color="accent" filled label="Email address" type="email" dense
                     :rules="rules.email">
                     <template v-slot:prepend><q-icon name="mail" /></template>
                 </q-input>
-                <q-input v-model="password" color="secondary" filled label="Password"
-                    :type="isPwd ? 'password' : 'text'" dense :rules="rules.passwordCorrect">
+                <q-input v-model="password" color="accent" filled label="Password" :type="isPwd ? 'password' : 'text'"
+                    dense :rules="rules.passwordCorrect">
                     <template v-slot:prepend><q-icon name="lock" /></template>
                     <template v-slot:append>
                         <q-icon :name="isPwd ? 'visibility_off' : 'visibility'" class="cursor-pointer"
                             @click="isPwd = !isPwd" />
                     </template>
                 </q-input>
-                <q-input v-model="passwordConfrim" color="secondary" filled label="Confirm Password"
+                <q-input v-model="passwordConfrim" color="accent" filled label="Confirm Password"
                     :type="isPwd ? 'password' : 'text'" dense :rules="rules.passwordMatch">
                     <template v-slot:append>
                         <q-icon :name="isPwd ? 'visibility_off' : 'visibility'" class="cursor-pointer"
@@ -38,10 +38,9 @@
                     </template>
                 </q-input>
                 <div class="column q-gutter-sm q-mt-md">
-                    <q-btn label="Sign Up" color="secondary" unelevated class="full-width text-weight-bold"
+                    <q-btn label="Sign Up" color="accent" unelevated class="full-width text-weight-bold"
                         type="submit" />
-                    <q-btn label="Already have an account?" color="secondary" flat class="full-width"
-                        @click="goToLogin" />
+                    <q-btn label="Already have an account?" color="accent" flat class="full-width" @click="goToLogin" />
                 </div>
             </q-form>
         </q-card>
