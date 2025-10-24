@@ -1,18 +1,23 @@
 <template>
-    <q-page class="flex flex-center fit" style="min-height:100vh; max-width: 500px;">
-        <q-card class="q-pa-xl column items-stretch justify-between"
+    <q-page class="flex flex-center fit q-my-md" style="min-height:100vh; max-width: 500px;">
+        <q-card class="q-pa-xl column items-stretch justify-between "
             style="max-width: 600px; width: 90%; border-radius: 15px;">
 
             <!-- Header -->
             <div class="column items-center q-mb-md">
-                <q-icon :name="logo" size="80px" class="q-mb-md text-secondary" />
-                <div class="text-h5 text-weight-bold text-center">Welcome back !</div>
-                <div class="text-caption text-center">Log in to your account</div>
+                <q-icon :name="logo" size="80px" class="q-mb-md" />
+                <div class="text-h5 text-weight-bold text-center">Create your account</div>
+                <div class="text-caption text-center">Join us and get started in seconds</div>
             </div>
             <q-separator inset class="q-mb-lg" color="primary" />
 
             <!--Form: inputs and buttons-->
-            <q-form @submit.prevent="onSubmit" class="colunm q-gutter-md">
+            <q-form @submit.prevent="onSubmit" class="column q-gutter-md">
+                <q-input v-model="name" color="accent" filled label="First name" dense :rules="rules.required" />
+                <q-input v-model="surname" color="accent" filled label="Last name" dense :rules="rules.required" />
+                <q-input v-model="nickname" color="accent" filled label="Nickname" dense :rules="rules.required">
+                    <template v-slot:prepend><q-icon name="person" /></template>
+                </q-input>
                 <q-input v-model="email" color="accent" filled label="Email address" type="email" dense
                     :rules="rules.email">
                     <template v-slot:prepend><q-icon name="mail" /></template>
@@ -25,13 +30,17 @@
                             @click="isPwd = !isPwd" />
                     </template>
                 </q-input>
-                <div class="text-right text-caption text-white q-mt-sm cursor-pointer hover-underline">
-                    Forgot password?
-                </div>
+                <q-input v-model="passwordConfrim" color="accent" filled label="Confirm Password"
+                    :type="isPwd ? 'password' : 'text'" dense :rules="rules.passwordMatch">
+                    <template v-slot:append>
+                        <q-icon :name="isPwd ? 'visibility_off' : 'visibility'" class="cursor-pointer"
+                            @click="isPwd = !isPwd" />
+                    </template>
+                </q-input>
                 <div class="column q-gutter-sm q-mt-md">
-                    <q-btn label="Log In" color="accent" unelevated class="q-mt-md full-width text-weight-bold"
+                    <q-btn label="Sign Up" color="accent" unelevated class="full-width text-weight-bold"
                         type="submit" />
-                    <q-btn label="Sing Up" color="accent" flat class="full-width" @click="goToRegister" />
+                    <q-btn label="Already have an account?" color="accent" flat class="full-width" @click="goToLogin" />
                 </div>
             </q-form>
         </q-card>
@@ -46,10 +55,13 @@ import { computed, ref } from 'vue';
 const router = useRouter();
 const isPwd = ref(true);
 
+const nickname = ref('');
+const name = ref('');
+const surname = ref('');
 const email = ref('');
 const password = ref('');
+const passwordConfrim = ref('');
 
-// Test Logo
 const colorFace = ref('#368EB3')
 const colorHair = ref('#36A7B3')
 const logo = computed(() => {
@@ -60,6 +72,9 @@ const logo = computed(() => {
 
 // Validation rules
 const rules = {
+    required: [
+        (val: string) => !!val || 'This field is required',
+    ],
     email: [
         (val: string) => !!val || 'Email is required',
         (val: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val) || 'Invalid email format'
@@ -68,17 +83,25 @@ const rules = {
         (val: string) => !!val || 'Password is required',
         (val: string) => val.length >= 6 || 'At least 6 characters'
     ]
+    ,
+    passwordMatch: [
+        (val: string) => val === password.value || 'Passwords do not match'
+    ]
 }
 
 // Submit handler
 const onSubmit = () => {
-    console.log('Form submitted with:', { email: email.value, password: password.value });
-};
-
+    console.log('Submit registration form: ', {
+        nickname: nickname.value,
+        name: name.value,
+        surname: surname.value,
+        email: email.value,
+        password: password.value,
+        passwordConfrim: passwordConfrim.value,
+    });
+}
 // Navigation
-const goToRegister = () => {
-    void router.push('/register');
-};
+const goToLogin = () => router.push('/auth');
 </script>
 
 <style scoped>

@@ -1,10 +1,15 @@
 <template>
-  <q-layout view="lHh Lpr lFf">
+  <q-layout view="lHh LpR lFf">
     <q-header elevated>
       <q-toolbar>
         <q-btn flat dense round icon="menu" aria-label="Menu" @click="toggleLeftDrawer" />
 
         <q-toolbar-title> Quasar App </q-toolbar-title>
+        <div class="row items-center q-gutter-sm">
+          <span class="text-caption">Dark mode</span>
+          <q-toggle v-model="isDark" color="secondary" dense keep-color checked-icon="dark_mode"
+            unchecked-icon="light_mode" />
+        </div>
 
         <div>Quasar v{{ $q.version }}</div>
       </q-toolbar>
@@ -18,6 +23,7 @@
       </q-list>
     </q-drawer>
 
+
     <q-page-container>
       <router-view />
     </q-page-container>
@@ -25,9 +31,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
+import { Dark } from 'quasar'
 import EssentialLink, { type EssentialLinkProps } from 'components/EssentialLink.vue';
 
+
+const isDark = ref(Dark.isActive) // початковий стан
+watch(isDark, val => Dark.set(val)) // синхронізація з Quasar
 const linksList: EssentialLinkProps[] = [
   {
     title: 'Docs',

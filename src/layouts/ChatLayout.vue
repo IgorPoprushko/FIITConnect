@@ -4,13 +4,17 @@
         <!-- HEADER -->
         <q-header>
             <q-toolbar>
-                <q-toolbar-title>Drawer with Two Horizontal Scroll Areas</q-toolbar-title>
-                <q-btn icon="menu" flat dense round @click="toggleChatDrawer" />
+
+                <q-btn icon="menu" flat dense round @click="chatDrawer = !chatDrawer" />
+                <q-toolbar-title>FIITConnect</q-toolbar-title>
+                <q-btn icon="info" flat dense round @click="toggleChatDrawer" />
             </q-toolbar>
         </q-header>
 
         <!-- SINGLE LEFT DRAWER -->
-        <q-drawer show-if-above side="left" :width="390" class="row no-wrap">
+        <q-drawer v-model="chatDrawer" side="left" :width="isMobile ? $q.screen.width : 390" :overlay="isMobile"
+            :behavior="isMobile ? 'mobile' : 'desktop'" bordered swipe-close
+            :class="isMobile ? 'bg-primary row no-wrap' : 'row no-wrap'" :style="isMobile ? 'max-width: 100vw' : ''">
             <!-- LEFT SECTION (Mini Drawer) -->
             <div class="mini-drawer">
                 <q-scroll-area class="fit" :horizontal-offset="[0, 2]">
@@ -39,16 +43,16 @@
             <q-separator vertical />
 
             <!-- RIGHT SECTION (Main Drawer) -->
-            <div class="main-drawer">
+            <div class="main-drawer q-px-md">
                 <!-- HEADER (fixed at top) -->
                 <q-toolbar class="column q-pa-md">
                     <h6>Private Messages</h6>
 
                     <!-- Search input -->
-                    <q-input rounded standout="bg-primary" dense clearable placeholder="Search" class="fit"
-                        input-class="text-white" v-model="search">
+                    <q-input rounded standout dense clearable placeholder="Search" v-model="search"
+                        class="fit text-accent">
                         <template v-slot:prepend>
-                            <q-icon name="search" color="grey-5" />
+                            <q-icon name="search" color="accent" />
                         </template>
                     </q-input>
                 </q-toolbar>
@@ -62,12 +66,12 @@
                         <div class="row items-center no-wrap">
                             <q-avatar size="40px" class="q-mr-sm">
                                 <q-icon name="person" />
-                                <q-badge class="online-badge" v-if="n % 3 != 1" />
+                                <q-badge class="online-badge bg-green" v-if="n % 3 != 1" />
                             </q-avatar>
 
                             <div class="column">
-                                <div class="text-white text-body1">Random name</div>
-                                <div class="text-grey text-caption ellipsis" style="max-width: 160px;">
+                                <div class="text-body">Random name</div>
+                                <div class="text-caption ellipsis" style="max-width: 160px;">
                                     Message which was sended...
                                 </div>
                             </div>
@@ -75,13 +79,12 @@
 
                         <!-- RIGHT SIDE: time + unread badge -->
                         <div class="column items-end justify-center">
-                            <div class="text-grey text-caption">4:10</div>
+                            <div class="text-caption">4:10</div>
                             <q-badge class="notification-badge" v-if="n > 6 && n < 10" color="blue"
                                 :label="n % 3 + 3" />
                         </div>
                     </q-item>
                 </q-scroll-area>
-
             </div>
         </q-drawer>
 
@@ -94,9 +97,14 @@
 </template>
 
 <script setup lang="ts">
+import { useQuasar } from 'quasar'
 import { useChatDrawer } from 'src/composables/useChatDrawer';
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 const { toggleChatDrawer } = useChatDrawer()
+
+const $q = useQuasar()
+const chatDrawer = ref(false)
+const isMobile = computed(() => $q.screen.lt.sm)
 
 const search = ref<string>('')
 </script>

@@ -1,16 +1,16 @@
 <template>
-    <div class="q-pa-xl ">
+    <div class="q-py-xl bg-blue-2 container">
         <!-- Infinite scroll for old messages-->
         <q-infinite-scroll reverse @load="loadOlderMessages">
             <template v-slot:loading>
                 <div class="row justify-center q-my-md">
-                    <q-spinner-dots color="secondary" name="dots" size="40px" />
+                    <q-spinner-dots color="primary" name="dots" size="40px" />
                 </div>
             </template>
-            <q-chat-message v-for="(message, index) in messages" :key="message.id"
+            <q-chat-message text-color="white" v-for="(message, index) in messages" :key="message.id"
                 :label="isNewDay(index) ? message.date : ''" :name="message.name" :avatar="message.avatar"
                 :text="[message.text]" :stamp="message.time" :sent="message.isMine"
-                :bg-color="message.isMine ? 'primary' : 'secondary'" text-color="white" class="q-mb-sm message-item" />
+                :bg-color="message.isMine ? 'primary' : 'secondary'" class="q-mb-sm q-px-sm message-item" />
         </q-infinite-scroll>
 
     </div>
@@ -190,4 +190,20 @@ const loadOlderMessages = (index: number, done: DoneFunction) => {
 }
 </script>
 
-<style scoped></style>
+<style scoped>
+.chat-container {
+    background-color: #e3f2fd;
+    padding-left: max(20px, env(safe-area-inset-left));
+    padding-right: max(20px, env(safe-area-inset-right));
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.message-item {
+    max-width: 720px;
+    margin-left: auto;
+    margin-right: auto;
+}
+</style>
