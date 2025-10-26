@@ -1,24 +1,26 @@
 <template>
-    <div class="q-py-xl bg-blue-2 container">
+    <div class="messages-wrapper">
         <!-- Infinite scroll for old messages-->
-        <q-infinite-scroll reverse @load="loadOlderMessages">
+        <q-infinite-scroll reverse @load="loadOlderMessages" :offset="250" class="messages-scroll-area"
+            ref="scrollAreaRef">
             <template v-slot:loading>
                 <div class="row justify-center q-my-md">
                     <q-spinner-dots color="primary" name="dots" size="40px" />
                 </div>
             </template>
+
             <q-chat-message text-color="white" v-for="(message, index) in messages" :key="message.id"
                 :label="isNewDay(index) ? message.date : ''" :name="message.name" :avatar="message.avatar"
                 :text="[message.text]" :stamp="message.time" :sent="message.isMine"
                 :bg-color="message.isMine ? 'primary' : 'secondary'" class="q-mb-sm q-px-sm message-item" />
         </q-infinite-scroll>
-
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 
+const scrollAreaRef = ref<any>(null)
 
 const messages = ref([
     {
@@ -67,7 +69,7 @@ const messages = ref([
         date: '2025-10-7',
     },
     {
-        id: 5,
+        id: 6,
         name: 'Alice',
         avatar: 'https://cdn.quasar.dev/img/avatar2.jpg',
         text: 'That sounds awesome! Tell me more about it, please! Tell me more about it, please! Tell me more about it, please! Tell me more about it, please! Tell me more about it, please! Tell me more about it, please! Tell me more about it, please!',
@@ -76,7 +78,7 @@ const messages = ref([
         date: '2025-10-8',
     },
     {
-        id: 6,
+        id: 7,
         name: 'You',
         avatar: 'https://cdn.quasar.dev/img/avatar4.jpg',
         text: 'Sure! It is a web application built with Vue.js and Quasar Framework.',
@@ -85,7 +87,7 @@ const messages = ref([
         date: '2025-10-11',
     },
     {
-        id: 7,
+        id: 8,
         name: 'Alice',
         avatar: 'https://cdn.quasar.dev/img/avatar2.jpg',
         text: 'Wow, that\'s cool! Good luck with your project!',
@@ -94,7 +96,7 @@ const messages = ref([
         date: '2025-10-12',
     },
     {
-        id: 8,
+        id: 9,
         name: 'You',
         avatar: 'https://cdn.quasar.dev/img/avatar4.jpg',
         text: 'Thank you!',
@@ -103,7 +105,7 @@ const messages = ref([
         date: '2025-10-13',
     },
     {
-        id: 9,
+        id: 10,
         name: 'Alice',
         avatar: 'https://cdn.quasar.dev/img/avatar2.jpg',
         text: 'Let me know if you need any help.',
@@ -112,7 +114,7 @@ const messages = ref([
         date: '2025-10-13',
     },
     {
-        id: 10,
+        id: 11,
         name: 'You',
         avatar: 'https://cdn.quasar.dev/img/avatar4.jpg',
         text: 'Will do! Thanks again!',
@@ -121,7 +123,7 @@ const messages = ref([
         date: '2025-10-15',
     },
     {
-        id: 11,
+        id: 12,
         name: 'Alice',
         avatar: 'https://cdn.quasar.dev/img/avatar2.jpg',
         text: 'No problem! Have a great day!',
@@ -130,7 +132,7 @@ const messages = ref([
         date: '2025-10-15',
     },
     {
-        id: 12,
+        id: 13,
         name: 'You',
         avatar: 'https://cdn.quasar.dev/img/avatar4.jpg',
         text: 'You too! Bye!',
@@ -158,6 +160,7 @@ const loadOlderMessages = (index: number, done: DoneFunction) => {
             done(true); // No more data to load
             return;
         }
+
         const older = [
             {
                 id: Date.now(),
@@ -178,32 +181,72 @@ const loadOlderMessages = (index: number, done: DoneFunction) => {
                 date: '2025-09-02',
             },
         ]
+
         messages.value.unshift(...older)
-
         page++;
-
         done();
-
     }, 1500)
-
-
 }
+
+// Scroll to bottom on mount
+onMounted(() => {
+    nextTick(() => {
+        scrollToBottom()
+    })
+})
+
+const scrollToBottom = () => {
+    if (scrollAreaRef.value?.$el) {
+        const scrollContainer = scrollAreaRef.value.$el
+        scrollContainer.scrollTop = scrollContainer.scrollHeight
+    }
+}
+
+// Expose method to scroll to bottom (for new messages)
+defineExpose({
+    scrollToBottom
+})
 </script>
 
 <style scoped>
-.chat-container {
+.messages-wrapper {
+    height: 100%;
+    width: 100%;
     background-color: #e3f2fd;
-    padding-left: max(20px, env(safe-area-inset-left));
-    padding-right: max(20px, env(safe-area-inset-right));
-    min-height: 100vh;
     display: flex;
     flex-direction: column;
-    align-items: center;
+}
+
+.messages-scroll-area {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 20px;
+    padding-left: max(20px, env(safe-area-inset-left));
+    padding-right: max(20px, env(safe-area-inset-right));
 }
 
 .message-item {
     max-width: 720px;
     margin-left: auto;
     margin-right: auto;
+}
+
+/* Custom scrollbar styling */
+.messages-scroll-area::-webkit-scrollbar {
+    width: 8px;
+}
+
+.messages-scroll-area::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.messages-scroll-area::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+}
+
+.messages-scroll-area::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.3);
 }
 </style>
