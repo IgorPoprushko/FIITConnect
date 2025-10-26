@@ -1,103 +1,113 @@
 <template>
-    <q-scroll-area class="messages-wrapper">
-        <!-- Infinite scroll for old messages-->
-        <q-infinite-scroll reverse @load="onLoad" :offset="250" class="messages-scroll-area" ref="scrollAreaRef">
-            <template v-slot:loading>
-                <div class="row justify-center q-my-md">
-                    <q-spinner-dots color="primary" name="dots" size="40px" />
-                </div>
-            </template>
+  <q-scroll-area class="messages-wrapper">
+    <!-- Infinite scroll for old messages-->
+    <q-infinite-scroll
+      reverse
+      @load="onLoad"
+      :offset="250"
+      class="messages-scroll-area"
+      ref="scrollAreaRef"
+    >
+      <template v-slot:loading>
+        <div class="row justify-center q-my-md">
+          <q-spinner-dots color="primary" name="dots" size="40px" />
+        </div>
+      </template>
 
-            <MessageBubble v-for="(msg, i) in currentMessages" :key="msg.id" :message="msg"
-                :previousMessage="currentMessages[i - 1]" />
+      <MessageBubble
+        v-for="(msg, i) in currentMessages"
+        :key="msg.id"
+        :message="msg"
+        :previousMessage="currentMessages[i - 1]"
+      />
 
-            <!-- <q-chat-message text-color="white" v-for="(message, index) in messages" :key="message.id"
+      <!-- <q-chat-message text-color="white" v-for="(message, index) in messages" :key="message.id"
                 :label="isNewDay(index) ? message.date : ''" :name="message.name" :avatar="message.avatar"
                 :text="[message.text]" :stamp="message.time" :sent="message.isMine"
                 :bg-color="message.isMine ? 'primary' : 'secondary'" class="q-mb-sm q-px-sm message-item" /> -->
-        </q-infinite-scroll>
-    </q-scroll-area>
+    </q-infinite-scroll>
+  </q-scroll-area>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from 'vue';
 import MessageBubble from './MessageBubble.vue';
 import { type IMessage, type DoneFunction } from 'src/types/messages';
+import { QScrollArea } from 'quasar';
 
 interface Props {
-    messages: IMessage[]
+  messages: IMessage[];
 }
 const progs = defineProps<Props>();
 const messages = progs.messages;
 const currentMessages: IMessage[] = [];
 
-const scrollAreaRef = ref<any>(null)
+const scrollAreaRef = ref<InstanceType<typeof QScrollArea> | null>(null);
 
 function onLoad(index: number, done: DoneFunction) {
-    setTimeout(() => {
-        const end = messages.length - currentMessages.length;
-        if (end == 0) done(true);
-        const start = Math.max(end - 5, 0);
+  setTimeout(() => {
+    const end = messages.length - currentMessages.length;
+    if (end == 0) done(true);
+    const start = Math.max(end - 5, 0);
 
-        const loadingMessages = messages.slice(start, end)
-        currentMessages.unshift(...loadingMessages)
-        done();
-    }, 1500)
+    const loadingMessages = messages.slice(start, end);
+    currentMessages.unshift(...loadingMessages);
+    done();
+  }, 1500);
 }
 
 // Scroll to bottom on mount
-onMounted(() => {
-    nextTick(() => {
-        scrollToBottom()
-    })
-})
+onMounted(async () => {
+  await nextTick();
+  scrollToBottom();
+});
 
 const scrollToBottom = () => {
-    if (scrollAreaRef.value?.$el) {
-        const scrollContainer = scrollAreaRef.value.$el
-        scrollContainer.scrollTop = scrollContainer.scrollHeight
-    }
-}
+  if (scrollAreaRef.value?.$el) {
+    const scrollContainer = scrollAreaRef.value.$el;
+    scrollContainer.scrollTop = scrollContainer.scrollHeight;
+  }
+};
 
 // Expose method to scroll to bottom (for new messages)
 defineExpose({
-    scrollToBottom
-})
+  scrollToBottom,
+});
 </script>
 
 <style scoped>
 .messages-wrapper {
-    height: 100%;
-    width: 100%;
-    background-color: var(--q-color-dark);
-    display: flex;
-    flex-direction: column;
+  height: 100%;
+  width: 100%;
+  background-color: var(--q-color-dark);
+  display: flex;
+  flex-direction: column;
 }
 
 .messages-scroll-area {
-    flex: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding: 20px;
-    padding-left: max(20px, env(safe-area-inset-left));
-    padding-right: max(20px, env(safe-area-inset-right));
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 20px;
+  padding-left: max(20px, env(safe-area-inset-left));
+  padding-right: max(20px, env(safe-area-inset-right));
 }
 
 /* Custom scrollbar styling */
 .messages-scroll-area::-webkit-scrollbar {
-    width: 8px;
+  width: 8px;
 }
 
 .messages-scroll-area::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.05);
+  background: rgba(0, 0, 0, 0.05);
 }
 
 .messages-scroll-area::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 4px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
 }
 
 .messages-scroll-area::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.3);
 }
 </style>
