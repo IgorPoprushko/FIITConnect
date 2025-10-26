@@ -12,8 +12,8 @@
         </q-header>
 
         <!-- SINGLE LEFT DRAWER -->
-        <q-drawer v-model="chatDrawer" side="left" :width="isMobile ? $q.screen.width : 390" :overlay="isMobile"
-            :behavior="isMobile ? 'mobile' : 'desktop'" bordered swipe-close
+        <q-drawer v-model="chatDrawer" show-if-above side="left" :width="isMobile ? $q.screen.width : 390"
+            :overlay="isMobile" :behavior="isMobile ? 'mobile' : 'desktop'" bordered swipe-close
             :class="isMobile ? 'bg-primary row no-wrap' : 'row no-wrap'" :style="isMobile ? 'max-width: 100vw' : ''">
             <!-- LEFT SECTION (Mini Drawer) -->
             <div class="mini-drawer">
@@ -66,7 +66,7 @@
                         <div class="row items-center no-wrap">
                             <q-avatar size="40px" class="q-mr-sm">
                                 <q-icon name="person" />
-                                <q-badge class="online-badge bg-green" v-if="n % 3 != 1" />
+                                <q-badge class="online-badge" v-if="n % 3 != 1" />
                             </q-avatar>
 
                             <div class="column">
@@ -80,8 +80,7 @@
                         <!-- RIGHT SIDE: time + unread badge -->
                         <div class="column items-end justify-center">
                             <div class="text-caption">4:10</div>
-                            <q-badge class="notification-badge" v-if="n > 6 && n < 10" color="blue"
-                                :label="n % 3 + 3" />
+                            <q-badge class="notification-badge" v-if="n > 6 && n < 10" :label="n % 3 + 3" />
                         </div>
                     </q-item>
                 </q-scroll-area>
