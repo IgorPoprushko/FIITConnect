@@ -17,10 +17,10 @@ export default class User extends BaseModel {
   declare password: string
 
   @column()
-  declare first_name: string
+  declare firstName: string
 
   @column()
-  declare last_name: string
+  declare lastName: string
 
   @column()
   declare nickname: string
@@ -29,7 +29,7 @@ export default class User extends BaseModel {
   declare setting: HasOne<typeof Setting>
 
   @column()
-  declare setings_id: string
+  declare setingsId: string
 
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare lastSeenAt: DateTime
