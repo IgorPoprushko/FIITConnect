@@ -9,31 +9,31 @@ import User from '#models/user'
 export default class ChatDraft extends BaseModel {
   static selfAssignPrimaryKey = true
 
-  @column({ isPrimary: true })
+  @column({ isPrimary: true, columnName: 'id' })
   declare id: string
 
-  @column()
+  @column({ columnName: 'channel_id' })
   declare channelId: string | null
 
-  @belongsTo(() => Channel)
+  @belongsTo(() => Channel, { foreignKey: 'channel_id' })
   declare channel: BelongsTo<typeof Channel>
 
-  @column()
+  @column({ columnName: 'chat_id' })
   declare chatId: string | null
 
-  @belongsTo(() => Chat)
+  @belongsTo(() => Chat, { foreignKey: 'chat_id' })
   declare chat: BelongsTo<typeof Chat>
 
-  @column()
+  @column({ columnName: 'user_id' })
   declare userId: string
 
-  @belongsTo(() => User)
+  @belongsTo(() => User, { foreignKey: 'user_id' })
   declare user: BelongsTo<typeof User>
 
-  @column()
+  @column({ columnName: 'content' })
   declare content: string
 
-  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  @column.dateTime({ autoCreate: true, autoUpdate: true, columnName: 'updated_at' })
   declare updatedAt: DateTime
 
   @beforeCreate()

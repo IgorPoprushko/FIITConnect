@@ -8,31 +8,31 @@ import { ChannelType } from 'App/enums/channel_type.js'
 export default class Channel extends BaseModel {
   static selfAssignPrimaryKey = true
 
-  @column({ isPrimary: true })
+  @column({ isPrimary: true, columnName: 'id' })
   declare id: string
 
-  @column()
+  @column({ columnName: 'name' })
   declare name: string
 
-  @column()
+  @column({ columnName: 'description' })
   declare description: string | null
 
-  @column()
+  @column({ columnName: 'type' })
   declare type: ChannelType
 
-  @column()
+  @column({ columnName: 'owner_user_id' })
   declare ownerUserId: string
 
-  @belongsTo(() => User)
+  @belongsTo(() => User, { foreignKey: 'owner_user_id' })
   declare owner: BelongsTo<typeof User>
 
-  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  @column.dateTime({ columnName: 'last_message_at' })
   declare lastMessageAt: DateTime | null
 
-  @column.dateTime({ autoCreate: true })
+  @column.dateTime({ autoCreate: true, columnName: 'created_at' })
   declare createdAt: DateTime
 
-  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  @column.dateTime({ autoCreate: true, autoUpdate: true, columnName: 'updated_at' })
   declare updatedAt: DateTime
 
   @beforeCreate()

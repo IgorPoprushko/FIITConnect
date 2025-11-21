@@ -7,37 +7,34 @@ import type { HasOne } from '@adonisjs/lucid/types/relations'
 export default class User extends BaseModel {
   static selfAssignPrimaryKey = true
 
-  @column({ isPrimary: true })
+  @column({ isPrimary: true, columnName: 'id' })
   declare id: string
 
-  @column()
+  @column({ columnName: 'email' })
   declare email: string
 
-  @column({ serializeAs: null })
-  declare password: string
+  @column({ columnName: 'password_hash', serializeAs: null })
+  declare passwordHash: string
 
-  @column()
+  @column({ columnName: 'first_name' })
   declare firstName: string
 
-  @column()
+  @column({ columnName: 'last_name' })
   declare lastName: string
 
-  @column()
+  @column({ columnName: 'nickname' })
   declare nickname: string
 
-  @hasOne(() => Setting)
+  @hasOne(() => Setting, { foreignKey: 'user_id' })
   declare setting: HasOne<typeof Setting>
 
-  @column()
-  declare setingsId: string
+  @column.dateTime({ columnName: 'last_seen_at' })
+  declare lastSeenAt: DateTime | null
 
-  @column.dateTime({ autoCreate: true, autoUpdate: true })
-  declare lastSeenAt: DateTime
-
-  @column.dateTime({ autoCreate: true })
+  @column.dateTime({ autoCreate: true, columnName: 'created_at' })
   declare createdAt: DateTime
 
-  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  @column.dateTime({ autoCreate: true, autoUpdate: true, columnName: 'updated_at' })
   declare updatedAt: DateTime
 
   @beforeCreate()

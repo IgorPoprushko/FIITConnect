@@ -7,28 +7,29 @@ import { randomUUID } from 'node:crypto'
 
 export default class Setting extends BaseModel {
   static selfAssignPrimaryKey = true
-  @column({ isPrimary: true })
+
+  @column({ isPrimary: true, columnName: 'id' })
   declare id: string
 
-  @column()
+  @column({ columnName: 'user_id' })
   declare userId: string
 
-  @belongsTo(() => User)
+  @belongsTo(() => User, { foreignKey: 'user_id' })
   declare user: BelongsTo<typeof User>
 
-  @column()
+  @column({ columnName: 'status' })
   declare status: UserStatus
 
-  @column()
+  @column({ columnName: 'notifications_enabled' })
   declare notificationsEnabled: boolean
 
-  @column()
+  @column({ columnName: 'direct_notifications_only' })
   declare directNotificationsOnly: boolean
 
-  @column.dateTime({ autoCreate: true })
+  @column.dateTime({ autoCreate: true, columnName: 'created_at' })
   declare createdAt: DateTime
 
-  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  @column.dateTime({ autoCreate: true, autoUpdate: true, columnName: 'updated_at' })
   declare updatedAt: DateTime
 
   @beforeCreate()

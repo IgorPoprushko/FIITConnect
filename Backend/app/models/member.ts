@@ -9,34 +9,34 @@ import type { BelongsTo } from '@adonisjs/lucid/types/relations'
 export default class Member extends BaseModel {
   static selfAssignPrimaryKey = true
 
-  @column({ isPrimary: true })
+  @column({ isPrimary: true, columnName: 'id' })
   declare id: string
 
-  @column()
+  @column({ columnName: 'user_id' })
   declare userId: string
 
-  @belongsTo(() => User)
+  @belongsTo(() => User, { foreignKey: 'user_id' })
   declare user: BelongsTo<typeof User>
 
-  @column()
+  @column({ columnName: 'channel_id' })
   declare channelId: string
 
-  @belongsTo(() => Channel)
+  @belongsTo(() => Channel, { foreignKey: 'channel_id' })
   declare channel: BelongsTo<typeof Channel>
 
-  @column()
+  @column({ columnName: 'role' })
   declare role: MemberRole
 
-  @column()
+  @column({ columnName: 'is_muted' })
   declare isMuted: boolean
 
-  @column()
+  @column({ columnName: 'is_banned' })
   declare isBanned: boolean
 
-  @column.dateTime({ autoCreate: true })
+  @column.dateTime({ autoCreate: true, columnName: 'joined_at' })
   declare joinedAt: DateTime
 
-  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  @column.dateTime({ columnName: 'ban_until' })
   declare banUntil: DateTime | null
 
   @beforeCreate()
