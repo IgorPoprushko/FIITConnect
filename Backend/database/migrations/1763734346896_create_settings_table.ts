@@ -6,7 +6,7 @@ export default class extends BaseSchema {
   async up() {
     this.schema.createTable(this.tableName, (table) => {
       table.uuid('id').primary()
-      table.uuid('user_id').notNullable().references('id').inTable('users').onDelete('CASCADE')
+      table.uuid('user_id').references('id').inTable('users').onDelete('CASCADE').nullable()
       table.integer('status').notNullable().defaultTo(1)
       table.boolean('notifications_enabled').notNullable().defaultTo(true)
       table.boolean('direct_notifications_only').notNullable().defaultTo(false)

@@ -25,6 +25,9 @@ export default class User extends BaseModel {
   @column({ columnName: 'nickname' })
   declare nickname: string
 
+  @column({ columnName: 'setting_id' })
+  declare settingId: string
+
   @hasOne(() => Setting, { foreignKey: 'user_id' })
   declare setting: HasOne<typeof Setting>
 

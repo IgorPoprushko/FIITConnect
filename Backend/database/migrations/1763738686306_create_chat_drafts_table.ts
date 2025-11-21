@@ -8,19 +8,15 @@ export default class extends BaseSchema {
       table.uuid('id').primary()
 
       table.uuid('user_id').references('id').inTable('users').onDelete('CASCADE').notNullable()
-      table
-        .uuid('channel_id')
-        .references('id')
-        .inTable('channels')
-        .onDelete('CASCADE')
-        .notNullable()
+      table.uuid('channel_id').references('id').inTable('channels').onDelete('CASCADE').nullable()
       table.uuid('chat_id').references('id').inTable('chats').onDelete('CASCADE').nullable()
 
       table.text('content').notNullable()
 
       table.timestamp('updated_at', { useTz: true }).notNullable().defaultTo(this.now())
 
-      table.unique(['user_id', 'channel_id', 'chat_id'])
+      table.unique(['user_id', 'channel_id'])
+      table.unique(['user_id', 'chat_id'])
     })
   }
 

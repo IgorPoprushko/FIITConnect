@@ -3,7 +3,7 @@ import { BaseModel, beforeCreate, belongsTo, column } from '@adonisjs/lucid/orm'
 import { randomUUID } from 'node:crypto'
 import User from '#models/user'
 import type { BelongsTo } from '@adonisjs/lucid/types/relations'
-import { ChannelType } from 'App/enums/channel_type.js'
+import { ChannelType } from '#enums/channel_type'
 
 export default class Channel extends BaseModel {
   static selfAssignPrimaryKey = true

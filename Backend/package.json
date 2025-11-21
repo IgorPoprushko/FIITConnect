@@ -29,7 +29,8 @@
     "#database/*": "./database/*.js",
     "#start/*": "./start/*.js",
     "#tests/*": "./tests/*.js",
-    "#config/*": "./config/*.js"
+    "#config/*": "./config/*.js",
+    "#enums/*": "./app/enums/*.js"
   },
   "devDependencies": {
     "@adonisjs/assembler": "^7.8.2",
@@ -58,6 +59,7 @@
     "@vinejs/vine": "^3.0.1",
     "better-sqlite3": "^12.4.1",
     "luxon": "^3.7.2",
+    "phc-argon2": "^1.1.4",
     "reflect-metadata": "^0.2.2"
   },
   "hotHook": {

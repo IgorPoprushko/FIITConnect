@@ -1,7 +1,7 @@
 import { DateTime } from 'luxon'
 import { BaseModel, beforeCreate, belongsTo, column } from '@adonisjs/lucid/orm'
 import { randomUUID } from 'node:crypto'
-import { MemberRole } from 'App/enums/member_role.js'
+import { MemberRole } from '#enums/member_role'
 import User from '#models/user'
 import Channel from '#models/channel'
 import type { BelongsTo } from '@adonisjs/lucid/types/relations'
