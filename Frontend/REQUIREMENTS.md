@@ -6,7 +6,7 @@
   - [ ] Visual
 - Login
   - [ ] Logic
-  - [ ] Visual
+  - [x] Visual
 - Logout
   - [ ] Logic
   - [ ] Visual
