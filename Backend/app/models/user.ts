@@ -4,8 +4,16 @@ import { randomUUID } from 'node:crypto'
 import Setting from '#models/setting'
 import type { HasOne } from '@adonisjs/lucid/types/relations'
 import { DbAccessTokensProvider } from '@adonisjs/auth/access_tokens'
+import { withAuthFinder } from '@adonisjs/auth/mixins/lucid'
+import hash from '@adonisjs/core/services/hash'
+import { compose } from '@adonisjs/core/helpers'
 
-export default class User extends BaseModel {
+const AuthFinder = withAuthFinder(() => hash.use('scrypt'), {
+  uids: ['email'],
+  passwordColumnName: 'password',
+})
+
+export default class User extends compose(BaseModel, AuthFinder) {
   static selfAssignPrimaryKey = true
   static accessTokens = DbAccessTokensProvider.forModel(User, {
     expiresIn: '30 days',
