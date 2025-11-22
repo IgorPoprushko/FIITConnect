@@ -9,17 +9,17 @@ const routes: RouteRecordRaw[] = [
     path: '',
     component: () => import('layouts/AuthLayout.vue'),
     children: [
-      { path: 'login', component: () => import('pages/LoginPage.vue') },
-      { path: 'register', component: () => import('pages/RegisterPage.vue') }],
+      { path: 'login', component: () => import('pages/auth/LoginPage.vue') },
+      { path: 'register', component: () => import('pages/auth/RegisterPage.vue') }],
   },
   {
     path: '/chat',
     component: () => import('layouts/ChatLayout.vue'),
-    children: [{ path: '', component: () => import('pages/MainPage.vue') }],
+    children: [{ path: '', component: () => import('pages/chat/MainPage.vue') }],
   },
   {
     path: '/test',
-    children: [{ path: '', component: () => import('layouts/TestLayout.vue') }],
+    children: [{ path: '', component: () => import('pages/chat/MainPage.vue') }],
   },
 
 
@@ -27,7 +27,7 @@ const routes: RouteRecordRaw[] = [
   // but you can also remove it
   {
     path: '/:catchAll(.*)*',
-    component: () => import('pages/ErrorNotFound.vue'),
+    component: () => import('src/pages/system/ErrorNotFound.vue'),
   },
 ];
 
