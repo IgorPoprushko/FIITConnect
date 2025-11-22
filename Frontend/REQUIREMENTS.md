@@ -3,7 +3,7 @@
 ### 1. Registrácia, Prihlásenie a odhlásenie používateľa 
 - Registration
   - [ ] Logic
-  - [ ] Visual
+  - [x] Visual
 - Login
   - [ ] Logic
   - [x] Visual
