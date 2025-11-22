@@ -3,9 +3,17 @@ import { BaseModel, beforeCreate, column, hasOne } from '@adonisjs/lucid/orm'
 import { randomUUID } from 'node:crypto'
 import Setting from '#models/setting'
 import type { HasOne } from '@adonisjs/lucid/types/relations'
+import { DbAccessTokensProvider } from '@adonisjs/auth/access_tokens'
 
 export default class User extends BaseModel {
   static selfAssignPrimaryKey = true
+  static accessTokens = DbAccessTokensProvider.forModel(User, {
+    expiresIn: '30 days',
+    prefix: 'oat_',
+    table: 'auth_access_tokens',
+    type: 'auth_token',
+    tokenSecretLength: 40,
+  })
 
   @column({ isPrimary: true, columnName: 'id' })
   declare id: string
