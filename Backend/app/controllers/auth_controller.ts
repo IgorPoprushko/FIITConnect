@@ -22,13 +22,13 @@ export default class AuthController {
       notificationsEnabled: true,
       directNotificationsOnly: false,
     })
-
+    const passwordHash = payload.password
     const user = await User.create({
       firstName: payload.first_name,
       lastName: payload.last_name,
       nickname: payload.nickname,
       email: payload.email,
-      passwordHash: await hash.use('scrypt').make(payload.password),
+      passwordHash,
       settingId: setting.id,
     })
 

@@ -1,14 +1,15 @@
 import { defineConfig, drivers } from '@adonisjs/core/hash'
 
 const hashConfig = defineConfig({
-  default: 'scrypt',
+  default: 'argon2',
 
   list: {
-    scrypt: drivers.scrypt({
-      cost: 16384,
-      blockSize: 8,
-      parallelization: 1,
-      maxMemory: 33554432,
+    argon2: drivers.argon2({
+      memory: 65536,
+      iterations: 4,
+      parallelism: 1,
+      variant: 'id',
+      saltSize: 16,
     }),
   },
 })

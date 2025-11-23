@@ -8,9 +8,9 @@ import { withAuthFinder } from '@adonisjs/auth/mixins/lucid'
 import hash from '@adonisjs/core/services/hash'
 import { compose } from '@adonisjs/core/helpers'
 
-const AuthFinder = withAuthFinder(() => hash.use('scrypt'), {
+const AuthFinder = withAuthFinder(() => hash.use('argon2'), {
   uids: ['email'],
-  passwordColumnName: 'password',
+  passwordColumnName: 'passwordHash',
 })
 
 export default class User extends compose(BaseModel, AuthFinder) {
