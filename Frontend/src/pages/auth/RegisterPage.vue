@@ -13,17 +13,17 @@
 
             <!--Form: inputs and buttons-->
             <q-form @submit.prevent="onSubmit" class="column q-gutter-md">
-                <q-input v-model="name" color="accent" filled label="First name" dense :rules="rules.required" />
-                <q-input v-model="surname" color="accent" filled label="Last name" dense :rules="rules.required" />
-                <q-input v-model="username" color="accent" filled label="Username" dense :rules="rules.required">
+                <q-input v-model="name" color="accent" filled label="First name" dense :rules="[rules.required]" />
+                <q-input v-model="surname" color="accent" filled label="Last name" dense :rules="[rules.required]" />
+                <q-input v-model="username" color="accent" filled label="Username" dense :rules="[rules.required]">
                     <template v-slot:prepend><q-icon name="person" /></template>
                 </q-input>
                 <q-input v-model="email" color="accent" filled label="Email address" type="email" dense
-                    :rules="rules.email">
+                    :rules="[rules.required, rules.email]">
                     <template v-slot:prepend><q-icon name="mail" /></template>
                 </q-input>
                 <q-input v-model="password" color="accent" filled label="Password"
-                    :type="passVisible ? 'password' : 'text'" dense :rules="rules.passwordCorrect">
+                    :type="passVisible ? 'password' : 'text'" dense :rules="[rules.required, rules.minLength(6)]">
                     <template v-slot:prepend><q-icon name="lock" /></template>
                     <template v-slot:append>
                         <q-icon :name="passVisible ? 'visibility_off' : 'visibility'" class="cursor-pointer"
@@ -31,7 +31,8 @@
                     </template>
                 </q-input>
                 <q-input v-model="passwordConfrim" color="accent" filled label="Confirm Password"
-                    :type="passVisible ? 'password' : 'text'" dense :rules="rules.passwordMatch">
+                    :type="passVisible ? 'password' : 'text'" dense
+                    :rules="[rules.required, rules.sameAs(() => password, 'Passwords do not match')]">
                     <template v-slot:append>
                         <q-icon :name="passVisible ? 'visibility_off' : 'visibility'" class="cursor-pointer"
                             @click="passVisible = !passVisible" />
@@ -51,9 +52,10 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
 import { ref } from 'vue';
-
+import { rules } from 'src/components/rules/rules';
 import { useApi } from 'src/components/server/useApi';
-const { register, loading, error } = useApi();
+
+const { register } = useApi();
 
 // States
 const router = useRouter();
@@ -68,32 +70,14 @@ const passwordConfrim = ref('');
 
 const logo = 'img:src/assets/image/logo.svg'
 
-// Validation rules
-const rules = {
-    required: [
-        (val: string) => !!val || 'This field is required',
-    ],
-    email: [
-        (val: string) => !!val || 'Email is required',
-        (val: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val) || 'Invalid email format'
-    ],
-    passwordCorrect: [
-        (val: string) => !!val || 'Password is required',
-        (val: string) => val.length >= 6 || 'At least 6 characters'
-    ]
-    ,
-    passwordMatch: [
-        (val: string) => val === password.value || 'Passwords do not match'
-    ]
-}
-
 // Submit handler
+const loading = ref(false)
+const error = ref(false)
 const onSubmit = async () => {
     try {
         const user = await register(name.value, surname.value, username.value, email.value, password.value);
-        if (user && !error.value) {
-            await router.push('chat');
-        }
+        console.log(user)
+        await router.push('chat');
     } catch (err) {
         console.error(err)
     }

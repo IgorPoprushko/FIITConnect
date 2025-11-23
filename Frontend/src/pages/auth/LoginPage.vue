@@ -14,11 +14,11 @@
             <!--Form: inputs and buttons-->
             <q-form @submit.prevent="onSubmit" class="colunm q-gutter-md">
                 <q-input v-model="email" color="accent" filled label="Email address" type="email" dense
-                    :rules="rules.email">
+                    :rules="[rules.required, rules.email]">
                     <template v-slot:prepend><q-icon name="mail" /></template>
                 </q-input>
                 <q-input v-model="password" color="accent" filled label="Password"
-                    :type="passVisible ? 'password' : 'text'" dense :rules="rules.passwordCorrect">
+                    :type="passVisible ? 'password' : 'text'" dense :rules="[rules.required, rules.minLength(6)]">
                     <template v-slot:prepend><q-icon name="lock" /></template>
                     <template v-slot:append>
                         <q-icon :name="passVisible ? 'visibility_off' : 'visibility'" class="cursor-pointer"
@@ -26,8 +26,9 @@
                     </template>
                 </q-input>
                 <div class="column q-gutter-sm q-mt-md">
+                    <p v-if="error" class="text-negative">Wrong Email or Pasword</p>
                     <q-btn label="Log In" color="accent" unelevated class="q-mt-md full-width text-weight-bold"
-                        type="submit" />
+                        type="submit" :loading="loading" />
                     <q-btn label="Sing Up" color="accent" flat class="full-width" @click="goToRegister" />
                 </div>
             </q-form>
@@ -38,7 +39,10 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
 import { ref } from 'vue';
+import { rules } from 'src/components/rules/rules';
 
+import { useApi } from 'src/components/server/useApi';
+const { login } = useApi();
 // States
 const router = useRouter();
 const passVisible = ref(true);
@@ -46,24 +50,20 @@ const passVisible = ref(true);
 const email = ref('');
 const password = ref('');
 
-const logo = 'img:src/assets/logo.svg'
+const logo = 'img:src/assets/image/logo.svg'
 
-// Validation rules
-const rules = {
-    email: [
-        (val: string) => !!val || 'Email is required',
-        (val: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val) || 'Invalid email format'
-    ],
-    passwordCorrect: [
-        (val: string) => !!val || 'Password is required',
-        (val: string) => val.length >= 6 || 'At least 6 characters'
-    ]
-}
-
-// Submit handler
-const onSubmit = () => {
-    // TODO: Implement login logic 
-    console.log('Submitted with:', { email: email.value, password: password.value });
+// Submit handler   
+const loading = ref(false)
+const error = ref(false)
+const onSubmit = async () => {
+    error.value = false
+    try {
+        await login(email.value, password.value);
+        await router.push('chat');
+    } catch (err) {
+        error.value = true
+        console.error(err)
+    }
 };
 
 // Navigation

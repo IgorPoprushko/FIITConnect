@@ -2,7 +2,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Run Long Shell Command",
+            "name": "Frontend Dev",
             "type": "node-terminal",
             "request": "launch",
             "command": "npm run dev"
