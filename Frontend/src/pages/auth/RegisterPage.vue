@@ -38,8 +38,9 @@
                     </template>
                 </q-input>
                 <div class="column q-gutter-sm q-mt-md">
-                    <q-btn label="Sign Up" color="accent" unelevated class="full-width text-weight-bold"
-                        type="submit" />
+                    <p v-if="error" class="text-negative">This User Already Registered!</p>
+                    <q-btn label="Sign Up" color="accent" unelevated class="full-width text-weight-bold" type="submit"
+                        :loading="loading" />
                     <q-btn label="Already have an account?" color="accent" flat class="full-width" @click="goToLogin" />
                 </div>
             </q-form>
@@ -50,6 +51,9 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
 import { ref } from 'vue';
+
+import { useApi } from 'src/components/server/useApi';
+const { register, loading, error } = useApi();
 
 // States
 const router = useRouter();
@@ -62,7 +66,7 @@ const email = ref('');
 const password = ref('');
 const passwordConfrim = ref('');
 
-const logo = 'img:src/assets/logo.svg'
+const logo = 'img:src/assets/image/logo.svg'
 
 // Validation rules
 const rules = {
@@ -84,17 +88,16 @@ const rules = {
 }
 
 // Submit handler
-const onSubmit = () => {
-    // TODO: Implement registration logic
-    console.log('Submit registration form: ', {
-        username: username.value,
-        name: name.value,
-        surname: surname.value,
-        email: email.value,
-        password: password.value,
-        passwordConfrim: passwordConfrim.value,
-    });
-}
+const onSubmit = async () => {
+    try {
+        const user = await register(name.value, surname.value, username.value, email.value, password.value);
+        if (user && !error.value) {
+            await router.push('chat');
+        }
+    } catch (err) {
+        console.error(err)
+    }
+};
 // Navigation
 const goToLogin = () => router.push('login');
 </script>
