@@ -2,25 +2,25 @@ import type { RouteRecordRaw } from 'vue-router';
 
 const routes: RouteRecordRaw[] = [
   {
-    path: '/',
-    component: () => import('layouts/MainLayout.vue'),
-    children: [{ path: '', component: () => import('pages/IndexPage.vue') }],
+    path: '',
+    redirect: 'login'
+  },
+  {
+    path: '',
+    component: () => import('layouts/AuthLayout.vue'),
+    children: [
+      { path: 'login', component: () => import('pages/auth/LoginPage.vue') },
+      { path: 'register', component: () => import('pages/auth/RegisterPage.vue') }],
   },
   {
     path: '/chat',
     component: () => import('layouts/ChatLayout.vue'),
-    children: [{ path: '', component: () => import('pages/MainPage.vue') }],
+    children: [{ path: '', component: () => import('pages/chat/MainPage.vue') }],
   },
   {
     path: '/test',
-    children: [{ path: '', component: () => import('layouts/TestLayout.vue') }],
-  },
-  {
-    path: '/auth',
-    component: () => import('layouts/AuthLayout.vue'),
-    children: [
-      { path: '', component: () => import('pages/LoginPage.vue') },
-      { path: '/register', component: () => import('pages/RegisterPage.vue') }],
+    component: () => import('layouts/ChatLayout_new.vue'),
+    children: [{ path: '', component: () => import('pages/chat/MainPage_new.vue') }],
   },
 
 
@@ -28,7 +28,7 @@ const routes: RouteRecordRaw[] = [
   // but you can also remove it
   {
     path: '/:catchAll(.*)*',
-    component: () => import('pages/ErrorNotFound.vue'),
+    component: () => import('src/pages/system/ErrorNotFound.vue'),
   },
 ];
 
