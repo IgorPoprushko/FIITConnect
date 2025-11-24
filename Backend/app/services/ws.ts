@@ -1,10 +1,11 @@
-import ActivitiesController from '#controllers/ws/activities_controller'
-import MessagesController from '#controllers/ws/messages_controller'
 import { UserStatus } from '#enums/user_status'
 import { inject } from '@adonisjs/core'
 import server from '@adonisjs/core/services/server'
 import { CreateMessagePayload } from '#contracts/message_repository_contract'
 import { Server, Socket } from 'socket.io'
+import app from '@adonisjs/core/services/app'
+import ActivitiesController from '#controllers/ws/activities_controller'
+import MessagesController from '#controllers/ws/messages_controller'
 
 @inject()
 export default class Ws {
@@ -13,10 +14,7 @@ export default class Ws {
 
   private socketIdToUserId = new Map<string, string>()
 
-  constructor(
-    protected activitiesController: ActivitiesController,
-    protected messagesController: MessagesController
-  ) {}
+  constructor() {}
 
   boot() {
     if (this.booted) return
@@ -31,22 +29,24 @@ export default class Ws {
     this.io.on('connection', this.handleConnection.bind(this))
   }
 
-  private handleConnection(socket: Socket) {
+  private async handleConnection(socket: Socket) {
     console.log(`Socket connected: ${socket.id}`)
+    const activitiesController = await app.container.make(ActivitiesController)
+    const messagesController = await app.container.make(MessagesController)
 
     socket.on('user:connected', (userId: string) => {
       this.socketIdToUserId.set(socket.id, userId)
-      this.activitiesController.onConnected(socket, userId)
+      activitiesController.onConnected(userId)
     })
     socket.on('user:change:status', (payload: { userId: string; newStatus: UserStatus }) => {
-      this.activitiesController.onChangeStatus(socket, payload)
+      activitiesController.onChangeStatus(payload)
     })
 
     socket.on('user:disconnected', () => {
       const userId = this.socketIdToUserId.get(socket.id)
 
       if (userId) {
-        this.activitiesController.onDisconnected(socket, userId)
+        activitiesController.onDisconnected(userId)
         this.socketIdToUserId.delete(socket.id)
       }
       console.log(`Socket disconnected: ${socket.id}`)
@@ -55,17 +55,12 @@ export default class Ws {
     socket.on(
       'message:join:place',
       (payload: { placeId: string; placeType: 'chat' | 'channel'; userId: string }) => {
-        this.messagesController.onJoinPlace(
-          socket,
-          payload.placeId,
-          payload.placeType,
-          payload.userId
-        )
+        messagesController.onJoinPlace(socket, payload.placeId, payload.placeType, payload.userId)
       }
     )
 
     socket.on('message:new', (payload: CreateMessagePayload) => {
-      this.messagesController.onNewMessage(socket, payload)
+      messagesController.onNewMessage(socket, payload)
     })
   }
 }

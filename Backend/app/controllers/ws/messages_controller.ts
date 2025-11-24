@@ -1,18 +1,19 @@
 import { inject } from '@adonisjs/core'
 import Ws from '#services/ws'
 import type { Socket } from 'socket.io'
-import type {
-  CreateMessagePayload,
-  SerializedMessage,
-} from '#contracts/message_repository_contract'
+import type { CreateMessagePayload } from '#contracts/message_repository_contract'
 import MessageRepository from '#repositories/message_repository'
+import app from '@adonisjs/core/services/app'
 
 @inject()
 export default class MessagesController {
-  constructor(
-    protected messageRepository: MessageRepository,
-    protected wsService: Ws
-  ) {}
+  private async getWsService(): Promise<Ws> {
+    return app.container.make(Ws)
+  }
+
+  private async getMessageRepository(): Promise<MessageRepository> {
+    return app.container.make(MessageRepository)
+  }
 
   async onJoinPlace(
     socket: Socket,
@@ -20,41 +21,36 @@ export default class MessagesController {
     placeType: 'chat' | 'channel',
     userId: string
   ) {
-    const roomName = `${placeType}:${placeId}`
-    console.log(`User ${userId} joining room: ${roomName}`)
-
-    socket.join(roomName)
+    const messageRepository = await this.getMessageRepository()
 
     try {
-      const history: SerializedMessage[] = await this.messageRepository.getHistory(
-        placeId,
-        placeType,
-        50
-      )
+      const roomName = `${placeType}:${placeId}`
 
+      await socket.join(roomName)
+      const history = await messageRepository.getHistory(placeId, placeType)
       socket.emit('message:history', { placeId, placeType, history })
+
+      console.log(`User ${userId} joined room: ${roomName}`)
     } catch (error) {
-      console.error(`Failed to fetch history for ${roomName}:`, error)
-      socket.emit('error', { placeId, placeType, error: 'Failed to fetch history' })
+      console.error('Failed to join place:', error)
+      socket.emit('error', { error: 'Failed to join place' })
     }
   }
 
   async onNewMessage(socket: Socket, payload: CreateMessagePayload) {
-    const { userId, content, channelId, chatId } = payload
-
-    const placeId = channelId || chatId
-    const placeType = channelId ? 'channel' : chatId ? 'chat' : null
-
-    if (!placeId || !placeType || !userId || !content) {
-      return socket.emit('error', { error: 'Invalid message payload' })
-    }
-
-    const roomName = `${placeType}:${placeId}`
-    console.log(`New message in channel ${channelId} from user ${userId}: ${content}`)
+    const wsService = await this.getWsService()
+    const messageRepository = await this.getMessageRepository()
 
     try {
-      const message: SerializedMessage = await this.messageRepository.create(payload)
-      this.wsService.io?.to(roomName).emit('message:new', message)
+      const newMessage = await messageRepository.create(payload)
+      const placeId = payload.channelId || payload.chatId
+      const placeType = payload.channelId ? 'channel' : 'chat'
+      const roomName = `${placeType}:${placeId}`
+
+      if (roomName) {
+        wsService.io?.to(roomName).emit('message:new', newMessage)
+        console.log(`Message sent to room ${roomName} from user ${payload.userId}`)
+      }
     } catch (error) {
       console.error('Failed to create new message:', error)
       socket.emit('error', { error: 'Failed to create new message' })
