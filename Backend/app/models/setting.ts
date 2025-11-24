@@ -14,7 +14,7 @@ export default class Setting extends BaseModel {
   @column({ columnName: 'user_id' })
   declare userId: string
 
-  @belongsTo(() => User, { foreignKey: 'user_id' })
+  @belongsTo(() => User, { foreignKey: 'userId' })
   declare user: BelongsTo<typeof User>
 
   @column({ columnName: 'status' })

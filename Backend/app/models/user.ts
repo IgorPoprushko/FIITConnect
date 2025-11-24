@@ -41,10 +41,7 @@ export default class User extends compose(BaseModel, AuthFinder) {
   @column({ columnName: 'nickname' })
   declare nickname: string
 
-  @column({ columnName: 'setting_id' })
-  declare settingId: string
-
-  @hasOne(() => Setting, { foreignKey: 'user_id' })
+  @hasOne(() => Setting, { localKey: 'id', foreignKey: 'userId' })
   declare setting: HasOne<typeof Setting>
 
   @column.dateTime({ columnName: 'last_seen_at' })
