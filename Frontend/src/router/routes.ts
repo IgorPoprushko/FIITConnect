@@ -19,7 +19,8 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/test',
-    children: [{ path: '', component: () => import('pages/chat/MainPage.vue') }],
+    component: () => import('layouts/ChatLayout_new.vue'),
+    children: [{ path: '', component: () => import('pages/chat/MainPage_new.vue') }],
   },
 
 
