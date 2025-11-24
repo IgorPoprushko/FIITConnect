@@ -3,7 +3,6 @@ import { BaseModel, beforeCreate, belongsTo, column, hasMany } from '@adonisjs/l
 import type { BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
 import User from '#models/user'
 import Channel from '#models/channel'
-import Chat from '#models/chat'
 import { randomUUID } from 'node:crypto'
 
 export default class Message extends BaseModel {
@@ -13,16 +12,10 @@ export default class Message extends BaseModel {
   declare id: string
 
   @column({ columnName: 'channel_id' })
-  declare channelId: string | null
+  declare channelId: string
 
   @belongsTo(() => Channel, { foreignKey: 'channel_id' })
   declare channel: BelongsTo<typeof Channel>
-
-  @column({ columnName: 'chat_id' })
-  declare chatId: string | null
-
-  @belongsTo(() => Chat, { foreignKey: 'chat_id' })
-  declare chat: BelongsTo<typeof Chat>
 
   @column({ columnName: 'user_id' })
   declare userId: string

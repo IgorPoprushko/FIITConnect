@@ -7,6 +7,9 @@
     "paths": {
       "App/*": ["app/*"],
        "#enums/*": ["app/enums/*.ts"],
+       "#services/*": ["app/services/*.ts"],
+       "#contracts/*": ["app/contracts/*.ts"],
+       "#repositories/*": ["app/repositories/*.ts"],
     }
   }
 }

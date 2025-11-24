@@ -12,12 +12,6 @@ export default class extends BaseSchema {
       table.string('first_name').notNullable()
       table.string('last_name').notNullable()
       table.string('nickname').notNullable().unique()
-      table
-        .uuid('setting_id')
-        .references('id')
-        .inTable('settings')
-        .onDelete('CASCADE')
-        .notNullable()
 
       table.timestamp('last_seen_at', { useTz: true }).nullable()
       table.timestamp('created_at', { useTz: true }).defaultTo(this.now()).notNullable()
