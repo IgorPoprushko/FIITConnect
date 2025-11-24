@@ -17,9 +17,9 @@ export default class IndexSeeder extends BaseSeeder {
     await this.seed(await import('#database/seeders/access_token_seeder'))
     await this.seed(await import('#database/seeders/channel_seeder'))
     await this.seed(await import('#database/seeders/member_seeder'))
-    await this.seed(await import('#database/seeders/chat_seeder'))
+    await this.seed(await import('#database/seeders/channel_seeder'))
     await this.seed(await import('#database/seeders/message_seeder'))
-    await this.seed(await import('#database/seeders/chat_draft_seeder'))
+    await this.seed(await import('#database/seeders/channel_draft_seeder'))
     await this.seed(await import('#database/seeders/channel_kick_ban_seeder'))
   }
 }

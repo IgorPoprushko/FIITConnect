@@ -15,25 +15,20 @@ export default class MessagesController {
     return app.container.make(MessageRepository)
   }
 
-  async onJoinPlace(
-    socket: Socket,
-    placeId: string,
-    placeType: 'chat' | 'channel',
-    userId: string
-  ) {
+  async onJoinChannel(socket: Socket, channelId: string, userId: string) {
     const messageRepository = await this.getMessageRepository()
 
     try {
-      const roomName = `${placeType}:${placeId}`
+      const roomName = `channel:${channelId}`
 
       await socket.join(roomName)
-      const history = await messageRepository.getHistory(placeId, placeType)
-      socket.emit('message:history', { placeId, placeType, history })
+      const history = await messageRepository.getHistory(channelId)
+      socket.emit('message:history', { channelId, history })
 
       console.log(`User ${userId} joined room: ${roomName}`)
     } catch (error) {
-      console.error('Failed to join place:', error)
-      socket.emit('error', { error: 'Failed to join place' })
+      console.error('Failed to join channel:', error)
+      socket.emit('error', { error: 'Failed to join channel' })
     }
   }
 
@@ -43,9 +38,7 @@ export default class MessagesController {
 
     try {
       const newMessage = await messageRepository.create(payload)
-      const placeId = payload.channelId || payload.chatId
-      const placeType = payload.channelId ? 'channel' : 'chat'
-      const roomName = `${placeType}:${placeId}`
+      const roomName = `channel:${payload.channelId}`
 
       if (roomName) {
         wsService.io?.to(roomName).emit('message:new', newMessage)

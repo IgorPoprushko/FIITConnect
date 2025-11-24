@@ -16,7 +16,6 @@ export default class MessageRepository implements MessageRepositoryContract {
       content: message.content,
       userId: message.userId,
       channelId: message.channelId,
-      chatId: message.chatId,
       replyToMsgId: message.replyToMsgId,
       isDeleted: message.isDeleted,
       createdAt: message.createdAt!.toISO()!,
@@ -30,16 +29,11 @@ export default class MessageRepository implements MessageRepositoryContract {
   }
 
   async create(data: CreateMessagePayload): Promise<SerializedMessage> {
-    if (data.channelId && data.chatId) {
-      throw new Error('Message cannot belong to both channel and chat')
-    }
-
     const message = await Message.create({
       content: data.content,
       userId: data.userId,
+      channelId: data.channelId,
       replyToMsgId: data.replyToMsgId ?? null,
-      channelId: data.channelId ?? null,
-      chatId: data.chatId ?? null,
       isDeleted: false,
     })
 
@@ -52,15 +46,9 @@ export default class MessageRepository implements MessageRepositoryContract {
     return this.serializeMessage(message)
   }
 
-  async getHistory(
-    placeId: string,
-    type: 'channel' | 'chat',
-    limit: number = 50
-  ): Promise<SerializedMessage[]> {
-    const column = type === 'channel' ? 'channelId' : 'chatId'
-
+  async getHistory(channelId: string, limit: number = 50): Promise<SerializedMessage[]> {
     const messages = await Message.query()
-      .where(column, placeId)
+      .where('channelId', channelId)
       .preload('user', (userQuery) => {
         userQuery.preload('setting')
       })

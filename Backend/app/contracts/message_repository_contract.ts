@@ -10,8 +10,7 @@ export type SerializedMessage = {
   id: string
   content: string
   userId: string
-  channelId: string | null
-  chatId: string | null
+  channelId: string
   replyToMsgId: string | null
   isDeleted: boolean
   createdAt: string
@@ -22,12 +21,11 @@ export type SerializedMessage = {
 export type CreateMessagePayload = {
   content: string
   userId: string
+  channelId: string
   replyToMsgId?: string | null
-  channelId?: string | null
-  chatId?: string | null
 }
 
 export interface MessageRepositoryContract {
   create(data: CreateMessagePayload): Promise<SerializedMessage>
-  getHistory(placeId: string, type: 'channel' | 'chat', limit: number): Promise<SerializedMessage[]>
+  getHistory(channelId: string, limit: number): Promise<SerializedMessage[]>
 }

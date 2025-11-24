@@ -1,16 +1,16 @@
 import { BaseSeeder } from '@adonisjs/lucid/seeders'
-import ChatDraft from '#models/chat_draft'
+import ChannelDraft from '#models/channel_draft'
 import User from '#models/user'
-import Chat from '#models/chat'
 import { DateTime } from 'luxon'
+import Channel from '#models/channel'
 
-export default class ChatDraftSeeder extends BaseSeeder {
+export default class ChannelDraftSeeder extends BaseSeeder {
   async run() {
     const user = await User.findByOrFail('email', 'igor@example.com')
-    const chat = await Chat.firstOrFail()
+    const channel = await Channel.firstOrFail()
 
-    await ChatDraft.updateOrCreate(
-      { userId: user.id, chatId: chat.id, channelId: null },
+    await ChannelDraft.updateOrCreate(
+      { userId: user.id, channelId: channel.id },
       {
         content: 'Draft message...',
         updatedAt: DateTime.now(),
