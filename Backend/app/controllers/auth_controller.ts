@@ -1,8 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import { registerValidator, loginValidator } from '#validators/auth'
 import User from '#models/user'
-import hash from '@adonisjs/core/services/hash'
-import Setting from '#models/setting'
 import { UserStatus } from '#enums/user_status'
 
 export default class AuthController {
@@ -15,26 +13,23 @@ export default class AuthController {
       email: string
       password: string
     }
-
-    // Create default setting for the new user
-    const setting = await Setting.create({
-      status: UserStatus.ONLINE,
-      notificationsEnabled: true,
-      directNotificationsOnly: false,
-    })
     const passwordHash = payload.password
+
     const user = await User.create({
       firstName: payload.first_name,
       lastName: payload.last_name,
       nickname: payload.nickname,
       email: payload.email,
       passwordHash,
-      settingId: setting.id,
     })
 
-    setting.userId = user.id
-    await setting.save()
+    await user.related('setting').create({
+      status: UserStatus.ONLINE,
+      notificationsEnabled: true,
+      directNotificationsOnly: false,
+    })
 
+    await user.load('setting')
     // Create access token for the user
     const token = await User.accessTokens.create(user)
 
@@ -49,6 +44,7 @@ export default class AuthController {
 
     try {
       const user = await User.verifyCredentials(email, password)
+      await user.load('setting')
       const token = await User.accessTokens.create(user)
       return response.ok({ user, token })
     } catch (e) {
@@ -60,6 +56,8 @@ export default class AuthController {
     if (!auth.isAuthenticated || !auth.user) {
       return response.unauthorized({ errors: [{ message: 'Not authenticated' }] })
     }
+
+    await auth.user.load('setting')
 
     return response.ok({
       user: auth.user.serialize(),

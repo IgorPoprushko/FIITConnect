@@ -3,26 +3,19 @@ import { BaseModel, beforeCreate, belongsTo, column } from '@adonisjs/lucid/orm'
 import { randomUUID } from 'node:crypto'
 import type { BelongsTo } from '@adonisjs/lucid/types/relations'
 import Channel from '#models/channel'
-import Chat from '#models/chat'
 import User from '#models/user'
 
-export default class ChatDraft extends BaseModel {
+export default class ChannelDraft extends BaseModel {
   static selfAssignPrimaryKey = true
 
   @column({ isPrimary: true, columnName: 'id' })
   declare id: string
 
   @column({ columnName: 'channel_id' })
-  declare channelId: string | null
+  declare channelId: string
 
   @belongsTo(() => Channel, { foreignKey: 'channel_id' })
   declare channel: BelongsTo<typeof Channel>
-
-  @column({ columnName: 'chat_id' })
-  declare chatId: string | null
-
-  @belongsTo(() => Chat, { foreignKey: 'chat_id' })
-  declare chat: BelongsTo<typeof Chat>
 
   @column({ columnName: 'user_id' })
   declare userId: string
@@ -37,7 +30,7 @@ export default class ChatDraft extends BaseModel {
   declare updatedAt: DateTime
 
   @beforeCreate()
-  static assignUuid(chatDraft: ChatDraft) {
-    chatDraft.id = randomUUID()
+  static assignUuid(channelDraft: ChannelDraft) {
+    channelDraft.id = randomUUID()
   }
 }

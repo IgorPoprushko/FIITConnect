@@ -30,7 +30,9 @@
     "#start/*": "./start/*.js",
     "#tests/*": "./tests/*.js",
     "#config/*": "./config/*.js",
-    "#enums/*": "./app/enums/*.js"
+    "#enums/*": "./app/enums/*.js",
+    "#contracts/*": "./app/contracts/*.js",
+    "#repositories/*": "./app/repositories/*.js"
   },
   "devDependencies": {
     "@adonisjs/assembler": "^7.8.2",
@@ -60,7 +62,8 @@
     "better-sqlite3": "^12.4.1",
     "luxon": "^3.7.2",
     "phc-argon2": "^1.1.4",
-    "reflect-metadata": "^0.2.2"
+    "reflect-metadata": "^0.2.2",
+    "socket.io": "^4.8.1"
   },
   "hotHook": {
     "boundaries": [

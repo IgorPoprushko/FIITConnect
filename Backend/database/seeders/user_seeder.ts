@@ -3,6 +3,7 @@ import User from '#models/user'
 import hash from '@adonisjs/core/services/hash'
 import Setting from '#models/setting'
 import { DateTime } from 'luxon'
+import { UserStatus } from '#enums/user_status'
 
 export default class UserSeeder extends BaseSeeder {
   async run() {
@@ -14,10 +15,8 @@ export default class UserSeeder extends BaseSeeder {
       { email: 'andre@example.com', firstName: 'Andrii', lastName: 'Popovych', nickname: 'andre' },
     ]
 
-    const settings = await Setting.query().whereNull('userId')
-    let i = 0
     for (const user of usersData) {
-      await User.updateOrCreate(
+      const newUser = await User.updateOrCreate(
         { email: user.email },
         {
           email: user.email,
@@ -25,13 +24,22 @@ export default class UserSeeder extends BaseSeeder {
           firstName: user.firstName,
           lastName: user.lastName,
           nickname: user.nickname,
-          settingId: settings[i].id,
           lastSeenAt: null,
           updatedAt: DateTime.now(),
           createdAt: DateTime.now(),
         }
       )
-      i++
+      await Setting.updateOrCreate(
+        { userId: newUser.id },
+        {
+          userId: newUser.id,
+          notificationsEnabled: true,
+          directNotificationsOnly: false,
+          status: UserStatus.ONLINE,
+          updatedAt: DateTime.now(),
+          createdAt: DateTime.now(),
+        }
+      )
     }
   }
 }
