@@ -1,7 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import { registerValidator, loginValidator } from '#validators/auth'
 import User from '#models/user'
-import hash from '@adonisjs/core/services/hash'
 import Setting from '#models/setting'
 import { UserStatus } from '#enums/user_status'
 
