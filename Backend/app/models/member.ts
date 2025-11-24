@@ -15,13 +15,13 @@ export default class Member extends BaseModel {
   @column({ columnName: 'user_id' })
   declare userId: string
 
-  @belongsTo(() => User, { foreignKey: 'user_id' })
+  @belongsTo(() => User, { foreignKey: 'userId' })
   declare user: BelongsTo<typeof User>
 
   @column({ columnName: 'channel_id' })
   declare channelId: string
 
-  @belongsTo(() => Channel, { foreignKey: 'channel_id' })
+  @belongsTo(() => Channel, { foreignKey: 'channelId' })
   declare channel: BelongsTo<typeof Channel>
 
   @column({ columnName: 'role' })

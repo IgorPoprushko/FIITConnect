@@ -25,5 +25,8 @@ router
   .group(() => {
     router.get('me', '#controllers/auth_controller.me')
     router.delete('logout', '#controllers/auth_controller.logout')
+    router.get('channels', '#controllers/channels_controller.getJoinChannels')
+    router.post('channels', '#controllers/channels_controller.createChannel')
+    router.delete('channels/:id', '#controllers/channels_controller.deleteChannel')
   })
   .middleware([middleware.auth()])

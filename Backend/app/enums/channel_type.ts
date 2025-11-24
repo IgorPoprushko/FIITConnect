@@ -1,4 +1,4 @@
 export enum ChannelType {
-  PUBLIC = 'public',
-  PRIVATE = 'private',
+  PUBLIC = 'PUBLIC',
+  PRIVATE = 'PRIVATE',
 }

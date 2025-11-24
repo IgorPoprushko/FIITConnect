@@ -14,13 +14,13 @@ export default class ChannelKickBan extends BaseModel {
   @column({ columnName: 'channel_id' })
   declare channelId: string
 
-  @belongsTo(() => Channel, { foreignKey: 'channel_id' })
+  @belongsTo(() => Channel, { foreignKey: 'channelId' })
   declare channel: BelongsTo<typeof Channel>
 
   @column({ columnName: 'target_user_id' })
   declare targetUserId: string
 
-  @belongsTo(() => User, { foreignKey: 'target_user_id' })
+  @belongsTo(() => User, { foreignKey: 'targetUserId' })
   declare targetUser: BelongsTo<typeof User>
 
   @column({ columnName: 'permanent' })
