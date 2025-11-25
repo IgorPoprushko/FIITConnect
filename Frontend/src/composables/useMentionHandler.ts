@@ -5,11 +5,11 @@ import type { UserInfo } from 'src/types/user';
 // Mock users for the current chat
 // TODO: Replace with actual user data from store/API
 const mockUsers = ref<UserInfo[]>([
-    { id: '1', email: "", firstName: "", lastName: "", nickname: 'alice', lastSeenAt: "", createdAt: "", updatedAt: "", isOnline: true },
-    { id: '2', email: "", firstName: "", lastName: "", nickname: 'bob', lastSeenAt: "", createdAt: "", updatedAt: "", isOnline: true },
-    { id: '3', email: "", firstName: "", lastName: "", nickname: 'charlie', lastSeenAt: "", createdAt: "", updatedAt: "", isOnline: false },
-    { id: '4', email: "", firstName: "", lastName: "", nickname: 'david', lastSeenAt: "", createdAt: "", updatedAt: "", isOnline: true },
-    { id: '5', email: "", firstName: "", lastName: "", nickname: 'john', lastSeenAt: "", createdAt: "", updatedAt: "", isOnline: false },
+    { id: '1', email: "", firstName: "", lastName: "", nickname: 'alice', lastSeenAt: new Date(), createdAt: new Date(), updatedAt: new Date(), isOnline: true },
+    { id: '2', email: "", firstName: "", lastName: "", nickname: 'bob', lastSeenAt: new Date(), createdAt: new Date(), updatedAt: new Date(), isOnline: true },
+    { id: '3', email: "", firstName: "", lastName: "", nickname: 'charlie', lastSeenAt: new Date(), createdAt: new Date(), updatedAt: new Date(), isOnline: false },
+    { id: '4', email: "", firstName: "", lastName: "", nickname: 'david', lastSeenAt: new Date(), createdAt: new Date(), updatedAt: new Date(), isOnline: true },
+    { id: '5', email: "", firstName: "", lastName: "", nickname: 'john', lastSeenAt: new Date(), createdAt: new Date(), updatedAt: new Date(), isOnline: false },
 ]);
 
 export function useMentionHandler(): SuggestionHandler {

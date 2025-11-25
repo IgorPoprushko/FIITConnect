@@ -33,9 +33,9 @@ export const useAuthStore = defineStore('auth', {
             this.firstName = user.firstName
             this.lastName = user.lastName
             this.nickname = user.nickname
-            this.lastSeenAt = user.lastSeenAt ?? null
-            this.createdAt = user.createdAt
-            this.updatedAt = user.updatedAt
+            this.lastSeenAt = user.lastSeenAt?.toDateString() ?? null
+            this.createdAt = user.createdAt.toDateString()
+            this.updatedAt = user.updatedAt.toDateString()
 
             localStorage.setItem('user_id', this.id)
             localStorage.setItem('user_email', this.email)

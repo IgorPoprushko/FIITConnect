@@ -13,10 +13,10 @@
 
 ### 2. Používateľ vidí zoznam kanálov, v ktorých je členom 
 - Channels List
-  - [ ] Logic
+  - [x] Logic
   - [x] Visual
 - Create channel
-  - [ ] Logic
+  - [x] Logic
   - [x] Visual
 - Leave channel
   - [ ] Logic

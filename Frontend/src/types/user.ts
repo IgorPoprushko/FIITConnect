@@ -1,6 +1,6 @@
 export enum UserRole {
-    ADMIN = 'admin',
-    NORMAL = 'normal',
+    ADMIN = 1,
+    MEMBER = 0,
 }
 
 export interface UserInfo {
@@ -9,8 +9,8 @@ export interface UserInfo {
     firstName: string
     lastName: string
     nickname: string
-    lastSeenAt?: string | null
-    createdAt: string
-    updatedAt: string,
     isOnline: boolean
+    lastSeenAt?: Date | null
+    createdAt: Date
+    updatedAt: Date
 }

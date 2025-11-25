@@ -33,7 +33,7 @@ interface Emits {
 //TODO:Change for null
 const props = withDefaults(defineProps<Props>(), {
   channelType: ChannelType.PUBLIC,
-  userRole: UserRole.NORMAL,
+  userRole: UserRole.MEMBER,
 });
 
 const emit = defineEmits<Emits>();

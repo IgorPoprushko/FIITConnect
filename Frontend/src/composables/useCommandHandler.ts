@@ -7,6 +7,7 @@ import type {
     SuggestionHandler,
     CommandContext
 } from 'src/types/suggestions';
+import { useApi } from 'src/components/server/useApi';
 
 // Define all available commands with their access requirements
 const commands: Command[] = [
@@ -52,7 +53,7 @@ const commands: Command[] = [
         description: 'Invite a non-banned user to this channel',
         usage: '/invite [nickname]',
         requiredChannelType: [ChannelType.PUBLIC],
-        requiredUserRole: [UserRole.NORMAL],
+        requiredUserRole: [UserRole.MEMBER],
         handler: async (args: string[]) => {
             // TODO: Implement invite to public channel (normal user, non-banned only)
             const username = args[0];
@@ -92,7 +93,7 @@ const commands: Command[] = [
         description: 'Vote to ban a user from this channel',
         usage: '/kick [nickname]',
         requiredChannelType: [ChannelType.PUBLIC],
-        requiredUserRole: [UserRole.NORMAL],
+        requiredUserRole: [UserRole.MEMBER],
         handler: async (args: string[]) => {
             // TODO: Implement kick user logic (admin only)
             const username = args[0];
@@ -116,9 +117,21 @@ const commands: Command[] = [
     // CANCEL commands (available to all users in all channels)
     {
         name: '/cancel',
+        description: 'Leave and DELETE the channel',
+        usage: '/cancel',
+        requiredChannelType: [ChannelType.PRIVATE, ChannelType.PUBLIC],
+        requiredUserRole: [UserRole.ADMIN],
+        handler: async () => {
+            // TODO: Implement quit channel logic
+            console.log('Deleting channel');
+        },
+    },
+    {
+        name: '/cancel',
         description: 'Leave the channel',
         usage: '/cancel',
         requiredChannelType: [ChannelType.PRIVATE, ChannelType.PUBLIC],
+        requiredUserRole: [UserRole.MEMBER],
         handler: async () => {
             // TODO: Implement cancel typing logic
             console.log('Canceling message');
