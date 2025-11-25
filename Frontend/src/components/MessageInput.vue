@@ -1,144 +1,193 @@
 <template>
   <div class="relative">
     <div class="row items-center q-pa-sm bg-dark">
-      <q-btn class="q-mr-sm" round icon="attach_file" @click="handleAttach" />
-      <q-btn class="q-mr-sm" round icon="emoji_emotions" @click="onEmojiClick" />
-      <q-input
-        v-model="messageText"
-        placeholder="Type your message here..."
-        class="chat-input col q-mx-md"
-        dense
-        borderless
-        type="textarea"
-        autogrow
-        rows="1"
-        max-rows="6"
-        maxlength="1024"
-        @update:model-value="onInputChange"
-        @keydown="handleKeyDown"
-      />
+      <q-input ref="inputRef" v-model="messageText" placeholder="Type your message here..." class="col q-mx-md" dense
+        borderless type="textarea" autogrow rows="1" max-rows="6" maxlength="1024" @update:model-value="onInputChange"
+        @keydown="handleKeyDown" />
       <q-btn round icon="send" @click="handleSend" :disable="!messageText.trim()" />
     </div>
-    <q-menu
-      ref="commandMenu"
-      v-model="showCommandMenu"
-      no-focus
-      anchor="bottom left"
-      self="top left"
-      :offset="[-8, 8]"
-      transition-show="jump-down"
-      transition-hide="jump-up"
-    >
-      <q-list v-if="filteredCommands.length" style="min-width: 200px">
-        <q-item
-          v-for="(cmd, index) in filteredCommands"
-          :key="cmd.name"
-          clickable
-          @click="selectedCommand(cmd.name)"
-          :active="index === selectedIndex"
-        >
-          <q-item-section>
-            <span class="text-bold">{{ cmd.name }}</span>
-            <div class="text-caption">{{ cmd.description }}</div>
-            <div class="text-caption text-italic">Usage: {{ cmd.usage }}</div>
-          </q-item-section>
-        </q-item>
-      </q-list>
-    </q-menu>
+
+    <!-- Suggestion Menu Component -->
+    <SuggestionMenu ref="suggestionMenuRef" v-model="showSuggestionMenu" :query="currentSuggestionQuery"
+      :context="commandContext" @select="handleSuggestionSelect" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, nextTick } from 'vue';
+import type { Suggestion, CommandContext } from 'src/types/suggestions';
+import { ChannelType, UserRole } from 'src/types/suggestions';
+import SuggestionMenu from 'components/SuggestionMenu.vue';
+import { useCommandHandler } from 'src/composables/useCommandHandler';
 
-const messageText = ref('');
-const showCommandMenu = ref(false);
-const commandMenu = ref();
-const selectedIndex = ref(0);
+interface Props {
+  channelType?: ChannelType;
+  userRole?: UserRole;
+}
 
-// Define available commands
-const commands = [
-  { name: '/join', description: 'Join a channel', usage: '/join [channel_name]' },
-  { name: '/invite', description: 'Invite a user to a channel', usage: '/invite [username]' },
-  { name: '/revoke', description: 'Revoke a user from a channel', usage: '/revoke [username]' },
-  { name: '/kick', description: 'Kick a user from a channel', usage: '/kick [username]' },
-  { name: '/quit', description: 'Leave the current channel', usage: '/quit' },
-  { name: '/list', description: 'List all users in the current channel', usage: '/list' },
-];
+interface Emits {
+  (e: 'send', text: string): void;
+}
 
-// Compute filtered commands based on input
-const filteredCommands = computed(() => {
-  if (!messageText.value.startsWith('/')) return [];
-  const query = messageText.value.toLowerCase();
-  return commands.filter((cmd) => cmd.name.toLowerCase().startsWith(query));
+//TODO:Change for null
+const props = withDefaults(defineProps<Props>(), {
+  channelType: ChannelType.PUBLIC,
+  userRole: UserRole.NORMAL,
 });
 
-// Update command menu visibility and position on input change
-const onInputChange = async () => {
-  showCommandMenu.value = messageText.value.startsWith('/');
-  await nextTick();
-  commandMenu.value?.updatePosition();
+const emit = defineEmits<Emits>();
+
+const messageText = ref('');
+const inputRef = ref();
+const suggestionMenuRef = ref();
+const showSuggestionMenu = ref(false);
+
+// Initialize command handler for execution
+const commandHandler = useCommandHandler() as ReturnType<typeof useCommandHandler> & {
+  executeCommand: (commandText: string, context?: CommandContext) => Promise<boolean>;
 };
 
-// Handle keyboard navigation in command menu
-const handleKeyDown = (e: KeyboardEvent) => {
-  if (!showCommandMenu.value) return;
+// Command context for filtering available commands
+const commandContext = computed<CommandContext>(() => ({
+  channelType: props.channelType,
+  userRole: props.userRole,
+}));
 
-  if (e.key === 'ArrowDown') {
-    e.preventDefault();
-    selectedIndex.value = (selectedIndex.value + 1) % filteredCommands.value.length;
-  } else if (e.key === 'ArrowUp') {
-    e.preventDefault();
-    selectedIndex.value =
-      (selectedIndex.value - 1 + filteredCommands.value.length) % filteredCommands.value.length;
-  } else if (e.key === 'Enter') {
-    const cmd = filteredCommands.value[selectedIndex.value];
-    if (cmd) {
-      e.preventDefault();
-      selectedCommand(cmd.name);
-    }
+// Get current suggestion query (text after trigger character)
+const currentSuggestionQuery = computed<string>(() => {
+  const text = messageText.value;
+  const cursorPos = inputRef.value?.getNativeElement()?.selectionStart ?? text.length;
+
+  // Find the last trigger character before cursor
+  const textBeforeCursor = text.slice(0, cursorPos);
+  const lastSlash = textBeforeCursor.lastIndexOf('/');
+  const lastAt = textBeforeCursor.lastIndexOf('@');
+
+  const triggerPos = Math.max(lastSlash, lastAt);
+
+  if (triggerPos === -1) return '';
+
+  // Get text from trigger to cursor
+  const textFromTrigger = textBeforeCursor.slice(triggerPos);
+
+  // Check if there's a space after the trigger (stop suggestions)
+  if (textFromTrigger.includes(' ') && textFromTrigger.length > 1) {
+    return '';
+  }
+
+  return textFromTrigger;
+});
+
+// Check if we should show suggestions
+const shouldShowSuggestions = computed<boolean>(() => {
+  const query = currentSuggestionQuery.value;
+
+  // Must start with a trigger character
+  if (!query.startsWith('/') && !query.startsWith('@')) {
+    return false;
+  }
+
+  // Must not contain spaces (except right after trigger)
+  if (query.includes(' ')) {
+    return false;
+  }
+
+  return true;
+});
+
+// Update suggestion menu visibility
+const onInputChange = async (): Promise<void> => {
+  showSuggestionMenu.value = shouldShowSuggestions.value;
+
+  if (showSuggestionMenu.value) {
+    await nextTick();
+    suggestionMenuRef.value?.updatePosition();
   }
 };
 
-const selectedCommand = (cmdName: string) => {
-  messageText.value = `${cmdName} `;
-  showCommandMenu.value = false;
+// Handle keyboard events
+const handleKeyDown = (e: KeyboardEvent): void => {
+  // Handle Enter without suggestions
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    handleSend();
+    return;
+  }
+
+  // When suggestions are shown, Enter and Escape have special behavior
+  if (e.key === 'Escape' && showSuggestionMenu.value) {
+    e.preventDefault();
+    showSuggestionMenu.value = false;
+  }
 };
 
-const emit = defineEmits<{
-  (e: 'send', text: string): void;
-}>();
+// Handle suggestion selection
+const handleSuggestionSelect = (suggestion: Suggestion): void => {
+  const text = messageText.value;
+  const cursorPos = inputRef.value?.getNativeElement()?.selectionStart ?? text.length;
 
-const handleSend = () => {
+  // Find the trigger position
+  const textBeforeCursor = text.slice(0, cursorPos);
+  const lastSlash = textBeforeCursor.lastIndexOf('/');
+  const lastAt = textBeforeCursor.lastIndexOf('@');
+  const triggerPos = Math.max(lastSlash, lastAt);
+
+  if (triggerPos === -1) return;
+
+  // Replace the query with the selected suggestion
+  const textBefore = text.slice(0, triggerPos);
+  const textAfter = text.slice(cursorPos);
+
+  // Get the replacement text (includes space at the end)
+  let replacement = suggestion.value;
+  if (suggestion.type === 'command') {
+    replacement = `${suggestion.value} `;
+  } else if (suggestion.type === 'mention') {
+    replacement = `${suggestion.value} `;
+  }
+
+  messageText.value = textBefore + replacement + textAfter;
+
+  // Set cursor position after the replacement
+  nextTick(() => {
+    const newCursorPos = (textBefore + replacement).length;
+    const inputElement = inputRef.value?.getNativeElement();
+    if (inputElement) {
+      inputElement.setSelectionRange(newCursorPos, newCursorPos);
+      inputElement.focus();
+    }
+  });
+
+  showSuggestionMenu.value = false;
+};
+
+// Handle send message
+const handleSend = async (): Promise<void> => {
   const text = messageText.value.trim();
   if (!text) return;
 
+  // Check if it's a command
+  if (text.startsWith('/')) {
+    const success = await commandHandler.executeCommand(text, commandContext.value);
+    if (success) {
+      messageText.value = '';
+      return;
+    }
+  }
+
+  // Regular message
   emit('send', text);
   messageText.value = '';
 };
-
-const handleAttach = () => {
-  // Placeholder for file attachment functionality
-  console.log('Attach button clicked');
-};
-
-const onEmojiClick = () => {
-  // Placeholder for emoji picker functionality
-  console.log('Emoji picker clicked');
-};
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .chat-input {
   max-height: 150px;
   overflow: auto;
 }
+
 .relative {
   position: relative;
-}
-.q-item--active {
-  background-color: rgba(255, 255, 255, 0.15);
-  color: turquoise;
-  transition: background-color 0.2s;
 }
 </style>

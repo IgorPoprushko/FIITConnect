@@ -17,6 +17,26 @@
                     </template>
                 </q-input>
                 <q-btn round flat dense icon="add" class="q-ml-xs" @click="openCreate" />
+                <!-- Create channel dialog -->
+                <q-dialog v-model="createDialog">
+                    <q-card style="min-width: 320px">
+                        <q-card-section>
+                            <div class="text-h6">Create Channel</div>
+                        </q-card-section>
+
+                        <q-card-section>
+                            <q-input v-model="form.name" label="Name" dense required />
+                            <q-input v-model="form.description" label="Description" type="textarea" autogrow dense
+                                class="q-mt-sm" />
+                            <q-select v-model="form.type" :options="typeOptions" label="Type" dense class="q-mt-sm" />
+                        </q-card-section>
+
+                        <q-card-actions>
+                            <q-btn flat label="Cancel" v-close-popup @click="closeCreate" />
+                            <q-btn color="primary" label="Create" :loading="creating" @click="submitCreate" />
+                        </q-card-actions>
+                    </q-card>
+                </q-dialog>
             </q-toolbar>
 
             <q-separator />
@@ -25,29 +45,12 @@
             <q-list>
                 <GroupItem v-for="group in groups" :key="group.id" clickable :group-data="group" />
             </q-list>
-
-            <!-- Create channel dialog -->
-            <q-dialog v-model="createDialog">
-                <q-card style="min-width: 320px">
-                    <q-card-section>
-                        <div class="text-h6">Create Channel</div>
-                    </q-card-section>
-
-                    <q-card-section>
-                        <q-input v-model="form.name" label="Name" dense required />
-                        <q-input v-model="form.description" label="Description" type="textarea" autogrow dense
-                            class="q-mt-sm" />
-                        <q-select v-model="form.type" :options="typeOptions" label="Type" dense class="q-mt-sm" />
-                    </q-card-section>
-
-                    <q-card-actions align="right">
-                        <q-btn flat label="Cancel" v-close-popup @click="closeCreate" />
-                        <q-btn color="primary" label="Create" :loading="creating" @click="submitCreate" />
-                    </q-card-actions>
-                </q-card>
-            </q-dialog>
-
         </q-drawer>
+
+        <q-footer class="q-pa-none">
+            <MessageInput />
+        </q-footer>
+
 
         <!-- MAIN CONTENT -->
         <q-page-container>
@@ -62,6 +65,7 @@ import { ref, reactive, onMounted } from 'vue'
 import GroupItem from 'components/GroupItem.vue'
 import { useApi, type ChannelDto, type CreateChannelPayload } from 'components/server/useApi'
 import { useAuthStore } from 'src/stores/auth'
+import MessageInput from 'src/components/MessageInput.vue';
 
 const groupDrawer = ref(false);
 const auth = useAuthStore();
