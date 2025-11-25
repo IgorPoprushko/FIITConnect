@@ -1,11 +1,11 @@
-import { ChannelType, UserRole } from 'src/types/suggestions';
+import { ChannelType } from 'src/types/channels';
+import { UserRole } from 'src/types/user';
 import type {
     Command,
     CommandSuggestion,
     Suggestion,
     SuggestionHandler,
     CommandContext
-
 } from 'src/types/suggestions';
 
 // Define all available commands with their access requirements
@@ -13,9 +13,8 @@ const commands: Command[] = [
     // JOIN commands
     {
         name: '/join',
-        description: 'Join a public channel',
+        description: 'Join a public channel or Create new channel',
         usage: '/join [channel_name]',
-        requiredChannelType: [ChannelType.PUBLIC],
         handler: async (args: string[]) => {
             // TODO: Implement join public channel logic
             const channelName = args[0];
@@ -26,8 +25,8 @@ const commands: Command[] = [
     // INVITE commands - different for each context
     {
         name: '/invite',
-        description: 'Invite a user to this private channel',
-        usage: '/invite [username]',
+        description: 'Invite a user to this channel',
+        usage: '/invite [nickname]',
         requiredChannelType: [ChannelType.PRIVATE],
         requiredUserRole: [UserRole.ADMIN],
         handler: async (args: string[]) => {
@@ -38,8 +37,8 @@ const commands: Command[] = [
     },
     {
         name: '/invite',
-        description: 'Invite/unban a user to this public channel',
-        usage: '/invite [username]',
+        description: 'Invite a user to this channel. Unban users.',
+        usage: '/invite [nickname]',
         requiredChannelType: [ChannelType.PUBLIC],
         requiredUserRole: [UserRole.ADMIN],
         handler: async (args: string[]) => {
@@ -50,8 +49,8 @@ const commands: Command[] = [
     },
     {
         name: '/invite',
-        description: 'Invite a non-banned user to this public channel',
-        usage: '/invite [username]',
+        description: 'Invite a non-banned user to this channel',
+        usage: '/invite [nickname]',
         requiredChannelType: [ChannelType.PUBLIC],
         requiredUserRole: [UserRole.NORMAL],
         handler: async (args: string[]) => {
@@ -64,8 +63,9 @@ const commands: Command[] = [
     // REVOKE commands
     {
         name: '/revoke',
-        description: 'Revoke a user from this channel',
-        usage: '/revoke [username]',
+        description: 'Kick a user from this channel',
+        usage: '/revoke [nickname]',
+        requiredChannelType: [ChannelType.PRIVATE],
         requiredUserRole: [UserRole.ADMIN],
         handler: async (args: string[]) => {
             // TODO: Implement revoke user logic (admin only)
@@ -77,9 +77,22 @@ const commands: Command[] = [
     // KICK commands
     {
         name: '/kick',
-        description: 'Kick a user from this channel',
-        usage: '/kick [username]',
+        description: 'Ban a user from this channel',
+        usage: '/kick [nickname]',
+        requiredChannelType: [ChannelType.PUBLIC],
         requiredUserRole: [UserRole.ADMIN],
+        handler: async (args: string[]) => {
+            // TODO: Implement kick user logic (admin only)
+            const username = args[0];
+            console.log('Kicking user:', username);
+        },
+    },
+    {
+        name: '/kick',
+        description: 'Vote to ban a user from this channel',
+        usage: '/kick [nickname]',
+        requiredChannelType: [ChannelType.PUBLIC],
+        requiredUserRole: [UserRole.NORMAL],
         handler: async (args: string[]) => {
             // TODO: Implement kick user logic (admin only)
             const username = args[0];
@@ -90,30 +103,22 @@ const commands: Command[] = [
     // QUIT commands (available to all users in all channels)
     {
         name: '/quit',
-        description: 'Leave the current channel',
+        description: 'Permamently DELETE the channel',
         usage: '/quit',
+        requiredChannelType: [ChannelType.PRIVATE, ChannelType.PUBLIC],
+        requiredUserRole: [UserRole.ADMIN],
         handler: async () => {
             // TODO: Implement quit channel logic
-            console.log('Leaving channel');
-        },
-    },
-
-    // LIST commands (available to all users in all channels)
-    {
-        name: '/list',
-        description: 'List all users in the current channel',
-        usage: '/list',
-        handler: async () => {
-            // TODO: Implement list users logic
-            console.log('Listing users');
+            console.log('Deleting channel');
         },
     },
 
     // CANCEL commands (available to all users in all channels)
     {
         name: '/cancel',
-        description: 'Cancel current message typing',
+        description: 'Leave the channel',
         usage: '/cancel',
+        requiredChannelType: [ChannelType.PRIVATE, ChannelType.PUBLIC],
         handler: async () => {
             // TODO: Implement cancel typing logic
             console.log('Canceling message');

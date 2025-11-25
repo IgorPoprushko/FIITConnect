@@ -16,7 +16,8 @@
 <script setup lang="ts">
 import { computed, ref, nextTick } from 'vue';
 import type { Suggestion, CommandContext } from 'src/types/suggestions';
-import { ChannelType, UserRole } from 'src/types/suggestions';
+import { UserRole } from 'src/types/user';
+import { ChannelType } from 'src/types/channels';
 import SuggestionMenu from 'components/SuggestionMenu.vue';
 import { useCommandHandler } from 'src/composables/useCommandHandler';
 

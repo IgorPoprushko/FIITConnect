@@ -1,14 +1,15 @@
 import { ref } from 'vue';
-import type { User, MentionSuggestion, Suggestion, SuggestionHandler, CommandContext } from 'src/types/suggestions';
+import type { MentionSuggestion, Suggestion, SuggestionHandler, CommandContext } from 'src/types/suggestions';
+import type { UserInfo } from 'src/types/user';
 
 // Mock users for the current chat
 // TODO: Replace with actual user data from store/API
-const mockUsers = ref<User[]>([
-    { id: '1', username: 'alice', avatar: 'https://cdn.quasar.dev/img/avatar2.jpg', isOnline: true },
-    { id: '2', username: 'bob', avatar: 'https://cdn.quasar.dev/img/avatar3.jpg', isOnline: true },
-    { id: '3', username: 'charlie', avatar: 'https://cdn.quasar.dev/img/avatar4.jpg', isOnline: false },
-    { id: '4', username: 'david', avatar: 'https://cdn.quasar.dev/img/avatar5.jpg', isOnline: true },
-    { id: '5', username: 'john', avatar: 'https://cdn.quasar.dev/img/avatar1.jpg', isOnline: false },
+const mockUsers = ref<UserInfo[]>([
+    { id: '1', email: "", firstName: "", lastName: "", nickname: 'alice', lastSeenAt: "", createdAt: "", updatedAt: "", isOnline: true },
+    { id: '2', email: "", firstName: "", lastName: "", nickname: 'bob', lastSeenAt: "", createdAt: "", updatedAt: "", isOnline: true },
+    { id: '3', email: "", firstName: "", lastName: "", nickname: 'charlie', lastSeenAt: "", createdAt: "", updatedAt: "", isOnline: false },
+    { id: '4', email: "", firstName: "", lastName: "", nickname: 'david', lastSeenAt: "", createdAt: "", updatedAt: "", isOnline: true },
+    { id: '5', email: "", firstName: "", lastName: "", nickname: 'john', lastSeenAt: "", createdAt: "", updatedAt: "", isOnline: false },
 ]);
 
 export function useMentionHandler(): SuggestionHandler {
@@ -23,20 +24,20 @@ export function useMentionHandler(): SuggestionHandler {
             .filter((user) => {
                 // If query is empty, show all users
                 if (normalizedQuery === '') return true;
-                // Otherwise filter by username starting with query
-                return user.username.toLowerCase().startsWith(normalizedQuery);
+                // Otherwise filter by nickname starting with query
+                return user.nickname.toLowerCase().startsWith(normalizedQuery);
             })
             .sort((a, b) => {
                 // Sort online users first
                 if (a.isOnline === b.isOnline) {
-                    return a.username.localeCompare(b.username);
+                    return a.nickname.localeCompare(b.nickname);
                 }
                 return a.isOnline ? -1 : 1;
             })
             .map((user): MentionSuggestion => ({
                 type: 'mention',
-                value: `@${user.username}`,
-                label: user.username,
+                value: `@${user.nickname}`,
+                label: user.nickname,
                 description: user.isOnline ? 'Online' : 'Offline',
                 user,
             }));
@@ -50,12 +51,12 @@ export function useMentionHandler(): SuggestionHandler {
     };
 
     // Method to update users list (to be called when chat changes or users update)
-    const setUsers = (users: User[]): void => {
+    const setUsers = (users: UserInfo[]): void => {
         mockUsers.value = users;
     };
 
     // Method to add a user to the list
-    const addUser = (user: User): void => {
+    const addUser = (user: UserInfo): void => {
         if (!mockUsers.value.find((u) => u.id === user.id)) {
             mockUsers.value.push(user);
         }
@@ -86,8 +87,8 @@ export function useMentionHandler(): SuggestionHandler {
         removeUser,
         updateUserStatus,
     } as SuggestionHandler & {
-        setUsers: (users: User[]) => void;
-        addUser: (user: User) => void;
+        setUsers: (users: UserInfo[]) => void;
+        addUser: (user: UserInfo) => void;
         removeUser: (userId: string) => void;
         updateUserStatus: (userId: string, isOnline: boolean) => void;
     };

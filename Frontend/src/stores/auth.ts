@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import type { UserDto } from 'src/types/user'
+import type { UserInfo } from 'src/types/user'
 
 export const useAuthStore = defineStore('auth', {
     state: () => ({
@@ -27,7 +27,7 @@ export const useAuthStore = defineStore('auth', {
             localStorage.setItem('token', token);
         },
 
-        setUserFields(user: UserDto) {
+        setUserFields(user: UserInfo) {
             this.id = user.id
             this.email = user.email
             this.firstName = user.firstName

@@ -1,30 +1,14 @@
 import { api } from 'boot/axios';
 import { useAuthStore } from 'src/stores/auth';
-import type { UserDto } from 'src/types/user'
+import type { UserInfo } from 'src/types/user'
+import type { ChannelInfo, CreateChannelPayload } from 'src/types/channels';
 
 export interface resData {
-    user: UserDto
+    user: UserInfo
     token: {
         token: string,
         type: string
     }
-}
-
-export interface ChannelDto {
-    id: string
-    name: string
-    description?: string | null
-    type?: string
-    ownerUserId?: string
-    lastMessageAt?: string | null
-    createdAt?: string
-    updatedAt?: string
-}
-
-export interface CreateChannelPayload {
-    name: string
-    description?: string | null
-    type?: 'public' | 'private'
 }
 
 export function useApi() {
@@ -58,14 +42,14 @@ export function useApi() {
     });
 
     // Fetch channels (list of channels the user has access to)
-    async function getChannels(): Promise<ChannelDto[]> {
-        const res = await api.get<ChannelDto[]>('/channels')
+    async function getChannels(): Promise<ChannelInfo[]> {
+        const res = await api.get<ChannelInfo[]>('/channels')
         return res.data
     }
 
     // Create a new channel
-    async function createChannel(payload: CreateChannelPayload): Promise<ChannelDto> {
-        const res = await api.post<ChannelDto>('/channels', payload)
+    async function createChannel(payload: CreateChannelPayload): Promise<ChannelInfo> {
+        const res = await api.post<ChannelInfo>('/channels', payload)
         return res.data
     }
 

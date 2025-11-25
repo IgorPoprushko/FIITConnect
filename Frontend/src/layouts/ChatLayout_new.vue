@@ -28,7 +28,8 @@
                             <q-input v-model="form.name" label="Name" dense required />
                             <q-input v-model="form.description" label="Description" type="textarea" autogrow dense
                                 class="q-mt-sm" />
-                            <q-select v-model="form.type" :options="typeOptions" label="Type" dense class="q-mt-sm" />
+                            <q-select v-model="typeOptions[0]" :options="typeOptions" label="Type" dense
+                                class="q-mt-sm" />
                         </q-card-section>
 
                         <q-card-actions>
@@ -63,11 +64,13 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import GroupItem from 'components/GroupItem.vue'
-import { useApi, type ChannelDto, type CreateChannelPayload } from 'components/server/useApi'
+import { useApi } from 'components/server/useApi'
+import type { ChannelInfo, CreateChannelPayload } from 'src/types/channels'
 import { useAuthStore } from 'src/stores/auth'
 import MessageInput from 'src/components/MessageInput.vue';
 
 const groupDrawer = ref(false);
+const api = useApi()
 const auth = useAuthStore();
 
 const search = ref<string>('')
@@ -83,10 +86,10 @@ const groups = ref<Array<{
 // Create channel dialog state
 const createDialog = ref(false)
 const creating = ref(false)
-const form = reactive<CreateChannelPayload>({ name: '', description: '', type: 'public' })
+const form = reactive<CreateChannelPayload>({ name: '', description: '', type: 'PUBLIC' })
 const typeOptions = [
-    { label: 'Public', value: 'public' },
-    { label: 'Private', value: 'private' }
+    { label: 'Public', value: 'PUBLIC' },
+    { label: 'Private', value: 'PRIVATE' }
 ]
 
 function openCreate() {
@@ -97,15 +100,12 @@ function closeCreate() {
     createDialog.value = false
     form.name = ''
     form.description = ''
-    form.type = 'public'
+    form.type = 'PUBLIC'
 }
-
-// Load channels from server on mount
-onMounted(async () => {
-    const api = useApi()
+async function LoadChannels() {
     try {
-        const channels: ChannelDto[] = await api.getChannels()
-        groups.value = (Array.isArray(channels) ? channels : []).map((c: ChannelDto) => ({
+        const channels: ChannelInfo[] = await api.getChannels();
+        groups.value = (Array.isArray(channels) ? channels : []).map((c: ChannelInfo) => ({
             id: c.id,
             name: c.name ?? 'Unnamed',
             // use description as lastMessage fallback
@@ -117,15 +117,15 @@ onMounted(async () => {
     catch (err) {
         console.error('Failed to load channels', err)
     }
-})
+}
+
+// Load channels from server on mount
+onMounted(LoadChannels)
 
 async function submitCreate() {
-    if (!form.name || form.name.trim().length === 0) {
-        // simple validation
-        return
-    }
+    if (form.name.trim().length === 0) return
+
     creating.value = true
-    const api = useApi()
     try {
         const created = await api.createChannel(form)
         // Map created channel to group item shape
@@ -137,7 +137,8 @@ async function submitCreate() {
             lastTime: created.lastMessageAt ? new Date(created.lastMessageAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''
         }
         groups.value.unshift(item)
-        closeCreate()
+        LoadChannels();
+        closeCreate();
     }
     catch (err) {
         console.error('Failed to create channel', err)

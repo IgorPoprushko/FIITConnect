@@ -1,11 +1,16 @@
-export interface UserDto {
+export enum UserRole {
+    ADMIN = 'admin',
+    NORMAL = 'normal',
+}
+
+export interface UserInfo {
     id: string
     email: string
-    // camelCase
     firstName: string
     lastName: string
     nickname: string
     lastSeenAt?: string | null
     createdAt: string
-    updatedAt: string
+    updatedAt: string,
+    isOnline: boolean
 }

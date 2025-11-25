@@ -1,13 +1,5 @@
-// Channel and user type enums
-export enum ChannelType {
-    PRIVATE = 'private',
-    PUBLIC = 'public',
-}
-
-export enum UserRole {
-    ADMIN = 'admin',
-    NORMAL = 'normal',
-}
+import type { ChannelType } from "./channels";
+import type { UserRole, UserInfo } from "./user"
 
 // Context for command filtering
 export interface CommandContext {
@@ -39,17 +31,9 @@ export interface CommandSuggestion extends Suggestion {
     command: Command;
 }
 
-// Mention specific types
-export interface User {
-    id: string;
-    username: string;
-    avatar?: string;
-    isOnline?: boolean;
-}
-
 export interface MentionSuggestion extends Suggestion {
     type: 'mention';
-    user: User;
+    user: UserInfo;
 }
 
 // Handler interfaces
