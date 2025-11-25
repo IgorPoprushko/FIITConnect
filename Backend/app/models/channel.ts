@@ -1,9 +1,10 @@
 import { DateTime } from 'luxon'
-import { BaseModel, beforeCreate, belongsTo, column } from '@adonisjs/lucid/orm'
+import { BaseModel, beforeCreate, belongsTo, column, hasMany } from '@adonisjs/lucid/orm'
 import { randomUUID } from 'node:crypto'
 import User from '#models/user'
-import type { BelongsTo } from '@adonisjs/lucid/types/relations'
+import type { BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
 import { ChannelType } from '#enums/channel_type'
+import Member from './member.js'
 
 export default class Channel extends BaseModel {
   static selfAssignPrimaryKey = true
@@ -23,8 +24,11 @@ export default class Channel extends BaseModel {
   @column({ columnName: 'owner_user_id' })
   declare ownerUserId: string
 
-  @belongsTo(() => User, { foreignKey: 'owner_user_id' })
+  @belongsTo(() => User, { foreignKey: 'ownerUserId' })
   declare owner: BelongsTo<typeof User>
+
+  @hasMany(() => Member, { foreignKey: 'channelId' })
+  declare members: HasMany<typeof Member>
 
   @column.dateTime({ columnName: 'last_message_at' })
   declare lastMessageAt: DateTime | null

@@ -14,13 +14,13 @@ export default class Message extends BaseModel {
   @column({ columnName: 'channel_id' })
   declare channelId: string
 
-  @belongsTo(() => Channel, { foreignKey: 'channel_id' })
+  @belongsTo(() => Channel, { foreignKey: 'channelId' })
   declare channel: BelongsTo<typeof Channel>
 
   @column({ columnName: 'user_id' })
   declare userId: string
 
-  @belongsTo(() => User, { foreignKey: 'user_id' })
+  @belongsTo(() => User, { foreignKey: 'userId' })
   declare user: BelongsTo<typeof User>
 
   @column({ columnName: 'content' })
@@ -29,10 +29,10 @@ export default class Message extends BaseModel {
   @column({ columnName: 'reply_to_msg_id' })
   declare replyToMsgId: string | null
 
-  @belongsTo(() => Message, { foreignKey: 'reply_to_msg_id' })
+  @belongsTo(() => Message, { foreignKey: 'replyToMsgId' })
   declare replyToMessage: BelongsTo<typeof Message>
 
-  @hasMany(() => Message, { foreignKey: 'reply_to_msg_id' })
+  @hasMany(() => Message, { foreignKey: 'replyToMsgId' })
   declare replies: HasMany<typeof Message>
 
   @column({ columnName: 'mentioned_user_ids' })
