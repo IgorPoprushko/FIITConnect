@@ -148,6 +148,7 @@ export default class CommandController {
         userId: user.id,
         nickname: user.nickname,
       })
+      //wsHandler.inform(channel:menmer_join, channel.id)
 
       return response.ok({ status: 'joined', message: `Joined public channel ${channel.name}` })
     } else {

@@ -2,17 +2,12 @@ import type { HttpContext } from '@adonisjs/core/http'
 import { registerValidator, loginValidator } from '#validators/auth'
 import User from '#models/user'
 import { UserStatus } from '#enums/user_status'
+import { RegisterPayload, LoginPayload, AuthResponse, MeResponse } from '#contracts/auth_contracts'
 
 export default class AuthController {
   async register({ request, response }: HttpContext) {
     // Get validated data
-    const payload = (await request.validateUsing(registerValidator)) as {
-      first_name: string
-      last_name: string
-      nickname: string
-      email: string
-      password: string
-    }
+    const payload = (await request.validateUsing(registerValidator)) as RegisterPayload
     const passwordHash = payload.password
 
     const user = await User.create({
@@ -36,17 +31,17 @@ export default class AuthController {
     return response.created({
       user: user.serialize(),
       token: token,
-    })
+    } as AuthResponse)
   }
 
   async login({ request, response }: HttpContext) {
-    const { email, password } = await request.validateUsing(loginValidator)
+    const { email, password } = (await request.validateUsing(loginValidator)) as LoginPayload
 
     try {
       const user = await User.verifyCredentials(email, password)
       await user.load('setting')
       const token = await User.accessTokens.create(user)
-      return response.ok({ user, token })
+      return response.ok({ user, token } as AuthResponse)
     } catch (e) {
       return response.badRequest({ errors: [{ message: 'Invalid email or password' }] })
     }
@@ -61,7 +56,7 @@ export default class AuthController {
 
     return response.ok({
       user: auth.user.serialize(),
-    })
+    } as MeResponse)
   }
 
   async logout({ auth, response }: HttpContext) {

@@ -27,6 +27,7 @@ export default class Channel extends BaseModel {
   @belongsTo(() => User, { foreignKey: 'ownerUserId' })
   declare owner: BelongsTo<typeof User>
 
+  // Dont send if exist requsest info channel
   @hasMany(() => Member, { foreignKey: 'channelId' })
   declare members: HasMany<typeof Member>
 
