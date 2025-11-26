@@ -6,12 +6,6 @@
             <!-- <MessageBubble v-for="(message, index) in messages" :key="message.id" :message="message"
                 :previous-message="index > 0 ? messages[index - 1] : undefined" /> -->
         </div>
-
-        <!-- Fixed input at bottom -->
-        <div class="chat-input-footer">
-            <MessageInput @send="sendMessage" />
-        </div>
-
         <!-- Profile drawer -->
         <q-drawer class="q-pa-md bg-primary" v-model="chatDrawer" side="right" :width="300" bordered>
             <div class="text-center q-mb-md">
@@ -41,14 +35,9 @@ import { ref } from 'vue'
 import { useChatDrawer } from 'src/composables/useChatDrawer'
 import { type IMessage } from 'src/types/messages'
 import MessageList from 'components/MessageList.vue'
-import MessageInput from 'components/MessageInput.vue'
 
 const { chatDrawer } = useChatDrawer()
 const messageListRef = ref<InstanceType<typeof MessageList> | null>(null)
-
-const sendMessage = (text: string) => {
-    console.log('Message sent:', text)
-}
 
 const messages = ref<IMessage[]>([
     { id: 1, sender: "Alice", avatar: "https://cdn.quasar.dev/img/avatar2.jpg", text: "Hey! How are you?", date: new Date(), own: false, read: true },

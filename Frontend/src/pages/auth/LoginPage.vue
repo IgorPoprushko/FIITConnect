@@ -41,7 +41,7 @@ import { useRouter } from 'vue-router';
 import { ref } from 'vue';
 import { rules } from 'src/components/rules/rules';
 
-import { useApi } from 'src/components/server/useApi';
+import { useApi } from 'src/composables/server/useApi';
 const { login } = useApi();
 // States
 const router = useRouter();
@@ -67,7 +67,7 @@ const onSubmit = async () => {
 };
 
 // Navigation
-const goToRegister = () => {
-    void router.push('/register');
+const goToRegister = async () => {
+    await router.push('/register');
 };
 </script>

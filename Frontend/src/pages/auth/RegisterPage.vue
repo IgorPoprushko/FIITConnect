@@ -53,7 +53,7 @@
 import { useRouter } from 'vue-router';
 import { ref } from 'vue';
 import { rules } from 'src/components/rules/rules';
-import { useApi } from 'src/components/server/useApi';
+import { useApi } from 'src/composables/server/useApi';
 
 const { register } = useApi();
 
@@ -75,8 +75,7 @@ const loading = ref(false)
 const error = ref(false)
 const onSubmit = async () => {
     try {
-        const user = await register(name.value, surname.value, username.value, email.value, password.value);
-        console.log(user)
+        await register(name.value, surname.value, username.value, email.value, password.value);
         await router.push('chat');
     } catch (err) {
         console.error(err)

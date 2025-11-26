@@ -17,8 +17,6 @@ const message = props.message;
 
 function getNextDay(prevMessage: IMessage | undefined): string {
     const dateLable = message.date.toDateString()
-    console.log(dateLable);
-    console.log(prevMessage?.date.toDateString());
 
     if (prevMessage == undefined || prevMessage.date.toDateString() == dateLable)
         return '';
