@@ -41,7 +41,7 @@ import { useRouter } from 'vue-router';
 import { ref } from 'vue';
 import { rules } from 'src/components/rules/rules';
 
-import { useApi } from 'src/components/server/useApi';
+import { useApi } from 'src/composables/server/useApi';
 const { login } = useApi();
 // States
 const router = useRouter();
