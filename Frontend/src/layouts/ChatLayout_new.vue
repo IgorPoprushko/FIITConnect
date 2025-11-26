@@ -5,7 +5,7 @@
             <q-toolbar class="q-pa-none justify-between">
                 <q-btn outline rounded color="secondary" class="text-bold" :label="auth.nickname"
                     @click="profileDialog.open()" />
-                <q-btn round flat dense icon="settings" class="q-ml-xs" />
+                <q-btn round flat dense icon="mail" class="q-ml-xs" />
             </q-toolbar>
 
             <!-- SEARCH -->
@@ -130,7 +130,8 @@
                             <span class="content-center">Direct Notifications Only</span>
                             <q-toggle v-model="profileForm.directNotificationsOnly" color="secondary" />
                         </div>
-                        <q-btn outline rounded color="negative" label="Logout" class="text-h6 text-bold" dense />
+                        <q-btn outline rounded dense color="negative" label="Logout" class="text-h6 text-bold"
+                            @click="api.logout(); goToLogin()" />
                     </q-form>
                 </div>
             </template>
@@ -146,6 +147,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router';
 import GroupItem from 'components/GroupItem.vue'
 import FormDialog from 'src/components/FormDialog.vue'
 import { useFormDialog } from 'src/composables/useFormDialog'
@@ -155,6 +157,7 @@ import { useAuthStore } from 'src/stores/auth'
 import MessageInput from 'src/components/MessageInput.vue';
 import type { UserPayload } from 'src/types/user'
 
+const router = useRouter();
 const groupDrawer = ref(false);
 const api = useApi()
 const auth = useAuthStore();
@@ -208,15 +211,16 @@ async function submitCreate() {
 
     createDialog.setLoading(true)
     try {
-        const created = await api.createChannel(createForm)
-        // Map created channel to group item shape
-        const item = {
-            name: createForm.name,
-            lastMessage: '',
-            unreadCount: 0,
-            lastTime: ''
+        const status = await api.createChannel(createForm)
+        if (status == 200) {
+            const item = {
+                name: createForm.name,
+                lastMessage: '',
+                unreadCount: 0,
+                lastTime: ''
+            }
+            groups.value.unshift(item)
         }
-        groups.value.unshift(item)
         closeCreate();
     }
     catch (err) {
@@ -305,4 +309,8 @@ async function submitProfile() {
     closeProfile();
 }
 //#endregion
+
+const goToLogin = async () => {
+    await router.push('/login');
+};
 </script>

@@ -8,8 +8,8 @@
   - [x] Logic
   - [x] Visual
 - Logout
-  - [ ] Logic
-  - [ ] Visual
+  - [x] Logic
+  - [x] Visual
 
 ### 2. Používateľ vidí zoznam kanálov, v ktorých je členom 
 - Channels List
