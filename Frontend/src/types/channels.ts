@@ -24,8 +24,10 @@ export interface ChannelVisual {
     id: string
     name: string
     type: ChannelType
-    lastMessage?: string | null
-    lastMessageAt?: Date | null
+    lastMessage?: {
+        content: string
+        sendAt: Date
+    }
     newMessagesCount: number
 }
 

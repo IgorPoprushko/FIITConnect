@@ -7,7 +7,6 @@ import type {
     SuggestionHandler,
     CommandContext
 } from 'src/types/suggestions';
-import { useApi } from 'src/components/server/useApi';
 
 // Define all available commands with their access requirements
 const commands: Command[] = [

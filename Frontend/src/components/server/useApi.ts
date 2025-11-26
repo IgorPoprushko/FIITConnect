@@ -1,10 +1,10 @@
 import { api } from 'boot/axios';
 import { useAuthStore } from 'src/stores/auth';
-import type { UserInfo } from 'src/types/user'
+import type { MeInfo } from 'src/types/user'
 import type { ChannelVisual, CreateChannelPayload } from 'src/types/channels';
 
 export interface resData {
-    user: UserInfo
+    user: MeInfo
     token: {
         token: string,
         type: string
@@ -26,7 +26,9 @@ export function useApi() {
     async function register(first_name: string, last_name: string, nickname: string, email: string, password: string) {
         const res = await api.post<resData>('/register', { first_name, last_name, nickname, email, password });
         auth.setToken(res.data.token.token);
-        auth.setUserFields(res.data.user)
+        // server returns MeInfo which includes settings
+        auth.setUser(res.data.user)
+        auth.setSettings(res.data.user.settings ?? null)
         return res.data;
 
     }
@@ -34,7 +36,8 @@ export function useApi() {
     async function login(email: string, password: string) {
         const res = await api.post<resData>('/login', { email, password });
         auth.setToken(res.data.token.token);
-        auth.setUserFields(res.data.user)
+        auth.setUser(res.data.user)
+        auth.setSettings(res.data.user.settings ?? null)
         return res.data;
     }
 
@@ -46,8 +49,8 @@ export function useApi() {
 
     //CHANNELS
     async function getChannels(): Promise<ChannelVisual[]> {
-        const res = await api.get<ChannelVisual[]>('/channels')
-        return res.data
+        const res = await api.get<{ channels: ChannelVisual[] }>('/channels')
+        return res.data.channels
     }
 
     async function createChannel(payload: CreateChannelPayload): Promise<ChannelVisual> {
