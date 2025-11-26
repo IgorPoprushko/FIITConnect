@@ -151,11 +151,11 @@ import { useRouter } from 'vue-router';
 import GroupItem from 'components/GroupItem.vue'
 import FormDialog from 'src/components/FormDialog.vue'
 import { useFormDialog } from 'src/composables/useFormDialog'
-import { useApi } from 'components/server/useApi'
+import { useApi } from 'src/composables/server/useApi'
 import type { ChannelVisual, CreateChannelPayload } from 'src/types/channels'
 import { useAuthStore } from 'src/stores/auth'
-import MessageInput from 'src/components/MessageInput.vue';
 import type { UserPayload } from 'src/types/user'
+import MessageInput from 'src/components/MessageInput.vue'
 
 const router = useRouter();
 const groupDrawer = ref(false);

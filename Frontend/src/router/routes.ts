@@ -30,7 +30,14 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/test',
     component: () => import('layouts/ChatLayout_new.vue'),
-    children: [{ path: '', component: () => import('pages/chat/MainPage_new.vue') }],
+    children: [
+      { path: '', component: () => import('pages/chat/MainPage_new.vue') },
+      {
+        path: ':channelId',
+        component: () => import('pages/chat/MainPage_new.vue'),
+        name: 'chat-channel'
+      }
+    ],
 
     beforeEnter: (to, from, next) => {
       const auth = useAuthStore();
