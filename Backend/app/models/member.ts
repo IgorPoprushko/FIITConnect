@@ -1,7 +1,7 @@
 import { DateTime } from 'luxon'
 import { BaseModel, beforeCreate, belongsTo, column } from '@adonisjs/lucid/orm'
 import { randomUUID } from 'node:crypto'
-import { MemberRole } from '#enums/member_role'
+import Message from '#models/message'
 import User from '#models/user'
 import Channel from '#models/channel'
 import type { BelongsTo } from '@adonisjs/lucid/types/relations'
@@ -24,8 +24,11 @@ export default class Member extends BaseModel {
   @belongsTo(() => Channel, { foreignKey: 'channelId' })
   declare channel: BelongsTo<typeof Channel>
 
-  @column({ columnName: 'role' })
-  declare role: MemberRole
+  @column({ columnName: 'last_read_message_id' })
+  declare lastReadMessageId: string | null
+
+  @belongsTo(() => Message, { foreignKey: 'lastReadMessageId' })
+  declare lastReadMessage: BelongsTo<typeof Message>
 
   @column({ columnName: 'is_muted' })
   declare isMuted: boolean
