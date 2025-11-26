@@ -5,18 +5,18 @@
   - [x] Logic
   - [x] Visual
 - Login
-  - [ ] Logic
+  - [x] Logic
   - [x] Visual
 - Logout
-  - [ ] Logic
-  - [ ] Visual
+  - [x] Logic
+  - [x] Visual
 
 ### 2. Používateľ vidí zoznam kanálov, v ktorých je členom 
 - Channels List
-  - [ ] Logic
+  - [x] Logic
   - [x] Visual
 - Create channel
-  - [ ] Logic
+  - [x] Logic
   - [x] Visual
 - Leave channel
   - [ ] Logic
@@ -39,45 +39,48 @@
 
 ### 3. Používateľ odosiela správy a príkazy cez "príkazový riadok", ktorý je "fixným" prvkom aplikácie. Používateľ môže odoslať správu v kanáli, ktorého je členom
 - Chat Input always on screen
-  - [ ] Logic
-  - [ ] Visual
+  - [x] Logic
+  - [x] Visual
 - Send messages with Input
   - [ ] Logic
-  - [ ] Visual
+  - [x] Visual
 - Send commans with Input
   - [ ] Logic
-  - [ ] Visual
+  - [x] Visual
 
 ### 4. Vytvorenie komunikačného kanála (channel) cez príkazový riadok
 - Create channel wiht **/join [ChannelName]**
   - [ ] Logic
-  - [ ] Visual
+  - [x] Visual
 - Invite to Private channel only by admin with **/invite [Username]**
   - [ ] Logic
-  - [ ] Visual
+  - [x] Visual
 - Kick to Private channel only by admin with **/revoke [Username]**
   - [ ] Logic
-  - [ ] Visual
+  - [x] Visual
 - Join to Public channel with **/join [ChannelName]**. If channel dont exist create one
   - [ ] Logic
-  - [ ] Visual
+  - [x] Visual
+- Invire to Public channel with **/invite [Username]**
+  - [ ] Logic
+  - [x] Visual
 - Ban to Public channel with **/kick [Username]**. Need to have 3 user vote or 1 admin vote
   - [ ] Logic
-  - [ ] Visual
-- Invite back after ban in Public channels with **/invite [Username]**
+  - [x] Visual
+- Invite back after ban in Public channels only by admin with **/invite [Username]**
   - [ ] Logic
-  - [ ] Visual
+  - [x] Visual
 - Username and ChannelName are unique
   - [ ] Logic
-  - [ ] Visual
+  - [x] Visual
 - Delete channel only by admin with **/quit**
   - [ ] Logic
-  - [ ] Visual
+  - [x] Visual
 
 ### 5. Používateľ môže zrušiť svoje členstvo v kanáli príkazom /cancel, ak tak spraví správca kanála, kanál zaniká
 - Leave chnnel with **/cancel** command
   - [ ] Logic
-  - [ ] Visual
+  - [x] Visual
 - If admin leave channel, it deletes
   - [ ] Logic
   - [ ] Visual
@@ -85,7 +88,7 @@
 ### 6. Správu v kanáli je možné adresovať konkrétnemu používateľovi cez príkaz @nickname 
 - Message can be addressed to user with **@[Username]**
   - [ ] Logic
-  - [ ] Visual
+  - [x] Visual
 - Addressed message will be highlight for user
   - [ ] Logic
   - [ ] Visual

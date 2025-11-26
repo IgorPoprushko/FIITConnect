@@ -1,9 +1,10 @@
+import { useAuthStore } from 'src/stores/auth';
 import type { RouteRecordRaw } from 'vue-router';
 
 const routes: RouteRecordRaw[] = [
   {
     path: '',
-    redirect: 'login'
+    redirect: '/login',
   },
   {
     path: '',
@@ -11,6 +12,15 @@ const routes: RouteRecordRaw[] = [
     children: [
       { path: 'login', component: () => import('pages/auth/LoginPage.vue') },
       { path: 'register', component: () => import('pages/auth/RegisterPage.vue') }],
+
+    beforeEnter: (to, from, next) => {
+      const auth = useAuthStore();
+      if (auth.isLoggedIn) {
+        next({ path: '/chat' });
+      } else {
+        next();
+      }
+    }
   },
   {
     path: '/chat',
@@ -21,6 +31,15 @@ const routes: RouteRecordRaw[] = [
     path: '/test',
     component: () => import('layouts/ChatLayout_new.vue'),
     children: [{ path: '', component: () => import('pages/chat/MainPage_new.vue') }],
+
+    beforeEnter: (to, from, next) => {
+      const auth = useAuthStore();
+      if (auth.isLoggedIn) {
+        next();
+      } else {
+        next({ path: '/login' });
+      }
+    }
   },
 
 

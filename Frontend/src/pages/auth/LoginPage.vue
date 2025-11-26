@@ -67,7 +67,7 @@ const onSubmit = async () => {
 };
 
 // Navigation
-const goToRegister = () => {
-    void router.push('/register');
+const goToRegister = async () => {
+    await router.push('/register');
 };
 </script>
