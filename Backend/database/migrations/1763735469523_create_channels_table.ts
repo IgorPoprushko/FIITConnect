@@ -9,7 +9,7 @@ export default class extends BaseSchema {
 
       table.string('name').notNullable()
       table.string('description').nullable()
-      table.string('type').notNullable()
+      table.integer('type').notNullable()
       table
         .uuid('owner_user_id')
         .notNullable()

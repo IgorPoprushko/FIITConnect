@@ -15,7 +15,13 @@ export default class extends BaseSchema {
         .onDelete('CASCADE')
         .notNullable()
 
-      table.string('role').notNullable()
+      table
+        .uuid('last_read_message_id')
+        .references('id')
+        .inTable('messages')
+        .onDelete('SET NULL')
+        .nullable()
+
       table.boolean('is_muted').notNullable().defaultTo(false)
       table.boolean('is_banned').notNullable().defaultTo(false)
 
@@ -23,7 +29,6 @@ export default class extends BaseSchema {
       table.timestamp('ban_until').nullable()
 
       table.unique(['user_id', 'channel_id'])
-      table.check(`role IN ('admin','moderator','member')`)
     })
   }
 
