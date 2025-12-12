@@ -3,6 +3,17 @@ export enum ChannelType {
     PUBLIC = 0,
 }
 
+export interface ChannelFullResponse {
+    name: string
+    description?: string | null
+    type: ChannelType
+    ownerUserId: string
+    lastMessageAt?: Date | null
+    createdAt: Date
+    updatedAt: Date
+    countOfMembers: number
+}
+
 export interface CreateChannelPayload {
     name: string
     description?: string | null
