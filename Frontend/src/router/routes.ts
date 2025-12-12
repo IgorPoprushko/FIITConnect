@@ -24,11 +24,6 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/chat',
-    component: () => import('layouts/ChatLayout.vue'),
-    children: [{ path: '', component: () => import('pages/chat/MainPage.vue') }],
-  },
-  {
-    path: '/test',
     component: () => import('layouts/ChatLayout_new.vue'),
     children: [
       { path: '', component: () => import('pages/chat/MainPage_new.vue') },

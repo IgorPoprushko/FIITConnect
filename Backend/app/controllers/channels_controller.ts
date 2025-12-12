@@ -141,7 +141,7 @@ export default class ChannelsController {
   async getChannelInfoFull({ auth, params, response }: HttpContext) {
     if (!auth.user) return response.unauthorized()
 
-    const channelId = params.channelId
+    const channelId = params.name
 
     const member = await Member.query()
       .where('channelId', channelId)
@@ -528,7 +528,7 @@ export default class ChannelsController {
   async getChannelMessages({ auth, params, request, response }: HttpContext) {
     if (!auth.user) return response.unauthorized()
 
-    const channelId = params.channelId
+    const channelId = params.name
     const { limit = 50, beforeTime, beforeId } = request.qs() as GetMessagesPayload
 
     const actualLimit = Math.min(limit, 100)
@@ -590,7 +590,7 @@ export default class ChannelsController {
   async sendMessageToChannel({ auth, params, request, response }: HttpContext) {
     if (!auth.user) return response.unauthorized()
 
-    const channelId = params.channelId
+    const channelId = params.name
     const { content } = (await request.validateUsing(messageValidator)) as MessageSentPayload
 
     const channel = await Channel.findBy('id', channelId)

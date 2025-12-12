@@ -20,7 +20,7 @@
   - [x] Visual
 - Leave channel
   - [ ] Logic
-  - [ ] Visual
+  - [x] Visual
 - Delete chanal if admin
   - [ ] Logic
   - [ ] Visual
