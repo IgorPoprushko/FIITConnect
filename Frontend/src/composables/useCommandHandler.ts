@@ -1,5 +1,6 @@
 import { ChannelType } from 'src/types/channels';
 import { UserRole } from 'src/types/user';
+import { useChatStore } from 'src/stores/chat';
 import type {
     Command,
     CommandSuggestion,
@@ -16,9 +17,16 @@ const commands: Command[] = [
         description: 'Join a public channel or Create new channel',
         usage: '/join [channel_name]',
         handler: async (args: string[]) => {
-            // TODO: Implement join public channel logic
             const channelName = args[0];
-            console.log('Joining public channel:', channelName);
+            const chat = useChatStore();
+            await chat.loadChannels();
+            let channel = chat.channels.find((c) => c.name.toLowerCase() === channelName.toLowerCase());
+            if (!channel) {
+                channel = await chat.createChannel({ name: channelName, type: ChannelType.PUBLIC });
+            }
+            if (channel) {
+                chat.setActiveChannel(channel.id);
+            }
         },
     },
 
@@ -108,8 +116,11 @@ const commands: Command[] = [
         requiredChannelType: [ChannelType.PRIVATE, ChannelType.PUBLIC],
         requiredUserRole: [UserRole.ADMIN],
         handler: async () => {
-            // TODO: Implement quit channel logic
-            console.log('Deleting channel');
+            const chat = useChatStore();
+            if (chat.activeChannelId) {
+                // TODO: hook server-side delete
+                chat.setActiveChannel(null);
+            }
         },
     },
 
@@ -121,8 +132,11 @@ const commands: Command[] = [
         requiredChannelType: [ChannelType.PRIVATE, ChannelType.PUBLIC],
         requiredUserRole: [UserRole.ADMIN],
         handler: async () => {
-            // TODO: Implement quit channel logic
-            console.log('Deleting channel');
+            const chat = useChatStore();
+            if (chat.activeChannelId) {
+                // TODO: hook server-side delete
+                chat.setActiveChannel(null);
+            }
         },
     },
     {
@@ -132,8 +146,8 @@ const commands: Command[] = [
         requiredChannelType: [ChannelType.PRIVATE, ChannelType.PUBLIC],
         requiredUserRole: [UserRole.MEMBER],
         handler: async () => {
-            // TODO: Implement cancel typing logic
-            console.log('Canceling message');
+            const chat = useChatStore();
+            chat.setActiveChannel(null);
         },
     },
 ];

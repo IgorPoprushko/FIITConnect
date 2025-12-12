@@ -14,23 +14,23 @@ const routes: RouteRecordRaw[] = [
       { path: 'register', component: () => import('pages/auth/RegisterPage.vue') },
     ],
 
-    // beforeEnter: (to, from, next) => {
-    //   const auth = useAuthStore();
-    //   if (auth.isLoggedIn) {
-    //     next({ path: '/chat' });
-    //   } else {
-    //     next();
-    //   }
-    // },
+    beforeEnter: (to, from, next) => {
+      const auth = useAuthStore();
+      if (auth.isLoggedIn) {
+        next({ path: '/chat' });
+      } else {
+        next();
+      }
+    },
   },
   {
     path: '/chat',
-    component: () => import('layouts/ChatLayout_new.vue'),
+    component: () => import('layouts/ChatLayout.vue'),
     children: [
-      { path: '', component: () => import('pages/chat/MainPage_new.vue') },
+      { path: '', component: () => import('pages/chat/MainPage.vue') },
       {
         path: ':channelId',
-        component: () => import('pages/chat/MainPage_new.vue'),
+        component: () => import('pages/chat/MainPage.vue'),
         name: 'chat-channel',
       },
     ],

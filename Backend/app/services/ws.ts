@@ -46,6 +46,7 @@ export default class Ws {
 
   private async authenticate(socket: AuthenticatedSocket, next: (err?: Error) => void) {
     const token = socket.handshake.auth.token
+    console.info('[WS][auth] incoming', { socket: socket.id, hasToken: Boolean(token) })
 
     if (!token) {
       return next(new Error('Authentication error: Token not provided'))
@@ -64,6 +65,7 @@ export default class Ws {
       // Завантажуємо налаштування, щоб мати доступ до статусу
       await user.load('setting')
       socket.user = user
+      console.info('[WS][auth] ok', { socket: socket.id, userId: user.id })
       next()
     } catch (error) {
       console.error('Socket authentication failed:', error.message)

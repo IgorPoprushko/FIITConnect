@@ -1,7 +1,6 @@
 <template>
-    <q-page class="flex flex-center fit q-my-md" style="min-height:100vh; max-width: 500px;">
-        <q-card class="q-pa-xl column items-stretch justify-between "
-            style="max-width: 600px; width: 90%; border-radius: 15px;">
+    <q-page class="flex flex-center fit q-my-md">
+        <q-card class="q-pa-xl column items-stretch justify-between ">
 
             <!-- Header -->
             <div class="column items-center q-mb-md">
@@ -39,7 +38,7 @@
                     </template>
                 </q-input>
                 <div class="column q-gutter-sm q-mt-md">
-                    <p v-if="error" class="text-negative">This User Already Registered!</p>
+                    <p v-if="errorMessage" class="text-negative">{{ errorMessage }}</p>
                     <q-btn label="Sign Up" color="accent" unelevated class="full-width text-weight-bold" type="submit"
                         :loading="loading" />
                     <q-btn label="Already have an account?" color="accent" flat class="full-width" @click="goToLogin" />
@@ -53,9 +52,7 @@
 import { useRouter } from 'vue-router';
 import { ref } from 'vue';
 import { rules } from 'src/components/rules/rules';
-import { useApi } from 'src/composables/server/useApi';
-
-const { register } = useApi();
+import { authService } from 'src/services/authService';
 
 // States
 const router = useRouter();
@@ -72,13 +69,14 @@ const logo = 'img:src/assets/image/logo.svg'
 
 // Submit handler
 const loading = ref(false)
-const error = ref(false)
+const errorMessage = ref('')
 const onSubmit = async () => {
     try {
-        await register(name.value, surname.value, username.value, email.value, password.value);
+        await authService.register(name.value, surname.value, username.value, email.value, password.value);
         await router.push('chat');
     } catch (err) {
-        console.error(err)
+        errorMessage.value = 'This user is already registered';
+        console.error('Registration failed', err)
     }
 };
 // Navigation
