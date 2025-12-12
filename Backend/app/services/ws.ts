@@ -1,37 +1,37 @@
 import { UserStatus } from '#enums/user_status'
-import { inject } from '@adonisjs/core'
+// import { inject } from '@adonisjs/core'  <-- ❌ Прибираємо inject
 import server from '@adonisjs/core/services/server'
-import { Server, Socket } from 'socket.io'
 import app from '@adonisjs/core/services/app'
+import { Exception } from '@adonisjs/core/exceptions'
+import { Server, Socket } from 'socket.io'
+import { Secret } from '@adonisjs/core/helpers'
+
 import ActivitiesController from '#controllers/ws/activities_controller'
 import MessagesController from '#controllers/ws/messages_controller'
 import CommandsController from '#controllers/ws/commands_controller'
 import User from '#models/user'
-import { Exception } from '@adonisjs/core/exceptions'
+import Member from '#models/member'
 
-// Розширюємо інтерфейс Socket, щоб додати нашого авторизованого користувача
 export interface AuthenticatedSocket extends Socket {
   user?: User
 }
 
-@inject()
-export default class Ws {
+// 👇 1. Прибрали "export default" і "@inject()"
+class Ws {
   public io: Server | undefined
   private booted = false
 
-  // ВИПРАВЛЕНО: Використовуємо string, оскільки ID у нас UUID
   private socketIdToUserId = new Map<string, string>()
   private userIdToSocketId = new Map<string, string>()
 
-  constructor() {}
-
-  boot() {
+  // 👇 2. Робимо boot публічним, щоб викликати його ззовні
+  public boot() {
     if (this.booted) return
     this.booted = true
 
     this.io = new Server(server.getNodeServer(), {
       cors: {
-        origin: 'http://localhost:9000', // Дозволяємо фронтенд
+        origin: 'http://localhost:9000',
         methods: ['GET', 'POST'],
         credentials: true,
       },
@@ -45,31 +45,41 @@ export default class Ws {
   }
 
   private async authenticate(socket: AuthenticatedSocket, next: (err?: Error) => void) {
-    const token = socket.handshake.auth.token
-    console.info('[WS][auth] incoming', { socket: socket.id, hasToken: Boolean(token) })
+    const rawToken = socket.handshake.auth.token
 
-    if (!token) {
+    if (!rawToken) {
       return next(new Error('Authentication error: Token not provided'))
     }
 
-    try {
-      // ВИПРАВЛЕНО: Casting 'as any' виправляє помилку TS "Property 'use' does not exist".
-      // Ми кажемо компілятору довіритися нам, що метод use там є.
-      const authManager = (await app.container.make('auth.manager')) as any
-      const user = await authManager.use('api').verify(token)
+    if (typeof rawToken !== 'string') {
+      return next(new Error('Authentication error: Token must be a string'))
+    }
 
-      if (!user) {
-        return next(new Error('Authentication error: Invalid token'))
+    const pureToken = rawToken.replace('Bearer ', '').trim()
+
+    try {
+      const token = await User.accessTokens.verify(new Secret(pureToken))
+
+      if (!token) {
+        return next(new Error('Authentication error: Invalid token struct'))
       }
 
-      // Завантажуємо налаштування, щоб мати доступ до статусу
-      await user.load('setting')
+      const user = await User.query()
+        .where('id', token.tokenableId as string)
+        .preload('setting')
+        .first()
+
+      if (!user) {
+        return next(new Error('Authentication error: User not found'))
+      }
+
       socket.user = user
-      console.info('[WS][auth] ok', { socket: socket.id, userId: user.id })
+      console.log(`[WS AUTH] User authenticated: ${user.id} (${user.nickname})`)
+
       next()
     } catch (error) {
-      console.error('Socket authentication failed:', error.message)
-      return next(new Error('Authentication error: Invalid token'))
+      console.error('WS authentication failed:', error.message)
+      next(new Error('Authentication error: Invalid or expired token'))
     }
   }
 
@@ -81,25 +91,42 @@ export default class Ws {
     const messagesController = await app.container.make(MessagesController)
     const commandsController = await app.container.make(CommandsController)
 
-    // ВИПРАВЛЕНО: Тепер ми записуємо string у Map
     this.socketIdToUserId.set(socket.id, user.id)
     this.userIdToSocketId.set(user.id, socket.id)
 
+    // Тепер це викличе метод у контролера, а контролер звернеться до цього ж екземпляра Ws
     await activitiesController.onConnected(user.id)
-
-    // ВАЖЛИВО: Приєднуємо користувача до кімнат його каналів, щоб він отримував повідомлення
     await this.joinUserToChannels(socket, user.id)
 
     socket.on('command', (payload: { input: string; channelName: string }) => {
       commandsController.handleCommand(socket, payload)
     })
 
-    socket.on('user:change:status', (payload: { newStatus: UserStatus }) => {
-      activitiesController.onChangeStatus({ userId: user.id, newStatus: payload.newStatus })
+    socket.on('chat:send', (payload: { channelId: string; content: string }) => {
+      messagesController.onNewMessage(socket, {
+        channelId: payload.channelId,
+        content: payload.content,
+      })
     })
 
-    socket.on('message:new', (payload: { channelName: string; content: string }) => {
-      messagesController.onNewMessage(socket, payload)
+    socket.on('chat:join', (payload: { channelId: string }) => {
+      socket.join(payload.channelId)
+      console.log(`User ${user.nickname} joined room: ${payload.channelId}`)
+    })
+
+    socket.on('chat:leave', (payload: { channelId: string }) => {
+      socket.leave(payload.channelId)
+      console.log(`User ${user.nickname} left room: ${payload.channelId}`)
+    })
+
+    socket.on('user:joinChannels', (_, channelIds: string[]) => {
+      if (!channelIds?.length) return
+      channelIds.forEach((id) => socket.join(id))
+      console.log(`User ${user.nickname} mass-joined ${channelIds.length} channels.`)
+    })
+
+    socket.on('user:change:status', (payload: { newStatus: UserStatus }) => {
+      activitiesController.onChangeStatus({ userId: user.id, newStatus: payload.newStatus })
     })
 
     socket.on('typing:start', (payload: { channelName: string }) => {
@@ -115,7 +142,6 @@ export default class Ws {
     })
 
     socket.on('disconnect', () => {
-      // ВИПРАВЛЕНО: Отримуємо string (UUID)
       const userId = this.socketIdToUserId.get(socket.id)
       if (userId) {
         activitiesController.onDisconnected(userId)
@@ -126,7 +152,6 @@ export default class Ws {
     })
   }
 
-  // ВИПРАВЛЕНО: Метод тепер приймає string (UUID)
   public findSocketByUserId(userId: string): AuthenticatedSocket | undefined {
     const socketId = this.userIdToSocketId.get(userId)
     if (!socketId) return undefined
@@ -135,21 +160,24 @@ export default class Ws {
 
   public getIo(): Server {
     if (!this.io) {
-      throw new Exception('Socket.IO server not booted.', { status: 500, code: 'E_WS_NOT_BOOTED' })
+      throw new Exception('Socket.IO server not booted.', {
+        status: 500,
+        code: 'E_WS_NOT_BOOTED',
+      })
     }
     return this.io
   }
 
-  // Допоміжний метод для приєднання до каналів
   private async joinUserToChannels(socket: AuthenticatedSocket, userId: string) {
-    // eslint-disable-next-line @unicorn/no-await-expression-member
-    const Member = (await import('#models/member')).default
     const memberships = await Member.query().where('userId', userId).preload('channel')
 
     memberships.forEach((member) => {
       if (member.channel && !member.isBanned) {
-        socket.join(member.channel.name)
+        socket.join(member.channel.id)
       }
     })
   }
 }
+
+// 👇 3. СТВОРЮЄМО І ЕКСПОРТУЄМО ЄДИНИЙ ЕКЗЕМПЛЯР
+export default new Ws()
