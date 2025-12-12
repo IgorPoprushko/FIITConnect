@@ -1,12 +1,19 @@
 import { io, type Socket } from 'socket.io-client';
 import type { ChatMessage } from 'src/types/messages';
+import type { ChannelVisual } from 'src/types/channels'; // Потрібно імпортувати ChannelVisual
 
 interface ServerToClientEvents {
   'channel:messageSent': (message: ChatMessage) => void;
   'chat:message': (message: ChatMessage) => void; // backward compatibility
   'channel:deleted': (payload: { channelId: string }) => void;
-  'channel:memberJoined': (payload: { channelId: string; userId: string; nickname?: string }) => void;
+  'channel:memberJoined': (payload: {
+    channelId: string;
+    userId: string;
+    nickname?: string;
+  }) => void;
   'channel:memberLeft': (payload: { channelId: string; userId: string; nickname?: string }) => void;
+  // ФІКС 1: Додаємо очікувану подію від бекенду
+  'channel:updated': (payload: { channel: ChannelVisual }) => void;
 }
 
 interface ClientToServerEvents {
@@ -60,11 +67,20 @@ class SocketService {
     this.socket?.on('channel:deleted', handler);
   }
 
-  onMemberJoined(handler: (payload: { channelId: string; userId: string; nickname?: string }) => void) {
+  // ФІКС 2: Додаємо новий метод обробки оновлення каналу
+  onChannelUpdated(handler: (payload: { channel: ChannelVisual }) => void) {
+    this.socket?.on('channel:updated', handler);
+  }
+
+  onMemberJoined(
+    handler: (payload: { channelId: string; userId: string; nickname?: string }) => void,
+  ) {
     this.socket?.on('channel:memberJoined', handler);
   }
 
-  onMemberLeft(handler: (payload: { channelId: string; userId: string; nickname?: string }) => void) {
+  onMemberLeft(
+    handler: (payload: { channelId: string; userId: string; nickname?: string }) => void,
+  ) {
     this.socket?.on('channel:memberLeft', handler);
   }
 

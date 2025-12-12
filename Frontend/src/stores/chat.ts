@@ -30,12 +30,17 @@ export const useChatStore = defineStore('chat', {
       if (!state.activeChannelId) return [];
       return state.messagesByChannel[state.activeChannelId] ?? [];
     },
+    // Додатковий геттер для активного каналу (корисний для відображення деталей)
+    activeChannel(state): ChannelVisual | undefined {
+      return state.channels.find((c) => c.id === state.activeChannelId);
+    },
   },
 
   actions: {
     async loadChannels() {
       this.loadingChannels = true;
       try {
+        // Тут ми припускаємо, що channelService.list повертає ChannelVisual[]
         this.channels = await channelService.list();
       } catch (error) {
         console.error('Failed to load channels', error);
@@ -51,12 +56,25 @@ export const useChatStore = defineStore('chat', {
       return channel;
     },
 
+    // Допоміжна функція для оновлення каналу в списку
+    updateChannel(updatedChannel: ChannelVisual) {
+      const index = this.channels.findIndex((c) => c.id === updatedChannel.id);
+      if (index !== -1) {
+        // Оновлюємо, зберігаючи порядок
+        this.channels.splice(index, 1, updatedChannel);
+      } else {
+        // Додаємо, якщо канал новий (наприклад, після запрошення)
+        this.channels.unshift(updatedChannel);
+      }
+    },
+
     setActiveChannel(channelId: string | null) {
       this.activeChannelId = channelId;
       if (channelId && !this.messagesByChannel[channelId]) {
         this.messagesByChannel[channelId] = [];
       }
       if (channelId) {
+        // Клієнт приєднується до кімнати на бекенді
         socketService.joinChannel(channelId);
       }
     },
@@ -66,10 +84,24 @@ export const useChatStore = defineStore('chat', {
       if (!auth.token || this.connected || this.connecting) return;
 
       this.connecting = true;
-      const socket = socketService.connect(auth.token);
+
+      socketService.connect(auth.token);
+
+      // 1. ПРИЙОМ НОВИХ ПОВІДОМЛЕНЬ
       socketService.onMessage((message: ChatMessage) => {
         this.appendMessage(mapChatMessageToDisplay(message));
+
+        // TODO: Логіка нотифікацій тут (перевірка visible/DND)
       });
+
+      // 2. ОНОВЛЕННЯ КАНАЛУ (наприклад, після запрошення, зміни опису, або оновлення lastMessage)
+      // ФІКС 1 & 2: Виправляємо 'any' та 'onChannelUpdated'
+      // Тепер TypeScript знає, що channel має тип ChannelVisual
+      socketService.onChannelUpdated(({ channel }) => {
+        this.updateChannel(channel);
+      });
+
+      // 3. ВИДАЛЕННЯ КАНАЛУ (через /quit або неактивність)
       socketService.onChannelDeleted(({ channelId }) => {
         this.channels = this.channels.filter((c) => c.id !== channelId);
         delete this.messagesByChannel[channelId];
@@ -77,29 +109,52 @@ export const useChatStore = defineStore('chat', {
           this.activeChannelId = null;
         }
       });
+
+      // 4. ПРИЄДНАННЯ/ВІДХОДЖЕННЯ КОРИСТУВАЧА
       socketService.onMemberJoined(({ channelId, userId, nickname }) => {
         console.debug('Member joined', { channelId, userId, nickname });
+        // TODO: Додати логіку для оновлення списку членів каналу
       });
+
       socketService.onMemberLeft(({ channelId, userId, nickname }) => {
         console.debug('Member left', { channelId, userId, nickname });
+        // TODO: Додати логіку для оновлення списку членів каналу
       });
-      socketService.onConnect(async () => {
+
+      // 5. ПІДКЛЮЧЕННЯ
+      socketService.onConnect(() => {
         this.connected = true;
         this.connecting = false;
-        // join all channels we know about
+
+        const joinChannelsAction = () => {
+          // ФІКС: socketService.joinUserChannels використовує channelIds, що є коректним
+          socketService.joinUserChannels(
+            auth.user?.id,
+            this.channels.map((c) => c.id),
+          );
+          if (this.activeChannelId) {
+            socketService.joinChannel(this.activeChannelId);
+          }
+        };
+
         if (!this.channels.length) {
-          await this.loadChannels();
-        }
-        socketService.joinUserChannels(auth.user?.id, this.channels.map((c) => c.id));
-        // ensure active channel joined as well
-        if (this.activeChannelId) {
-          socketService.joinChannel(this.activeChannelId);
+          void this.loadChannels()
+            .then(() => {
+              joinChannelsAction();
+            })
+            .catch((error) => {
+              console.error('Failed to load channels on connect:', error);
+            });
+        } else {
+          joinChannelsAction();
         }
       });
 
       socketService.onDisconnect(() => {
         this.connected = false;
       });
+
+      // TODO: Додати обробники для typing:start/stop/draft_update
     },
 
     disconnectSocket() {
@@ -111,9 +166,17 @@ export const useChatStore = defineStore('chat', {
     appendMessage(message: IMessage) {
       const bucket = (this.messagesByChannel[message.channelId] ||= []);
       bucket.push(message);
+
+      // Оновлюємо інформацію про останнє повідомлення у списку каналів (UX)
+      const channel = this.channels.find((c) => c.id === message.channelId);
+      if (channel) {
+        // Припускаємо, що message.date вже є об'єктом Date
+        channel.lastMessage = { content: message.text, sendAt: message.date };
+        // TODO: Збільшення unreadCount, якщо канал не активний
+      }
     },
 
-    async sendMessage(content: string) {
+    sendMessage(content: string) {
       if (!this.activeChannelId) return;
 
       const id =
@@ -133,11 +196,11 @@ export const useChatStore = defineStore('chat', {
       };
 
       this.appendMessage(optimisticMessage);
+      // Відправляємо повідомлення на бекенд
       socketService.sendMessage(this.activeChannelId, content);
     },
 
     hydrateMockMessages() {
-      // Keep a small local seed to avoid empty UI; remove once backend is connected
       const firstChannel = this.channels[0];
       if (!firstChannel) return;
       const demoChannelId = firstChannel.id;

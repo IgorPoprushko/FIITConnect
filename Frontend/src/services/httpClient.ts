@@ -1,8 +1,13 @@
 import { api } from 'boot/axios';
-import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
+import type {
+  AxiosInstance,
+  AxiosRequestConfig,
+  AxiosResponse,
+  InternalAxiosRequestConfig,
+  AxiosError, // Додали цей тип
+} from 'axios';
 import { useAuthStore } from 'src/stores/auth';
 
-// Shared axios instance with auth token injection
 class HttpClient {
   private client: AxiosInstance;
 
@@ -29,14 +34,17 @@ class HttpClient {
         console.info('[HTTP] Response:', response.status, response.config.url, response.data);
         return response;
       },
-      (error) => {
+      (error: AxiosError) => {
+        // ФІКС 1: Явно вказали тип AxiosError
         const { response, config } = error;
         console.error('[HTTP] Error:', config?.method?.toUpperCase(), config?.url, {
           status: response?.status,
           data: response?.data,
         });
-        return Promise.reject(error);
-      }
+
+        // Переконуємося, що ми повертаємо об'єкт помилки
+        return Promise.reject(error instanceof Error ? error : new Error(String(error)));
+      },
     );
   }
 
@@ -44,15 +52,13 @@ class HttpClient {
     return this.client;
   }
 
-  async get<T>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+  // ФІКС 2: Прибрали async, бо ми просто повертаємо Promise від axios
+  get<T>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
     return this.client.get<T>(url, config);
   }
 
-  async post<T>(
-    url: string,
-    data?: unknown,
-    config?: AxiosRequestConfig
-  ): Promise<AxiosResponse<T>> {
+  // ФІКС 3: Прибрали async тут теж
+  post<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
     return this.client.post<T>(url, data, config);
   }
 }

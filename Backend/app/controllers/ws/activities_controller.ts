@@ -1,37 +1,39 @@
 import { UserStatus } from '#enums/user_status'
 import Setting from '#models/setting'
-// import { inject } from '@adonisjs/core' // Прибираємо inject, бо не використовуємо конструктор для Ws
-import type { AuthenticatedSocket } from '#services/ws' // Імпортуємо тільки ТИП, це не викликає помилку
-import app from '@adonisjs/core/services/app'
+import type { AuthenticatedSocket } from '#services/ws'
 import Member from '#models/member'
 import { Exception } from '@adonisjs/core/exceptions'
 
-// @inject() // Прибираємо декоратор
 export default class ActivitiesController {
-  // Конструктор видаляємо або залишаємо пустим, щоб розірвати коло залежностей
-  // constructor(private ws: Ws) {}
-
   /**
-   * Отримуємо сервіс Ws динамічно, коли він дійсно потрібен.
-   * Це розриває циклічну залежність (Circular Dependency).
+   * Отримуємо сервіс Ws динамічно.
+   * Це розриває циклічну залежність.
    */
   private async getWs() {
-    // Імпортуємо файл тільки в момент виклику
-    const { default: Ws } = await import('#services/ws')
-    // Дістаємо вже готовий екземпляр з контейнера Adonis
-    return app.container.make(Ws)
+    // 👇 ГОЛОВНИЙ ФІКС ТУТ 👇
+    // Ми імпортуємо default export, який (завдяки минулому кроку) вже є ГОТОВИМ ОБ'ЄКТОМ (new Ws())
+    const { default: wsInstance } = await import('#services/ws')
+
+    // ❌ Було: return app.container.make(Ws) -> Це створювало клона!
+    // ✅ Стало: повертаємо сам імпортований об'єкт
+    return wsInstance
   }
 
+  // 👇 Цей метод викликав помилку, тепер буде працювати
   private async broadcastToSharedChannels(userId: string, event: string, payload: any) {
     const userMemberships = await Member.query().where('userId', userId).preload('channel')
 
-    // Отримуємо Ws тут
+    // Отримуємо живий, запущений екземпляр Ws
     const ws = await this.getWs()
+    // Тепер io існує, бо це той самий Ws, що запускався в server.ts
     const io = ws.getIo()
 
     userMemberships.forEach((member) => {
       if (member.channel) {
-        io.to(member.channel.name).emit(event, payload)
+        // io.to(...) працює ідеально
+        io.to(member.channel.id).emit(event, payload)
+        // Примітка: перевір, чи використовуєш ти channel.name чи channel.id для кімнат.
+        // У ws.ts ти робив socket.join(member.channel.id), тому тут краще теж .id
       }
     })
   }
@@ -98,7 +100,6 @@ export default class ActivitiesController {
         return
       }
 
-      // Не перезаписуємо DND статус при перепідключенні
       if (setting.status !== UserStatus.DND) {
         setting.status = UserStatus.ONLINE
         await setting.save()

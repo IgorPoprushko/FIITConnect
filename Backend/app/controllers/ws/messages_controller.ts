@@ -1,35 +1,37 @@
 import { inject } from '@adonisjs/core'
-import type { AuthenticatedSocket } from '#services/ws' // Імпортуємо тільки тип
+import type { AuthenticatedSocket } from '#services/ws'
 import MessageRepository from '#repositories/message_repository'
 import Channel from '#models/channel'
 import { Exception } from '@adonisjs/core/exceptions'
 import Member from '#models/member'
-import app from '@adonisjs/core/services/app'
+// import app from '@adonisjs/core/services/app' // ❌ Більше не потрібно
 
 @inject()
 export default class MessagesController {
-  constructor(
-    // private ws: Ws, // ВИДАЛЯЄМО з конструктора, щоб розірвати коло
-    private messageRepository: MessageRepository
-  ) {}
+  constructor(private messageRepository: MessageRepository) {}
 
   /**
-   * Динамічно отримуємо Ws сервіс
+   * FIX 1: Правильне отримання Ws (Singleton)
+   * Ми беремо готовий об'єкт, а не просимо створити новий.
    */
   private async getWs() {
-    const { default: Ws } = await import('#services/ws')
-    return app.container.make(Ws)
+    const { default: wsInstance } = await import('#services/ws')
+    return wsInstance
   }
 
   public async onNewMessage(
     socket: AuthenticatedSocket,
-    payload: { channelName: string; content: string }
+    // FIX 2: Приймаємо channelId, а не channelName
+    // Це логічніше, бо фронтенд шле саме ID
+    payload: { channelId: string; content: string }
   ) {
-    const { channelName, content } = payload
+    const { channelId, content } = payload
     const user = socket.user!
 
     try {
-      const channel = await Channel.findBy('name', channelName)
+      // FIX 3: Шукаємо канал по ID (Channel.find), а не по імені
+      const channel = await Channel.find(channelId)
+
       if (!channel) {
         throw new Exception('Channel not found', { status: 404 })
       }
@@ -49,14 +51,17 @@ export default class MessagesController {
         channelId: channel.id,
       })
 
-      // Отримуємо Ws тут
+      // FIX 4: Відправляємо в кімнату з ID каналу
+      // У ws.ts ми робили socket.join(channel.id), тому слати треба теж туди.
       const ws = await this.getWs()
-      ws.getIo().to(channelName).emit('message:new', newMessage)
+      ws.getIo().to(channel.id).emit('message:new', newMessage)
+
+      console.log(`[MSG] Sent to channel ${channel.name} (${channel.id})`)
     } catch (error) {
       console.error('Failed to create new message:', error)
       socket.emit('error', {
         message: error.message || 'Failed to send message.',
-        channelName,
+        channelId, // Повертаємо ID, щоб фронт знав, де помилка
       })
     }
   }
