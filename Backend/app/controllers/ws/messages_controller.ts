@@ -1,52 +1,63 @@
 import { inject } from '@adonisjs/core'
-import Ws from '#services/ws'
-import type { Socket } from 'socket.io'
-import type { CreateMessagePayload } from '#contracts/message_repository_contract'
+import type { AuthenticatedSocket } from '#services/ws' // Імпортуємо тільки тип
 import MessageRepository from '#repositories/message_repository'
+import Channel from '#models/channel'
+import { Exception } from '@adonisjs/core/exceptions'
+import Member from '#models/member'
 import app from '@adonisjs/core/services/app'
 
 @inject()
 export default class MessagesController {
-  private async getWsService(): Promise<Ws> {
+  constructor(
+    // private ws: Ws, // ВИДАЛЯЄМО з конструктора, щоб розірвати коло
+    private messageRepository: MessageRepository
+  ) {}
+
+  /**
+   * Динамічно отримуємо Ws сервіс
+   */
+  private async getWs() {
+    const { default: Ws } = await import('#services/ws')
     return app.container.make(Ws)
   }
 
-  private async getMessageRepository(): Promise<MessageRepository> {
-    return app.container.make(MessageRepository)
-  }
-
-  async onJoinChannel(socket: Socket, channelId: string, userId: string) {
-    const messageRepository = await this.getMessageRepository()
-
-    try {
-      const roomName = `channel:${channelId}`
-
-      await socket.join(roomName)
-      const history = await messageRepository.getHistory(channelId)
-      socket.emit('message:history', { channelId, history })
-
-      console.log(`User ${userId} joined room: ${roomName}`)
-    } catch (error) {
-      console.error('Failed to join channel:', error)
-      socket.emit('error', { error: 'Failed to join channel' })
-    }
-  }
-
-  async onNewMessage(socket: Socket, payload: CreateMessagePayload) {
-    const wsService = await this.getWsService()
-    const messageRepository = await this.getMessageRepository()
+  public async onNewMessage(
+    socket: AuthenticatedSocket,
+    payload: { channelName: string; content: string }
+  ) {
+    const { channelName, content } = payload
+    const user = socket.user!
 
     try {
-      const newMessage = await messageRepository.create(payload)
-      const roomName = `channel:${payload.channelId}`
-
-      if (roomName) {
-        wsService.io?.to(roomName).emit('message:new', newMessage)
-        console.log(`Message sent to room ${roomName} from user ${payload.userId}`)
+      const channel = await Channel.findBy('name', channelName)
+      if (!channel) {
+        throw new Exception('Channel not found', { status: 404 })
       }
+
+      const membership = await Member.query()
+        .where('userId', user.id)
+        .andWhere('channelId', channel.id)
+        .first()
+
+      if (!membership || membership.isBanned) {
+        throw new Exception('You are not an active member of this channel.', { status: 403 })
+      }
+
+      const newMessage = await this.messageRepository.create({
+        content,
+        userId: user.id,
+        channelId: channel.id,
+      })
+
+      // Отримуємо Ws тут
+      const ws = await this.getWs()
+      ws.getIo().to(channelName).emit('message:new', newMessage)
     } catch (error) {
       console.error('Failed to create new message:', error)
-      socket.emit('error', { error: 'Failed to create new message' })
+      socket.emit('error', {
+        message: error.message || 'Failed to send message.',
+        channelName,
+      })
     }
   }
 }

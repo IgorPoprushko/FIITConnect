@@ -46,7 +46,7 @@ router
     router.post('channels/:name/revoke', '#controllers/channels_controller.revokeUserFromChannel') //P
     router.post('channels/:name/kick', '#controllers/channels_controller.kickUserFromChannel') //P
     router.get('channels/:name/members', '#controllers/channels_controller.getChannelMembers') //P
-    router.get('channels/:name/messages', '#controllers/channels_controller.getChannelMessages') //P
+    router.get('channels/:name/messages', '#controllers/messages_controller.getHistory') //P
     router.post('channels/:name/messages', '#controllers/channels_controller.sendMessageToChannel') //P
   })
   .middleware([middleware.auth()])
