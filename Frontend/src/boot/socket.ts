@@ -2,7 +2,7 @@ import { boot } from 'quasar/wrappers';
 import type { Socket } from 'socket.io-client';
 import { io } from 'socket.io-client';
 import { useAuthStore } from 'src/stores/auth';
-import { useApi } from 'src/composables/server/useApi';
+import { channelService } from 'src/services/channelService';
 
 declare module '@vue/runtime-core' {
   interface ComponentCustomProperties {
@@ -11,7 +11,6 @@ declare module '@vue/runtime-core' {
 }
 
 export default boot(({ app }) => {
-  const api = useApi();
   const auth = useAuthStore();
 
   const socket: Socket = io('http://localhost:3333', {
@@ -25,7 +24,7 @@ export default boot(({ app }) => {
     if (!auth.isLoggedIn) return;
 
     try {
-      const channels = await api.getChannels();
+      const channels = await channelService.list();
       const channelIds = channels.map((c) => c.id);
 
       socket.emit('user:joinChannels', auth.user?.id, channelIds);

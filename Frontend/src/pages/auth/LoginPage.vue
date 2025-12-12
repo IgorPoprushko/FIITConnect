@@ -1,7 +1,6 @@
 <template>
-    <q-page class="flex flex-center fit" style="min-height:100vh; max-width: 500px;">
-        <q-card class="q-pa-xl column items-stretch justify-between"
-            style="max-width: 600px; width: 90%; border-radius: 15px;">
+    <q-page class="flex flex-center fit">
+        <q-card class="q-pa-xl column items-stretch justify-between">
 
             <!-- Header -->
             <div class="column items-center q-mb-md">
@@ -12,7 +11,7 @@
             <q-separator inset class="q-mb-lg" color="primary" />
 
             <!--Form: inputs and buttons-->
-            <q-form @submit.prevent="onSubmit" class="colunm q-gutter-md">
+            <q-form @submit.prevent="onSubmit" class="column q-gutter-md">
                 <q-input v-model="email" color="accent" filled label="Email address" type="email" dense
                     :rules="[rules.required, rules.email]">
                     <template v-slot:prepend><q-icon name="mail" /></template>
@@ -26,10 +25,10 @@
                     </template>
                 </q-input>
                 <div class="column q-gutter-sm q-mt-md">
-                    <p v-if="error" class="text-negative">Wrong Email or Pasword</p>
+                    <p v-if="errorMessage" class="text-negative">{{ errorMessage }}</p>
                     <q-btn label="Log In" color="accent" unelevated class="q-mt-md full-width text-weight-bold"
                         type="submit" :loading="loading" />
-                    <q-btn label="Sing Up" color="accent" flat class="full-width" @click="goToRegister" />
+                    <q-btn label="Sign Up" color="accent" flat class="full-width" @click="goToRegister" />
                 </div>
             </q-form>
         </q-card>
@@ -40,9 +39,7 @@
 import { useRouter } from 'vue-router';
 import { ref } from 'vue';
 import { rules } from 'src/components/rules/rules';
-
-import { useApi } from 'src/composables/server/useApi';
-const { login } = useApi();
+import { authService } from 'src/services/authService';
 // States
 const router = useRouter();
 const passVisible = ref(true);
@@ -52,17 +49,17 @@ const password = ref('');
 
 const logo = 'img:src/assets/image/logo.svg'
 
-// Submit handler   
+// Submit handler
 const loading = ref(false)
-const error = ref(false)
+const errorMessage = ref('')
 const onSubmit = async () => {
-    error.value = false
+    errorMessage.value = ''
     try {
-        await login(email.value, password.value);
+        await authService.login(email.value, password.value);
         await router.push('chat');
     } catch (err) {
-        error.value = true
-        console.error(err)
+        errorMessage.value = 'Wrong email or password';
+        console.error('Login failed', err)
     }
 };
 

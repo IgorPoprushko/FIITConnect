@@ -1,91 +1,142 @@
 <template>
-    <q-layout view="lHh Lpr lFf">
-
-        <!-- HEADER -->
-        <q-header>
-            <q-toolbar>
-
-                <q-btn icon="menu" flat dense round @click="chatDrawer = !chatDrawer" />
-                <q-toolbar-title>FIITConnect</q-toolbar-title>
-                <q-btn icon="info" flat dense round @click="toggleChatDrawer" />
+    <q-layout view="lHr LpR lFr">
+        <q-drawer v-model="groupDrawer" side="left" show-if-above bordered class="q-pa-sm">
+            <!-- HEADER -->
+            <q-toolbar class="q-pa-none justify-between">
+                <q-btn outline rounded color="secondary" class="text-bold" :label="auth.nickname"
+                    @click="profileDialog.open()" />
+                <q-btn round flat dense icon="mail" class="q-ml-xs" />
             </q-toolbar>
-        </q-header>
 
-        <!-- SINGLE LEFT DRAWER -->
-        <q-drawer v-model="chatDrawer" show-if-above side="left" :width="isMobile ? $q.screen.width : 390"
-            :overlay="isMobile" :behavior="isMobile ? 'mobile' : 'desktop'" bordered swipe-close
-            :class="isMobile ? 'bg-primary row no-wrap' : 'row no-wrap'" :style="isMobile ? 'max-width: 100vw' : ''">
-            <!-- LEFT SECTION (Mini Drawer) -->
-            <div class="mini-drawer">
-                <q-scroll-area class="fit" :horizontal-offset="[0, 2]">
-                    <q-item clickable v-ripple>
-                        <q-avatar size="48px">
-                            <img :src="`https://picsum.photos/seed/left-0/64/64`" :alt="`Picture 0`" />
-                        </q-avatar>
-                        <q-tooltip anchor="center right" self="center left" :offset="[-10, 0]">
-                            All Chats
-                        </q-tooltip>
-                    </q-item>
+            <!-- SEARCH -->
+            <q-toolbar class="q-pa-none">
+                <!-- Search input -->
+                <q-input rounded standout dense clearable placeholder="Search" v-model="search" class="fit text-accent">
+                    <template v-slot:append>
+                        <q-icon name="search" color="secondary" />
+                    </template>
+                </q-input>
+                <q-btn round flat dense icon="add" class="q-ml-xs" @click="createDialog.open()" />
+            </q-toolbar>
 
-                    <q-separator spaced />
+            <q-separator />
 
-                    <q-item v-for="i in 20" :key="'left-' + i" clickable v-ripple>
-                        <q-avatar size="48px">
-                            <img :src="`https://picsum.photos/seed/left-${i}/64/64`" :alt="`Picture ${i}`" />
-                        </q-avatar>
-                        <q-tooltip anchor="center right" self="center left" :offset="[-10, 0]">
-                            Picture{{ i }}
-                        </q-tooltip>
-                    </q-item>
-                </q-scroll-area>
-            </div>
+            <!--Groups-->
+            <q-list>
+                <GroupItem v-for="group in filteredGroups" :key="group.id" clickable :group-data="group"
+                    @select="selectChannel(group.id)" />
+            </q-list>
+        </q-drawer>
 
-            <q-separator vertical />
+        <q-footer class="q-pa-none">
+            <MessageInput :channel-type="activeChannel?.type ?? ChannelType.PUBLIC" @send="handleSend" />
+        </q-footer>
 
-            <!-- RIGHT SECTION (Main Drawer) -->
-            <div class="main-drawer q-px-md">
-                <!-- HEADER (fixed at top) -->
-                <q-toolbar class="column q-pa-md">
-                    <h6>Private Messages</h6>
-
-                    <!-- Search input -->
-                    <q-input rounded standout dense clearable placeholder="Search" v-model="search"
-                        class="fit text-accent">
+        <FormDialog v-model="createDialog.isOpen.value" title="Create Channel" confirm-color="secondary"
+            description="Create a new channel to start chatting with others" confirm-label="Create"
+            :loading="createDialog.loading.value" :disable-confirm="!createForm.name.trim()" @confirm="submitCreate"
+            @cancel="closeCreate" @close="closeCreate">
+            <template #content>
+                <q-form class="column q-gutter-md">
+                    <q-input v-model="createForm.name" label="Channel Name" color="secondary" dense outlined required
+                        :rules="[val => !!val?.trim() || 'Name is required']">
                         <template v-slot:prepend>
-                            <q-icon name="search" color="accent" />
+                            <q-icon name="tag" />
                         </template>
                     </q-input>
-                </q-toolbar>
 
-                <q-separator />
+                    <q-input v-model="createForm.description" label="Description (optional)" type="textarea"
+                        color="secondary" autogrow dense outlined rows="2" max-rows="4">
+                        <template v-slot:prepend>
+                            <q-icon name="description" />
+                        </template>
+                    </q-input>
 
-                <!-- CHAT LIST (scrollable) -->
-                <q-scroll-area style="flex: 1 1 auto;">
-                    <q-item v-for="n in 20" :key="n" clickable class="chat-item">
-                        <!-- LEFT SIDE: avatar + text -->
-                        <div class="row items-center no-wrap">
-                            <q-avatar size="40px" class="q-mr-sm">
-                                <q-icon name="person" />
-                                <q-badge class="online-badge" v-if="n % 3 != 1" />
-                            </q-avatar>
+                    <q-select v-model="createForm.type" :options="channelTypeOptions" label="Channel Type"
+                        color="secondary" dense outlined emit-value map-options>
+                        <template v-slot:prepend>
+                            <q-icon name="visibility" />
+                        </template>
+                    </q-select>
+                </q-form>
+            </template>
+        </FormDialog>
 
-                            <div class="column">
-                                <div class="text-body">Random name</div>
-                                <div class="text-caption ellipsis" style="max-width: 160px;">
-                                    Message which was sended...
-                                </div>
+        <FormDialog v-model="profileDialog.isOpen.value" title="User Profile" confirm-color="secondary"
+            confirm-label="Apply" :loading="profileDialog.loading.value" :disable-confirm="checkChange()"
+            @confirm="submitProfile" @cancel="closeProfile" @close="closeProfile">
+            <template #content>
+                <div class="column q-gutter-md">
+                    <!-- Profile Header with nickname and status -->
+                    <div class="column q-gutter-sm q-pb-md">
+                        <div class="text-h4 text-weight-bold">{{ profileForm.nickname }}</div>
+
+                        <div class="row items-center justify-between">
+                            <!-- Status indicator -->
+                            <div class="row items-center q-gutter-xs">
+                                <q-icon name="circle" :color="getStatusColor(curentStatus)" size="12px" />
+                                <span class="text-caption text-grey-7">{{ curentStatus }}</span>
+                            </div>
+
+                            <!-- Dates -->
+                            <div class="column items-end">
+                                <span class="text-caption text-grey-6">Created: {{ profileForm.createdAt }}</span>
+                                <span class="text-caption text-grey-6">Updated: {{ profileForm.updatedAt }}</span>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- RIGHT SIDE: time + unread badge -->
-                        <div class="column items-end justify-center">
-                            <div class="text-caption">4:10</div>
-                            <q-badge class="notification-badge" v-if="n > 6 && n < 10" :label="n % 3 + 3" />
+                    <q-separator />
+
+                    <!-- Profile Form -->
+                    <q-form class="column q-gutter-md q-pt-sm">
+                        <q-input v-model="profileForm.firstName" label="First Name" dense outlined color="secondary">
+                            <template v-slot:prepend>
+                                <q-icon name="person" color="secondary" />
+                            </template>
+                        </q-input>
+
+                        <q-input v-model="profileForm.lastName" label="Last Name" dense outlined color="secondary">
+                            <template v-slot:prepend>
+                                <q-icon name="person" color="secondary" />
+                            </template>
+                        </q-input>
+
+                        <q-input v-model="profileForm.email" label="Email" type="email" dense outlined
+                            color="secondary">
+                            <template v-slot:prepend>
+                                <q-icon name="email" color="secondary" />
+                            </template>
+                        </q-input>
+
+                        <q-select v-model="profileForm.status" :options="statusOptions" label="Status" dense outlined
+                            color="secondary" emit-value map-options>
+                            <template v-slot:prepend>
+                                <q-icon name="circle" :color="getStatusColor(profileForm.status)" />
+                            </template>
+                            <template v-slot:option="scope">
+                                <q-item v-bind="scope.itemProps">
+                                    <q-item-section avatar>
+                                        <q-icon name="circle" :color="getStatusColor(scope.opt.value)" size="12px" />
+                                    </q-item-section>
+                                    <q-item-section>
+                                        <q-item-label>{{ scope.opt.label }}</q-item-label>
+                                    </q-item-section>
+                                </q-item>
+                            </template>
+                        </q-select>
+
+                        <q-separator />
+                        <div class="justify-between row">
+                            <span class="content-center">Direct Notifications Only</span>
+                            <q-toggle v-model="profileForm.directNotificationsOnly" color="secondary" />
                         </div>
-                    </q-item>
-                </q-scroll-area>
-            </div>
-        </q-drawer>
+                        <q-btn outline rounded dense color="negative" label="Logout" class="text-h6 text-bold"
+                            @click="handleLogout" />
+                    </q-form>
+                </div>
+            </template>
+        </FormDialog>
 
         <!-- MAIN CONTENT -->
         <q-page-container>
@@ -96,16 +147,179 @@
 </template>
 
 <script setup lang="ts">
-import { useQuasar } from 'quasar'
-import { useChatDrawer } from 'src/composables/useChatDrawer';
-import { computed, ref } from 'vue'
-const { toggleChatDrawer } = useChatDrawer()
+import { ref, reactive, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router';
+import GroupItem from 'components/GroupItem.vue'
+import FormDialog from 'src/components/FormDialog.vue'
+import { useFormDialog } from 'src/composables/useFormDialog'
+import type { CreateChannelPayload } from 'src/types/channels'
+import { ChannelType } from 'src/types/channels'
+import { useAuthStore } from 'src/stores/auth'
+import { useChatStore } from 'src/stores/chat'
+import type { UserPayload } from 'src/types/user'
+import MessageInput from 'src/components/MessageInput.vue'
+import { authService } from 'src/services/authService'
 
-const $q = useQuasar()
-const chatDrawer = ref(false)
-const isMobile = computed(() => $q.screen.lt.sm)
-
+const router = useRouter();
+const groupDrawer = ref(false);
+const auth = useAuthStore();
+const chat = useChatStore();
 const search = ref<string>('')
-</script>
+const activeChannel = computed(() => chat.channels.find((c) => c.id === chat.activeChannelId) || null)
 
-<style lang="scss" src="../css/chat-layout.scss"></style>
+const filteredGroups = computed(() =>
+    chat.channels
+        .filter((c) => c.name.toLowerCase().includes(search.value.toLowerCase()))
+        .map((c) => ({
+            id: c.id,
+            name: c.name,
+            lastMessage: c.lastMessage?.content ?? '',
+            lastTime: c.lastMessage?.sendAt
+                ? new Date(c.lastMessage.sendAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                : '',
+            unreadCount: c.newMessagesCount,
+        }))
+);
+
+//#region Create channel dialog
+const createDialog = useFormDialog();
+const createForm = reactive<CreateChannelPayload>({ name: '', description: '', type: 0 });
+
+const channelTypeOptions = [
+    { label: 'Public', value: 0 },
+    { label: 'Private', value: 1 }
+];
+
+onMounted(async () => {
+    await chat.loadChannels();
+    chat.connectSocket();
+    if (!chat.activeChannelId) {
+        const firstChannel = chat.channels.at(0);
+        if (firstChannel) {
+            chat.setActiveChannel(firstChannel.id);
+        }
+    }
+    if (!chat.activeMessages.length) {
+        chat.hydrateMockMessages();
+    }
+});
+
+function selectChannel(channelId: string) {
+    chat.setActiveChannel(channelId);
+    router.push(`/chat/${channelId}`);
+}
+
+const handleSend = async (text: string) => {
+    await chat.sendMessage(text);
+};
+
+function closeCreate() {
+    createDialog.close();
+    createForm.name = ''
+    createForm.description = ''
+    createForm.type = 0
+}
+
+async function submitCreate() {
+    if (createForm.name.trim().length === 0) return
+
+    createDialog.setLoading(true)
+    try {
+        const channel = await chat.createChannel(createForm)
+        chat.setActiveChannel(channel.id)
+        await router.push(`/chat/${channel.id}`)
+        closeCreate();
+    }
+    catch (err) {
+        console.error('Failed to create channel', err)
+    }
+    finally {
+        createDialog.setLoading(false)
+    }
+}
+//#endregion
+
+//#region User profile dialog
+const profileDialog = useFormDialog();
+const statusMap: Record<number, string> = {
+    1: 'Online',
+    2: 'DND',
+    3: 'Offline'
+}
+
+const curentStatus = String(statusMap[auth.settings?.status ?? 1] ?? 'Online')
+const profileForm = reactive<UserPayload>({
+    email: auth.user?.email ?? '',
+    firstName: auth.user?.firstName ?? '',
+    lastName: auth.user?.lastName ?? '',
+    nickname: auth.user?.nickname ?? '',
+    status: curentStatus,
+    createdAt: auth.user?.createdAt ? new Date(auth.user.createdAt).toDateString() : "",
+    updatedAt: auth.user?.updatedAt ? new Date(auth.user.updatedAt).toDateString() : "",
+    directNotificationsOnly: auth.settings?.directNotificationsOnly ?? false
+});
+
+console.log(auth.user?.createdAt);
+
+const statusOptions = [
+    { label: 'Online', value: 'Online' },
+    { label: 'DND', value: 'DND' },
+    { label: 'Offline', value: 'Offline' }
+]
+
+function getStatusColor(status?: string): string {
+    switch (status) {
+        case 'Online':
+            return 'green'
+        case 'DND':
+            return 'red'
+        case 'Offline':
+            return 'grey'
+        default:
+            return 'grey'
+    }
+}
+
+function checkChange() {
+    if (profileForm.email != (auth.user?.email ?? '') ||
+        profileForm.firstName != (auth.user?.firstName ?? '') ||
+        profileForm.lastName != (auth.user?.lastName ?? '') ||
+        profileForm.status != curentStatus ||
+        profileForm.directNotificationsOnly != (auth.settings?.directNotificationsOnly ?? false)) {
+        return false;
+    }
+    return true;
+}
+
+function closeProfile() {
+    profileDialog.close();
+    profileForm.email = auth.user?.email ?? '';
+    profileForm.firstName = auth.user?.firstName ?? '';
+    profileForm.lastName = auth.user?.lastName ?? '';
+    profileForm.nickname = auth.user?.nickname ?? '';
+    profileForm.status = curentStatus;
+    profileForm.createdAt = auth.user?.createdAt ? new Date(auth.user.createdAt).toDateString() : "";
+    profileForm.updatedAt = auth.user?.updatedAt ? new Date(auth.user.updatedAt).toDateString() : "";
+    profileForm.directNotificationsOnly = auth.settings?.directNotificationsOnly ?? false;
+}
+
+async function submitProfile() {
+    if (profileForm.email != (auth.user?.email ?? '') ||
+        profileForm.firstName != (auth.user?.firstName ?? '') ||
+        profileForm.lastName != (auth.user?.lastName ?? '')) {
+        console.log("Change Info");
+    } else if (profileForm.status != curentStatus) {
+        console.log("Change Status");
+    } else if (profileForm.directNotificationsOnly != (auth.settings?.directNotificationsOnly ?? false)) {
+        console.log("Change Notification");
+    }
+    closeProfile();
+}
+//#endregion
+
+const handleLogout = async () => {
+    await authService.logout();
+    chat.disconnectSocket();
+    await router.push('/login');
+};
+</script>

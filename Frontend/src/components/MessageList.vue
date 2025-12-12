@@ -30,7 +30,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue';
+import { ref, onMounted, nextTick, computed, watch } from 'vue';
 import MessageBubble from './MessageBubble.vue';
 import { type IMessage, type DoneFunction } from 'src/types/messages';
 import { QScrollArea } from 'quasar';
@@ -38,20 +38,25 @@ import { QScrollArea } from 'quasar';
 interface Props {
   messages: IMessage[];
 }
-const progs = defineProps<Props>();
-const messages = progs.messages;
-const currentMessages: IMessage[] = [];
+const props = defineProps<Props>();
+const messages = computed<IMessage[]>(() => props.messages || []);
+const currentMessages = ref<IMessage[]>([]);
 
 const scrollAreaRef = ref<InstanceType<typeof QScrollArea> | null>(null);
 
 function onLoad(index: number, done: DoneFunction) {
   setTimeout(() => {
-    const end = messages.length - currentMessages.length;
-    if (end == 0) done(true);
+    const allMessages = messages.value;
+    const loadedCount = currentMessages.value.length;
+    const end = allMessages.length - loadedCount;
+    if (end <= 0) {
+      done(true);
+      return;
+    }
     const start = Math.max(end - 5, 0);
 
-    const loadingMessages = messages.slice(start, end);
-    currentMessages.unshift(...loadingMessages);
+    const loadingMessages = allMessages.slice(start, end);
+    currentMessages.value.unshift(...loadingMessages);
     done();
   }, 1500);
 }
@@ -73,6 +78,15 @@ const scrollToBottom = () => {
 defineExpose({
   scrollToBottom,
 });
+
+watch(
+  () => messages.value.length,
+  async () => {
+    currentMessages.value = [...messages.value.slice(-20)];
+    await nextTick();
+    scrollToBottom();
+  }
+);
 </script>
 
 <style scoped>
