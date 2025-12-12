@@ -2,19 +2,26 @@ import { io, type Socket } from 'socket.io-client';
 import type { ChatMessage } from 'src/types/messages';
 
 interface ServerToClientEvents {
-  'chat:message': (message: ChatMessage) => void;
+  'channel:messageSent': (message: ChatMessage) => void;
+  'chat:message': (message: ChatMessage) => void; // backward compatibility
+  'channel:deleted': (payload: { channelId: string }) => void;
+  'channel:memberJoined': (payload: { channelId: string; userId: string; nickname?: string }) => void;
+  'channel:memberLeft': (payload: { channelId: string; userId: string; nickname?: string }) => void;
 }
 
 interface ClientToServerEvents {
   'chat:send': (payload: { channelId: string; content: string }) => void;
   'chat:join': (payload: { channelId: string }) => void;
   'chat:leave': (payload: { channelId: string }) => void;
+  'user:joinChannels': (userId: string | undefined, channelIds: string[]) => void;
 }
 
 class SocketService {
   private socket: Socket<ServerToClientEvents, ClientToServerEvents> | null = null;
   private readonly url =
-    import.meta.env.VITE_WS_URL || import.meta.env.VITE_API_URL || 'http://localhost:3333';
+    import.meta.env.VITE_WS_URL ||
+    import.meta.env.VITE_API_URL ||
+    (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3333');
 
   connect(token: string) {
     if (this.socket) {
@@ -22,8 +29,10 @@ class SocketService {
     }
 
     this.socket = io(this.url, {
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'],
       auth: { token },
+      path: '/ws',
+      withCredentials: true,
     });
 
     return this.socket;
@@ -34,8 +43,29 @@ class SocketService {
     this.socket = null;
   }
 
+  onConnect(handler: () => void) {
+    this.socket?.on('connect', handler);
+  }
+
+  onDisconnect(handler: () => void) {
+    this.socket?.on('disconnect', handler);
+  }
+
   onMessage(handler: (message: ChatMessage) => void) {
+    this.socket?.on('channel:messageSent', handler);
     this.socket?.on('chat:message', handler);
+  }
+
+  onChannelDeleted(handler: (payload: { channelId: string }) => void) {
+    this.socket?.on('channel:deleted', handler);
+  }
+
+  onMemberJoined(handler: (payload: { channelId: string; userId: string; nickname?: string }) => void) {
+    this.socket?.on('channel:memberJoined', handler);
+  }
+
+  onMemberLeft(handler: (payload: { channelId: string; userId: string; nickname?: string }) => void) {
+    this.socket?.on('channel:memberLeft', handler);
   }
 
   sendMessage(channelId: string, content: string) {
@@ -44,6 +74,10 @@ class SocketService {
 
   joinChannel(channelId: string) {
     this.socket?.emit('chat:join', { channelId });
+  }
+
+  joinUserChannels(userId: string | undefined, channelIds: string[]) {
+    this.socket?.emit('user:joinChannels', userId, channelIds);
   }
 
   leaveChannel(channelId: string) {

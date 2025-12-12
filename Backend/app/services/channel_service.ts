@@ -54,6 +54,7 @@ export default class ChannelService {
     channelName: string,
     isPrivate: boolean
   ): Promise<{ channel: Channel; wasCreated: boolean }> {
+    console.info('[CHANNEL][findOrCreate:start]', { userId: user.id, channelName, isPrivate })
     const standardizedChannelName = channelName.toLowerCase().trim()
     if (!standardizedChannelName) {
       throw new Exception('Channel name cannot be empty.', { status: 400 })
@@ -99,6 +100,7 @@ export default class ChannelService {
    * Якщо виходить власник (адмін) -> канал видаляється.
    */
   public async leaveOrDeleteChannel({ user, channelName }: LeaveChannelDTO): Promise<LeaveResult> {
+    console.info('[CHANNEL][leaveOrDelete:start]', { userId: user.id, channelName })
     const channel = await Channel.findByOrFail('name', channelName)
     const membership = await Member.query()
       .where('userId', user.id)
@@ -112,9 +114,11 @@ export default class ChannelService {
     // Якщо власник виходить, канал видаляється
     if (channel.ownerUserId === user.id) {
       await channel.delete()
+      console.info('[CHANNEL][leaveOrDelete] deleted channel', { channelId: channel.id })
       return { wasDeleted: true, leaver: user }
     } else {
       await membership.delete()
+      console.info('[CHANNEL][leaveOrDelete] left channel', { channelId: channel.id })
       return { wasDeleted: false, leaver: user }
     }
   }
@@ -124,6 +128,7 @@ export default class ChannelService {
     inviteeNickName,
     channelName,
   }: InviteUserDTO): Promise<{ channel: Channel; invitee: User }> {
+    console.info('[CHANNEL][inviteUser]', { inviter: inviter.id, inviteeNickName, channelName })
     const channel = await Channel.findBy('name', channelName)
     if (!channel) {
       throw new Exception('Channel not found.', { status: 404 })

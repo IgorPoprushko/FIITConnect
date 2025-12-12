@@ -9,6 +9,7 @@ export default class AuthController {
     // Get validated data
     const payload = (await request.validateUsing(registerValidator)) as RegisterPayload
     const passwordHash = payload.password
+    console.info('[AUTH][register] payload', { email: payload.email, nickname: payload.nickname })
 
     const user = await User.create({
       firstName: payload.first_name,
@@ -28,6 +29,7 @@ export default class AuthController {
     // Create access token for the user
     const token = await User.accessTokens.create(user)
 
+    console.info('[AUTH][register] created user', { id: user.id, email: user.email })
     return response.created({
       user: user.serialize(),
       token: token,
@@ -41,8 +43,10 @@ export default class AuthController {
       const user = await User.verifyCredentials(email, password)
       await user.load('setting')
       const token = await User.accessTokens.create(user)
+      console.info('[AUTH][login] success', { id: user.id, email: user.email })
       return response.ok({ user, token } as AuthResponse)
     } catch (e) {
+      console.warn('[AUTH][login] failed', { email })
       return response.badRequest({ errors: [{ message: 'Invalid email or password' }] })
     }
   }

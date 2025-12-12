@@ -70,16 +70,34 @@ export const useChatStore = defineStore('chat', {
       socketService.onMessage((message: ChatMessage) => {
         this.appendMessage(mapChatMessageToDisplay(message));
       });
-
-      socket.on('connect', () => {
+      socketService.onChannelDeleted(({ channelId }) => {
+        this.channels = this.channels.filter((c) => c.id !== channelId);
+        delete this.messagesByChannel[channelId];
+        if (this.activeChannelId === channelId) {
+          this.activeChannelId = null;
+        }
+      });
+      socketService.onMemberJoined(({ channelId, userId, nickname }) => {
+        console.debug('Member joined', { channelId, userId, nickname });
+      });
+      socketService.onMemberLeft(({ channelId, userId, nickname }) => {
+        console.debug('Member left', { channelId, userId, nickname });
+      });
+      socketService.onConnect(async () => {
         this.connected = true;
         this.connecting = false;
+        // join all channels we know about
+        if (!this.channels.length) {
+          await this.loadChannels();
+        }
+        socketService.joinUserChannels(auth.user?.id, this.channels.map((c) => c.id));
+        // ensure active channel joined as well
         if (this.activeChannelId) {
           socketService.joinChannel(this.activeChannelId);
         }
       });
 
-      socket.on('disconnect', () => {
+      socketService.onDisconnect(() => {
         this.connected = false;
       });
     },

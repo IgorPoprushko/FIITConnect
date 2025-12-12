@@ -17,8 +17,27 @@ class HttpClient {
       if (auth.token && config.headers) {
         config.headers.Authorization = `Bearer ${auth.token}`;
       }
+      console.info('[HTTP] Request:', config.method?.toUpperCase(), config.url, {
+        params: config.params,
+        data: config.data,
+      });
       return config;
     });
+
+    this.client.interceptors.response.use(
+      (response) => {
+        console.info('[HTTP] Response:', response.status, response.config.url, response.data);
+        return response;
+      },
+      (error) => {
+        const { response, config } = error;
+        console.error('[HTTP] Error:', config?.method?.toUpperCase(), config?.url, {
+          status: response?.status,
+          data: response?.data,
+        });
+        return Promise.reject(error);
+      }
+    );
   }
 
   get instance(): AxiosInstance {

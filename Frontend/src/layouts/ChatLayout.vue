@@ -166,10 +166,12 @@ const auth = useAuthStore();
 const chat = useChatStore();
 const search = ref<string>('')
 const activeChannel = computed(() => chat.channels.find((c) => c.id === chat.activeChannelId) || null)
+const normalizedSearch = computed(() => search.value.toLowerCase().trim())
 
 const filteredGroups = computed(() =>
     chat.channels
-        .filter((c) => c.name.toLowerCase().includes(search.value.toLowerCase()))
+        .filter((c): c is typeof c => Boolean(c && c.name))
+        .filter((c) => c.name.toLowerCase().includes(normalizedSearch.value))
         .map((c) => ({
             id: c.id,
             name: c.name,
