@@ -20,9 +20,9 @@ export interface MessageSentPayload {
   content: string
 }
 export interface GetMessagesPayload {
-  limit?: number // Кількість елементів на сторінці (необов'язковий, за замовчуванням 50)
-  beforeTime?: string // Мітка часу (createdAt) найстарішого повідомлення, яке зараз відображається.
-  beforeId?: number | string // ID найстарішого повідомлення, яке зараз відображається. Використовується як вирішувач нічиєї.
+  limit?: number
+  beforeTime?: string
+  beforeId?: string
 }
 
 // *** Types ***
