@@ -52,13 +52,6 @@ export default class Ws {
       console.log(`Socket disconnected: ${socket.id}`)
     })
 
-    socket.on(
-      'message:join:place',
-      (payload: { placeId: string; placeType: 'chat' | 'channel'; userId: string }) => {
-        messagesController.onJoinPlace(socket, payload.placeId, payload.placeType, payload.userId)
-      }
-    )
-
     socket.on('message:new', (payload: CreateMessagePayload) => {
       messagesController.onNewMessage(socket, payload)
     })

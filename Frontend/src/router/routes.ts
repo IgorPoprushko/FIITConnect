@@ -11,16 +11,17 @@ const routes: RouteRecordRaw[] = [
     component: () => import('layouts/AuthLayout.vue'),
     children: [
       { path: 'login', component: () => import('pages/auth/LoginPage.vue') },
-      { path: 'register', component: () => import('pages/auth/RegisterPage.vue') }],
+      { path: 'register', component: () => import('pages/auth/RegisterPage.vue') },
+    ],
 
-    beforeEnter: (to, from, next) => {
-      const auth = useAuthStore();
-      if (auth.isLoggedIn) {
-        next({ path: '/chat' });
-      } else {
-        next();
-      }
-    }
+    // beforeEnter: (to, from, next) => {
+    //   const auth = useAuthStore();
+    //   if (auth.isLoggedIn) {
+    //     next({ path: '/chat' });
+    //   } else {
+    //     next();
+    //   }
+    // },
   },
   {
     path: '/chat',
@@ -35,8 +36,8 @@ const routes: RouteRecordRaw[] = [
       {
         path: ':channelId',
         component: () => import('pages/chat/MainPage_new.vue'),
-        name: 'chat-channel'
-      }
+        name: 'chat-channel',
+      },
     ],
 
     beforeEnter: (to, from, next) => {
@@ -46,9 +47,8 @@ const routes: RouteRecordRaw[] = [
       } else {
         next({ path: '/login' });
       }
-    }
+    },
   },
-
 
   // Always leave this as last one,
   // but you can also remove it
