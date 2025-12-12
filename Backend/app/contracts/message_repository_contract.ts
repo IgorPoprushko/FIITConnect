@@ -11,11 +11,12 @@ export type SerializedMessage = {
   content: string
   userId: string
   channelId: string
-  replyToMsgId: string | null
+  replyToMsgId?: string | null
   isDeleted: boolean
   createdAt: string
 
   user: SerializedUser
+  mentionedUserIds?: number[]
 }
 
 export type CreateMessagePayload = {

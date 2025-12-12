@@ -1,15 +1,50 @@
-import {
-  CreateMessagePayload,
-  MessageRepositoryContract,
-  SerializedMessage,
-} from '#contracts/message_repository_contract'
 import Message from '#models/message'
 import { UserStatus } from '#enums/user_status'
+import User from '#models/user'
 
-export default class MessageRepository implements MessageRepositoryContract {
-  private serializeMessage(message: Message): SerializedMessage {
+// --- Визначаємо типи прямо тут, щоб не залежати від зовнішніх файлів ---
+
+export interface CreateMessagePayload {
+  content: string
+  userId: string
+  channelId: string
+  replyToMsgId?: string | null
+}
+
+export interface SerializedMessage {
+  id: string
+  content: string
+  userId: string
+  channelId: string
+  replyToMsgId: string | null
+  isDeleted: boolean
+  createdAt: string
+  user: {
+    id: string
+    nickname: string
+    status: UserStatus
+  }
+  // ВИПРАВЛЕНО: string[], бо ID у нас UUID
+  mentionedUserIds: string[]
+}
+
+export default class MessageRepository {
+  private async serializeMessage(message: Message): Promise<SerializedMessage> {
     const user = message.user!
-    const setting = user.setting!
+    // Якщо налаштування не завантажені (раптом), беремо дефолт
+    const setting = user.setting
+
+    // Парсинг згадувань (@nickname)
+    const mentionRegex = /@([a-zA-Z0-9_]+)/g
+    const mentionedNicknames = [...message.content.matchAll(mentionRegex)].map((match) => match[1])
+
+    let mentionedUserIds: string[] = [] // ВИПРАВЛЕНО: Тип string[]
+
+    if (mentionedNicknames.length > 0) {
+      // ВИПРАВЛЕНО: 'nickname' (маленькими), як у моделі User
+      const mentionedUsers = await User.query().whereIn('nickname', mentionedNicknames)
+      mentionedUserIds = mentionedUsers.map((u) => u.id)
+    }
 
     return {
       id: message.id,
@@ -18,13 +53,16 @@ export default class MessageRepository implements MessageRepositoryContract {
       channelId: message.channelId,
       replyToMsgId: message.replyToMsgId,
       isDeleted: message.isDeleted,
-      createdAt: message.createdAt!.toISO()!,
+      // toISO() може повернути null, тому страхуємось
+      createdAt: message.createdAt?.toISO() || new Date().toISOString(),
 
       user: {
         id: user.id,
         nickname: user.nickname,
-        status: setting.status as UserStatus,
+        // Якщо статус не знайдено, вважаємо офлайн
+        status: setting ? setting.status : UserStatus.OFFLINE,
       },
+      mentionedUserIds,
     }
   }
 
@@ -37,24 +75,34 @@ export default class MessageRepository implements MessageRepositoryContract {
       isDeleted: false,
     })
 
-    await message.load((loader) => {
-      loader.load('user', (userQuery) => {
-        userQuery.preload('setting')
-      })
+    // ВИПРАВЛЕНО: Чистіший синтаксис preload, щоб уникнути помилок типів (Implicit Any)
+    await message.load('user', (query) => {
+      query.preload('setting')
     })
 
-    return this.serializeMessage(message)
+    return await this.serializeMessage(message)
   }
 
-  async getHistory(channelId: string, limit: number = 50): Promise<SerializedMessage[]> {
+  async getHistory(
+    channelId: string,
+    limit: number = 50,
+    offset: number = 0
+  ): Promise<SerializedMessage[]> {
     const messages = await Message.query()
       .where('channelId', channelId)
-      .preload('user', (userQuery) => {
-        userQuery.preload('setting')
+      // ВИПРАВЛЕНО: Чистіший синтаксис
+      .preload('user', (query) => {
+        query.preload('setting')
       })
       .orderBy('createdAt', 'desc')
+      .offset(offset)
       .limit(limit)
 
-    return messages.reverse().map(this.serializeMessage)
+    // Реверс, щоб повідомлення йшли в правильному хронологічному порядку для чату
+    const serializedMessages = await Promise.all(
+      messages.reverse().map((message) => this.serializeMessage(message))
+    )
+
+    return serializedMessages
   }
 }
