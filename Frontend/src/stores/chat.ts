@@ -66,10 +66,14 @@ export const useChatStore = defineStore('chat', {
       if (!auth.token || this.connected || this.connecting) return;
 
       this.connecting = true;
-      const socket = socketService.connect(auth.token);
+
+      // ФІКС 1: Викликаємо коннект без створення зайвої змінної socket
+      socketService.connect(auth.token);
+
       socketService.onMessage((message: ChatMessage) => {
         this.appendMessage(mapChatMessageToDisplay(message));
       });
+
       socketService.onChannelDeleted(({ channelId }) => {
         this.channels = this.channels.filter((c) => c.id !== channelId);
         delete this.messagesByChannel[channelId];
@@ -77,23 +81,42 @@ export const useChatStore = defineStore('chat', {
           this.activeChannelId = null;
         }
       });
+
       socketService.onMemberJoined(({ channelId, userId, nickname }) => {
         console.debug('Member joined', { channelId, userId, nickname });
       });
+
       socketService.onMemberLeft(({ channelId, userId, nickname }) => {
         console.debug('Member left', { channelId, userId, nickname });
       });
-      socketService.onConnect(async () => {
+
+      // ФІКС 2: Прибрали async з аргументу onConnect, щоб не сварився ESLint
+      socketService.onConnect(() => {
         this.connected = true;
         this.connecting = false;
-        // join all channels we know about
+
+        const joinChannelsAction = () => {
+          socketService.joinUserChannels(
+            auth.user?.id,
+            this.channels.map((c) => c.id),
+          );
+          if (this.activeChannelId) {
+            socketService.joinChannel(this.activeChannelId);
+          }
+        };
+
         if (!this.channels.length) {
-          await this.loadChannels();
-        }
-        socketService.joinUserChannels(auth.user?.id, this.channels.map((c) => c.id));
-        // ensure active channel joined as well
-        if (this.activeChannelId) {
-          socketService.joinChannel(this.activeChannelId);
+          // ФІКС: додаємо void для ігнорування результату
+          // та .catch для обробки можливих помилок
+          void this.loadChannels()
+            .then(() => {
+              joinChannelsAction();
+            })
+            .catch((error) => {
+              console.error('Failed to load channels on connect:', error);
+            });
+        } else {
+          joinChannelsAction();
         }
       });
 
@@ -113,7 +136,8 @@ export const useChatStore = defineStore('chat', {
       bucket.push(message);
     },
 
-    async sendMessage(content: string) {
+    // ФІКС 3: Прибрали async, бо тут немає await (відправка сокетів миттєва)
+    sendMessage(content: string) {
       if (!this.activeChannelId) return;
 
       const id =
@@ -137,7 +161,6 @@ export const useChatStore = defineStore('chat', {
     },
 
     hydrateMockMessages() {
-      // Keep a small local seed to avoid empty UI; remove once backend is connected
       const firstChannel = this.channels[0];
       if (!firstChannel) return;
       const demoChannelId = firstChannel.id;
