@@ -1,12 +1,19 @@
 {
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "type": "pwa-chrome",
-            "request": "launch",
-            "name": "Debug Quasar Frontend",
-            "url": "http://localhost:9000/#/",
-            "webRoot": "${workspaceFolder}"
-        }
-    ]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Frontend Dev",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev"
+    },
+    {
+      "type": "pwa-chrome",
+      "name": "Frontend Debug",
+      "request": "launch",
+      "url": "http://localhost:9000",
+      "webRoot": "${workspaceFolder}",
+      "sourceMaps": true
+    }
+  ]
 }
