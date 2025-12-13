@@ -93,35 +93,52 @@ class Ws {
       console.error('WS authentication failed:', error.message)
       next(new Error('Authentication error: Invalid or expired token'))
     }
-  } /**
+  }
+
+  /**
    * 🎛️ ГОЛОВНИЙ ПУЛЬТ КЕРУВАННЯ
    * Тут ми підключаємо контролери до подій
    */
-
-  // backend/app/services/Ws.ts
-
   private async handleConnection(socket: AuthenticatedSocket) {
     const user = socket.user!
-    console.log(`Socket connected: ${user.nickname} (ID: ${user.id}, Socket: ${socket.id})`) // 1. Ініціалізуємо контролери (Це відбувається швидко)
+    console.log(`Socket connected: ${user.nickname} (ID: ${user.id}, Socket: ${socket.id})`)
 
+    // 1. Ініціалізуємо контролери (Це відбувається швидко)
     const usersController = await app.container.make(UsersController)
     const channelsController = await app.container.make(ChannelsController)
     const messagesController = await app.container.make(MessagesController)
-    const activitiesController = await app.container.make(ActivitiesController) // Мапінг сокетів для внутрішніх потреб
+    const activitiesController = await app.container.make(ActivitiesController)
 
+    // Мапінг сокетів для внутрішніх потреб
     this.socketIdToUserId.set(socket.id, user.id)
-    this.userIdToSocketId.set(user.id, user.id) // ВИПРАВЛЕНО: user.id тут має бути, а не socket.id
+    this.userIdToSocketId.set(user.id, socket.id)
 
-    console.log('[WS DEBUG] Registering all socket commands...') // ==========================================
-    // 🔥🔥 КРИТИЧНИЙ БЛОК: РЕЄСТРАЦІЯ УСІХ КОМАНД (ПЕРЕД await) 🔥🔥
+    console.log('[WS DEBUG] Registering all socket commands...')
+
     // ==========================================
+    // 🔥🔥 КРИТИЧНИЙ БЛОК: РЕЄСТРАЦІЯ УСІХ КОМАНД 🔥🔥
+    // ==========================================
+
     // 👤 USERS CONTROLLER (Профіль, налаштування)
 
+    // Тут ми очікуємо payload, тому все ок: (payload, cb)
     socket.on('user:get:public_info', (payload, cb) =>
       usersController.getPublicInfo(socket, payload, cb)
     )
-    socket.on('user:get:full_info', (cb) => usersController.getFullInfo(socket, cb))
-    socket.on('user:get:channels', (cb) => usersController.listChannels(socket, cb))
+
+    // 🔴 ВИПРАВЛЕНО: Гнучка обробка аргументів (Smart Callback Handling)
+    // Клієнт може надіслати (cb) або (null, cb). Ми перевіряємо, що є функцією.
+    socket.on('user:get:full_info', (arg1, arg2) => {
+      const cb = typeof arg1 === 'function' ? arg1 : arg2
+      return usersController.getFullInfo(socket, cb)
+    })
+
+    // 🔴 ВИПРАВЛЕНО: Те саме для каналів (це наступний крок твого тесту)
+    socket.on('user:get:channels', (arg1, arg2) => {
+      const cb = typeof arg1 === 'function' ? arg1 : arg2
+      return usersController.listChannels(socket, cb)
+    })
+
     socket.on('channel:join', (payload: JoinChannelPayload, cb) =>
       channelsController.joinOrCreate(socket, payload, cb)
     )
@@ -142,15 +159,17 @@ class Ws {
     )
     socket.on('channel:list_members', (payload: ChannelActionPayload, cb) =>
       channelsController.listMembers(socket, payload, cb)
-    ) // 💬 MESSAGES CONTROLLER (Чат)
+    )
 
+    // 💬 MESSAGES CONTROLLER (Чат)
     socket.on('message:send', (payload: SendMessagePayload, cb) =>
       messagesController.sendMessage(socket, payload, cb)
     )
     socket.on('message:list', (payload: GetMessagesPayload, cb) =>
       messagesController.getMessages(socket, payload, cb)
-    ) // ⚡ ACTIVITIES CONTROLLER (Статуси, тайпінг)
+    )
 
+    // ⚡ ACTIVITIES CONTROLLER (Статуси, тайпінг)
     socket.on('user:change:status', (payload: { newStatus: UserStatus }) =>
       activitiesController.onChangeStatus({ userId: user.id, newStatus: payload.newStatus })
     )
@@ -159,8 +178,9 @@ class Ws {
     )
     socket.on('typing:stop', (payload: ChannelActionPayload) =>
       activitiesController.onTypingStop(socket, payload.channelId)
-    ) // 🔌 DISCONNECT (Має бути зареєстрований)
+    )
 
+    // 🔌 DISCONNECT (Має бути зареєстрований)
     socket.on('disconnect', () => {
       const userId = this.socketIdToUserId.get(socket.id)
       if (userId) {
@@ -171,10 +191,10 @@ class Ws {
       }
     })
 
-    console.log('[WS DEBUG] Successfully registered all commands.') // Новий лог
+    console.log('[WS DEBUG] Successfully registered all commands.')
+
     // 2. ПІСЛЯ РЕЄСТРАЦІЇ ВИКОНУЄМО ПОВІЛЬНІ АСИНХРОННІ ОПЕРАЦІЇ
     // Дії при підключенні (статус онлайн, джойн в кімнати)
-
     await activitiesController.onConnected(user.id)
     await this.joinUserToChannels(socket, user.id)
   }

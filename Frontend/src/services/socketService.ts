@@ -134,7 +134,7 @@ class SocketService {
   private emitWithAck<T>(
     event: keyof ClientToServerEvents,
     payload?: unknown,
-    timeout: number = 5000,
+    timeout: number = 10000,
   ): Promise<BaseResponse<T>> {
     return new Promise((resolve, reject) => {
       if (!this.socket) return reject(new Error('Socket not connected'));

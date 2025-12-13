@@ -1,6 +1,5 @@
 import { inject } from '@adonisjs/core'
 import type { AuthenticatedSocket } from '#services/ws'
-import MessageRepository from '#repositories/message_repository'
 import Channel from '#models/channel'
 import Message from '#models/message'
 import User from '#models/user'
@@ -9,6 +8,7 @@ import { Exception } from '@adonisjs/core/exceptions'
 import Ws from '#services/ws'
 import { BaseResponse } from '#enums/global_enums'
 import { SendMessagePayload, MessageDto, GetMessagesPayload } from '#contracts/message_contracts'
+import MessageRepository from '#repositories/message_repository'
 
 @inject()
 export default class MessagesController {
@@ -56,7 +56,7 @@ export default class MessagesController {
       await membership.save()
 
       const messageDto: MessageDto = {
-        id: Number(newMessage.id),
+        id: newMessage.id,
         content: newMessage.content,
         // FIX: Гарантуємо рядок, якщо toISO поверне null
         sentAt: newMessage.createdAt,
@@ -118,7 +118,7 @@ export default class MessagesController {
       }
 
       const sortedMessages: MessageDto[] = messages.reverse().map((m) => ({
-        id: Number(m.id),
+        id: m.id,
         content: m.content,
         // FIX: Гарантуємо рядок
         sentAt: m.createdAt.toISO() ?? '',

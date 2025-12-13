@@ -1,71 +1,65 @@
 import { ref } from 'vue';
 import type { MentionSuggestion, Suggestion, SuggestionHandler } from 'src/types/suggestions';
-import type { UserInfo } from 'src/types/user';
+
+// === ІМПОРТИ КОНТРАКТІВ ===
+// Використовуємо типи, що ви надали раніше, та статус, який ви надали зараз
+import type { UserDto } from 'src/contracts/user_contracts';
+import { UserStatus } from 'src/enums/global_enums'; // <--- Використовуємо лише ці енуми
+// ==========================
+
+// Допоміжна функція для перевірки статусу (використовує ваші значення енуму)
+const isOnline = (user: UserDto): boolean => {
+  return user.status === UserStatus.ONLINE;
+};
 
 // Mock users for the current chat
-// TODO: Replace with actual user data from store/API
-const mockUsers = ref<UserInfo[]>([
+// ВИПРАВЛЕНО: Використовуємо UserDto та числові значення UserStatus
+const mockUsers = ref<UserDto[]>([
   {
     id: '1',
-    email: '',
-    firstName: '',
-    lastName: '',
     nickname: 'alice',
-    lastSeenAt: new Date(),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    isOnline: true,
+    firstName: 'Alice',
+    lastName: 'Smith',
+    status: UserStatus.ONLINE, // 1
+    lastSeenAt: '2025-12-13T10:00:00.000Z',
   },
   {
     id: '2',
-    email: '',
-    firstName: '',
-    lastName: '',
     nickname: 'bob',
-    lastSeenAt: new Date(),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    isOnline: true,
+    firstName: 'Bob',
+    lastName: 'Johnson',
+    status: UserStatus.ONLINE, // 1
+    lastSeenAt: '2025-12-13T10:01:00.000Z',
   },
   {
     id: '3',
-    email: '',
-    firstName: '',
-    lastName: '',
     nickname: 'charlie',
-    lastSeenAt: new Date(),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    isOnline: false,
+    firstName: 'Charlie',
+    lastName: 'Brown',
+    status: UserStatus.DND, // 2
+    lastSeenAt: '2025-12-13T09:00:00.000Z',
   },
   {
     id: '4',
-    email: '',
-    firstName: '',
-    lastName: '',
     nickname: 'david',
-    lastSeenAt: new Date(),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    isOnline: true,
+    firstName: 'David',
+    lastName: 'Lee',
+    status: UserStatus.OFFLINE, // 0
+    lastSeenAt: '2025-12-12T09:00:00.000Z',
   },
   {
     id: '5',
-    email: '',
-    firstName: '',
-    lastName: '',
     nickname: 'john',
-    lastSeenAt: new Date(),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    isOnline: false,
+    firstName: 'John',
+    lastName: 'Doe',
+    status: UserStatus.ONLINE, // 1
+    lastSeenAt: '2025-12-13T09:30:00.000Z',
   },
 ]);
 
 export function useMentionHandler(): SuggestionHandler {
   const trigger = '@';
 
-  // ФІКС: Ми просто видалили _context, бо він нам тут не потрібен
   const getSuggestions = (query: string): Suggestion[] => {
     // Remove the trigger character and normalize
     const searchQuery = query.startsWith(trigger) ? query.slice(1) : query;
@@ -79,18 +73,22 @@ export function useMentionHandler(): SuggestionHandler {
         return user.nickname.toLowerCase().startsWith(normalizedQuery);
       })
       .sort((a, b) => {
-        // Sort online users first
-        if (a.isOnline === b.isOnline) {
+        // Сортування: ONLINE першим, потім за нікнеймом
+        const aIsOnline = isOnline(a);
+        const bIsOnline = isOnline(b);
+
+        if (aIsOnline === bIsOnline) {
           return a.nickname.localeCompare(b.nickname);
         }
-        return a.isOnline ? -1 : 1;
+        return aIsOnline ? -1 : 1; // -1 = a перед b (ONLINE іде нагору)
       })
       .map(
         (user): MentionSuggestion => ({
           type: 'mention',
           value: `@${user.nickname}`,
           label: user.nickname,
-          description: user.isOnline ? 'Online' : 'Offline',
+          // Опис, що базується на UserStatus
+          description: isOnline(user) ? 'Online' : user.status.toString(), // Показуємо статус
           user,
         }),
       );
@@ -104,12 +102,12 @@ export function useMentionHandler(): SuggestionHandler {
   };
 
   // Method to update users list
-  const setUsers = (users: UserInfo[]): void => {
+  const setUsers = (users: UserDto[]): void => {
     mockUsers.value = users;
   };
 
   // Method to add a user to the list
-  const addUser = (user: UserInfo): void => {
+  const addUser = (user: UserDto): void => {
     if (!mockUsers.value.find((u) => u.id === user.id)) {
       mockUsers.value.push(user);
     }
@@ -124,10 +122,10 @@ export function useMentionHandler(): SuggestionHandler {
   };
 
   // Method to update user online status
-  const updateUserStatus = (userId: string, isOnline: boolean): void => {
+  const updateUserStatus = (userId: string, newStatus: UserStatus): void => {
     const user = mockUsers.value.find((u) => u.id === userId);
     if (user) {
-      user.isOnline = isOnline;
+      user.status = newStatus;
     }
   };
 
@@ -140,9 +138,9 @@ export function useMentionHandler(): SuggestionHandler {
     removeUser,
     updateUserStatus,
   } as SuggestionHandler & {
-    setUsers: (users: UserInfo[]) => void;
-    addUser: (user: UserInfo) => void;
+    setUsers: (users: UserDto[]) => void;
+    addUser: (user: UserDto) => void;
     removeUser: (userId: string) => void;
-    updateUserStatus: (userId: string, isOnline: boolean) => void;
+    updateUserStatus: (userId: string, newStatus: UserStatus) => void;
   };
 }
