@@ -1,55 +1,59 @@
+// frontend/src/services/socketService.ts
+
 import type { Socket } from 'socket.io-client';
 import { io } from 'socket.io-client';
-import type { UserStatus, BaseResponse } from 'src/contracts/enums';
-import type { UserDto, UserFullDto, ChannelDto, MessageDto, MemberDto } from 'src/contracts/dtos';
+
+// === ІМПОРТ НАШИХ КОНТРАКТІВ ===
+import type { BaseResponse, UserStatus } from 'src/enums/global_enums';
+
 import type {
+  UserDto,
+  UserFullDto,
+  UserSettingsDto,
+  UpdateSettingsPayload,
+  UserStatusEvent,
+} from 'src/contracts/user_contracts';
+import type {
+  ChannelDto,
+  MemberDto,
   JoinChannelPayload,
+  ManageMemberPayload,
+  MemberJoinedEvent,
+  MemberLeftEvent,
+  VoteUpdateEvent,
+  ChannelActionPayload,
+} from 'src/contracts/channel_contracts';
+import type {
+  MessageDto,
   SendMessagePayload,
   GetMessagesPayload,
-  ManageMemberPayload,
-} from 'src/contracts/payloads';
+  NewMessageEvent,
+  TypingEvent,
+} from 'src/contracts/message_contracts';
+// =================================
 
-// --- ПОДІЇ, ЯКІ ПРИХОДЯТЬ ВІД СЕРВЕРА ---
+// Допоміжний тип для колбеків, що повертають лише статус
+type BaseVoidResponse = BaseResponse<void>;
+
+// --- ПОДІЇ, ЯКІ ПРИХОДЯТЬ ВІД СЕРВЕРА (OUTPUT) ---
 interface ServerToClientEvents {
   // Messages
-  'message:new': (message: MessageDto) => void;
+  'message:new': (payload: NewMessageEvent) => void;
 
-  // Channels
-  'channel:member_joined': (payload: {
-    channelId: string;
-    member: MemberDto;
-    isInvite?: boolean;
-  }) => void;
-  'channel:member_left': (payload: { channelId: string; userId: string; reason?: string }) => void;
-  'channel:member_kicked': (payload: { channelId: string; userId: string; reason: string }) => void;
-  'channel:deleted': (payload: { channelId: string }) => void;
-  'channel:vote_update': (payload: {
-    channelId: string;
-    targetUserId: string;
-    currentVotes: number;
-    requiredVotes: number;
-  }) => void;
+  'channel:member_joined': (payload: MemberJoinedEvent) => void;
+  'channel:member_left': (payload: MemberLeftEvent) => void;
+  'channel:member_kicked': (payload: MemberLeftEvent & { reason: string }) => void;
+  'channel:deleted': (payload: ChannelActionPayload) => void;
+  'channel:vote_update': (payload: VoteUpdateEvent) => void;
 
-  // User Settings
-  'user:settings_updated': (settings: any) => void;
+  'user:settings_updated': (settings: UserSettingsDto) => void;
+  'user:status:changed': (payload: UserStatusEvent) => void;
 
-  // Typing
-  'user:typing:start': (payload: { userId: string; nickname: string; channelName: string }) => void; // Перевір channelName vs Id на бекенді в activities
-  'user:typing:stop': (payload: { userId: string; nickname: string; channelName: string }) => void;
-  'user:typing:draft_update': (payload: {
-    userId: string;
-    nickname: string;
-    channelName: string;
-    draft: string;
-  }) => void;
-  'user:status:changed': (payload: { userId: string; status: UserStatus }) => void;
-
-  // Error global
-  error: (payload: { message: string }) => void;
+  'user:typing:start': (payload: TypingEvent) => void;
+  'user:typing:stop': (payload: TypingEvent) => void;
 }
 
-// --- ПОДІЇ, ЯКІ МИ ВІДПРАВЛЯЄМО ---
-// Тут ми використовуємо колбеки (ack), тому типізація трохи складніша
+// --- ПОДІЇ, ЯКІ МИ ВІДПРАВЛЯЄМО (INPUT) ---
 interface ClientToServerEvents {
   // Users
   'user:get:public_info': (
@@ -58,24 +62,26 @@ interface ClientToServerEvents {
   ) => void;
   'user:get:full_info': (cb: (res: BaseResponse<UserFullDto>) => void) => void;
   'user:get:channels': (cb: (res: BaseResponse<ChannelDto[]>) => void) => void;
-  'user:update:settings': (payload: any, cb: (res: BaseResponse<any>) => void) => void;
+  'user:update:settings': (
+    payload: UpdateSettingsPayload,
+    cb: (res: BaseResponse<UserSettingsDto>) => void,
+  ) => void;
 
-  // Channels
   'channel:join': (
     payload: JoinChannelPayload,
     cb: (res: BaseResponse<ChannelDto>) => void,
   ) => void;
-  'channel:leave': (payload: { channelName: string }, cb: (res: BaseResponse) => void) => void;
-  'channel:delete': (payload: { channelName: string }, cb: (res: BaseResponse) => void) => void;
-  'channel:invite': (payload: ManageMemberPayload, cb: (res: BaseResponse) => void) => void;
-  'channel:revoke': (payload: ManageMemberPayload, cb: (res: BaseResponse) => void) => void;
-  'channel:kick': (payload: ManageMemberPayload, cb: (res: BaseResponse) => void) => void;
+
+  'channel:leave': (payload: ChannelActionPayload, cb: (res: BaseVoidResponse) => void) => void;
+  'channel:delete': (payload: ChannelActionPayload, cb: (res: BaseVoidResponse) => void) => void;
+  'channel:invite': (payload: ManageMemberPayload, cb: (res: BaseVoidResponse) => void) => void;
+  'channel:revoke': (payload: ManageMemberPayload, cb: (res: BaseVoidResponse) => void) => void;
+  'channel:kick': (payload: ManageMemberPayload, cb: (res: BaseVoidResponse) => void) => void;
   'channel:list_members': (
-    payload: { channelName: string },
+    payload: ChannelActionPayload,
     cb: (res: BaseResponse<MemberDto[]>) => void,
   ) => void;
 
-  // Messages
   'message:send': (
     payload: SendMessagePayload,
     cb: (res: BaseResponse<MessageDto>) => void,
@@ -85,27 +91,21 @@ interface ClientToServerEvents {
     cb: (res: BaseResponse<MessageDto[]>) => void,
   ) => void;
 
-  // Activities
   'user:change:status': (payload: { newStatus: UserStatus }) => void;
-  'typing:start': (payload: { channelName: string }) => void;
-  'typing:stop': (payload: { channelName: string }) => void;
-  'typing:draft_update': (payload: { channelName: string; draft: string }) => void;
+  'typing:start': (payload: ChannelActionPayload) => void;
+  'typing:stop': (payload: ChannelActionPayload) => void;
 }
 
 class SocketService {
   private socket: Socket<ServerToClientEvents, ClientToServerEvents> | null = null;
-
-  // URL бекенда
-  private readonly url = import.meta.env.VITE_WS_URL || 'http://localhost:3333';
-
-  // --- CONNECTION ---
+  private readonly url = import.meta.env.VITE_WS_URL || 'http://localhost:3333'; // --- CONNECTION ---
 
   connect(token: string) {
     if (this.socket) this.disconnect();
 
     this.socket = io(this.url, {
-      transports: ['websocket'], // Краще форсувати вебсокети
-      auth: { token }, // Токен для ws.ts authenticate()
+      transports: ['websocket'],
+      auth: { token: `Bearer ${token}` },
       path: '/ws',
       withCredentials: true,
     });
@@ -126,148 +126,174 @@ class SocketService {
       this.socket.disconnect();
       this.socket = null;
     }
-  }
+  } // --- HELPER: Promise wrapper for emits ---
 
-  // --- HELPER: Promise wrapper for emits ---
-  // Ця магія дозволяє писати: const res = await socketService.sendMessage(...)
   private emitWithAck<T>(
     event: keyof ClientToServerEvents,
-    payload?: any,
+    payload?: unknown,
+    timeout: number = 5000,
   ): Promise<BaseResponse<T>> {
     return new Promise((resolve, reject) => {
       if (!this.socket) return reject(new Error('Socket not connected'));
 
-      // @ts-ignore - TypeScript іноді складно з динамічними івентами Socket.IO
-      this.socket.emit(event, payload, (response: BaseResponse<T>) => {
-        if (response.status === 'ok') {
-          resolve(response);
-        } else {
-          reject(new Error(response.message || 'Unknown error'));
-        }
-      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (this.socket.timeout(timeout).emit as any)(
+        event,
+        payload,
+        (err: Error | null, response: BaseResponse<T>) => {
+          if (err) {
+            console.error(`[WS ACK TIMEOUT] Event ${event} timed out after ${timeout}ms.`, err);
+            return reject(new Error(`Socket ACK timeout for event ${event}`));
+          }
+          if (response.status === 'ok') {
+            resolve(response);
+          } else {
+            reject(new Error(response.message || `Unknown error on event ${event}`));
+          }
+        },
+      );
     });
   }
+  private async emitVoidAck(event: keyof ClientToServerEvents, payload?: unknown): Promise<void> {
+    const res = await this.emitWithAck<void>(event, payload);
+    return res.data;
+  } // --- MESSAGES API ---
 
-  // --- MESSAGES API ---
-
-  async sendMessage(channelId: string, content: string) {
-    return this.emitWithAck<MessageDto>('message:send', { channelId, content });
+  async sendMessage(channelId: string, content: string): Promise<MessageDto> {
+    const payload: SendMessagePayload = { channelId, content };
+    const res = await this.emitWithAck<MessageDto>('message:send', payload);
+    return res.data!;
   }
 
-  async getMessages(channelId: string, cursor?: number) {
-    return this.emitWithAck<MessageDto[]>('message:list', { channelId, cursor });
+  async getMessages(channelId: string, cursor?: number, limit?: number): Promise<MessageDto[]> {
+    const payload: GetMessagesPayload = { channelId };
+
+    if (cursor !== undefined) {
+      payload.cursor = cursor;
+    }
+    if (limit !== undefined) {
+      payload.limit = limit;
+    }
+
+    const res = await this.emitWithAck<MessageDto[]>('message:list', payload);
+    return res.data!;
+  } // --- CHANNELS API ---
+
+  async joinOrCreateChannel(channelName: string, isPrivate: boolean = false): Promise<ChannelDto> {
+    const payload: JoinChannelPayload = { channelName, isPrivate };
+    const res = await this.emitWithAck<ChannelDto>('channel:join', payload);
+    return res.data!;
   }
 
-  // --- CHANNELS API ---
-
-  async joinOrCreateChannel(channelName: string, isPrivate: boolean = false) {
-    return this.emitWithAck<ChannelDto>('channel:join', { channelName, isPrivate });
+  async leaveChannel(channelId: string): Promise<void> {
+    const payload: ChannelActionPayload = { channelId };
+    return this.emitVoidAck('channel:leave', payload);
   }
 
-  async leaveChannel(channelName: string) {
-    return this.emitWithAck<void>('channel:leave', { channelName });
+  async deleteChannel(channelId: string): Promise<void> {
+    const payload: ChannelActionPayload = { channelId };
+    return this.emitVoidAck('channel:delete', payload);
   }
 
-  async deleteChannel(channelName: string) {
-    return this.emitWithAck<void>('channel:delete', { channelName });
+  async inviteUser(channelId: string, nickname: string): Promise<void> {
+    const payload: ManageMemberPayload = { channelId, nickname };
+    return this.emitVoidAck('channel:invite', payload);
   }
 
-  async inviteUser(channelName: string, nickname: string) {
-    return this.emitWithAck<void>('channel:invite', { channelName, nickname });
+  async kickUser(channelId: string, nickname: string): Promise<void> {
+    const payload: ManageMemberPayload = { channelId, nickname };
+    return this.emitVoidAck('channel:kick', payload);
   }
 
-  async kickUser(channelName: string, nickname: string) {
-    return this.emitWithAck<void>('channel:kick', { channelName, nickname });
+  async revokeUser(channelId: string, nickname: string): Promise<void> {
+    const payload: ManageMemberPayload = { channelId, nickname };
+    return this.emitVoidAck('channel:revoke', payload);
   }
 
-  async revokeUser(channelName: string, nickname: string) {
-    return this.emitWithAck<void>('channel:revoke', { channelName, nickname });
+  async getChannelMembers(channelId: string): Promise<MemberDto[]> {
+    const res = await this.emitWithAck<MemberDto[]>('channel:list_members', { channelId });
+    return res.data!;
+  } // --- USERS API ---
+
+  async getMyProfile(): Promise<UserFullDto> {
+    const res = await this.emitWithAck<UserFullDto>('user:get:full_info');
+    return res.data!;
   }
 
-  async getChannelMembers(channelName: string) {
-    return this.emitWithAck<MemberDto[]>('channel:list_members', { channelName });
+  async getMyChannels(): Promise<ChannelDto[]> {
+    const res = await this.emitWithAck<ChannelDto[]>('user:get:channels');
+    return res.data!;
   }
 
-  // --- USERS API ---
-
-  async getMyProfile() {
-    // Тут payload не потрібен
-    return new Promise<BaseResponse<UserFullDto>>((resolve, reject) => {
-      this.socket?.emit('user:get:full_info', (res) => resolve(res));
-    });
+  async getPublicUserProfile(nickname: string): Promise<UserDto> {
+    const res = await this.emitWithAck<UserDto>('user:get:public_info', { nickname });
+    return res.data!;
   }
 
-  async getMyChannels() {
-    return new Promise<BaseResponse<ChannelDto[]>>((resolve, reject) => {
-      this.socket?.emit('user:get:channels', (res) => resolve(res));
-    });
-  }
-
-  async getPublicUserProfile(nickname: string) {
-    return this.emitWithAck<UserDto>('user:get:public_info', { nickname });
-  }
-
-  async updateSettings(settings: any) {
-    return this.emitWithAck<any>('user:update:settings', settings);
-  }
-
-  // --- ACTIVITIES (Typing / Status) ---
-  // Ці методи зазвичай не потребують відповіді (fire and forget)
+  async updateSettings(settings: UpdateSettingsPayload): Promise<UserSettingsDto> {
+    const res = await this.emitWithAck<UserSettingsDto>('user:update:settings', settings);
+    return res.data!;
+  } // --- ACTIVITIES (Typing / Status) ---
 
   changeStatus(newStatus: UserStatus) {
     this.socket?.emit('user:change:status', { newStatus });
   }
 
-  startTyping(channelName: string) {
-    this.socket?.emit('typing:start', { channelName });
+  startTyping(channelId: string) {
+    this.socket?.emit('typing:start', { channelId });
   }
 
-  stopTyping(channelName: string) {
-    this.socket?.emit('typing:stop', { channelName });
+  stopTyping(channelId: string) {
+    this.socket?.emit('typing:stop', { channelId });
+  } // --- LISTENERS (Підписка на події) ---
+
+  public onConnect(handler: () => void) {
+    this.socket?.on('connect', handler);
   }
 
-  updateDraft(channelName: string, draft: string) {
-    this.socket?.emit('typing:draft_update', { channelName, draft });
+  public onDisconnect(handler: () => void) {
+    this.socket?.on('disconnect', handler);
   }
 
-  // --- LISTENERS (Підписка на події) ---
-
-  onNewMessage(handler: (msg: MessageDto) => void) {
+  onNewMessage(handler: (msg: NewMessageEvent) => void) {
     this.socket?.on('message:new', handler);
   }
 
-  onMemberJoined(
-    handler: (data: { channelId: string; member: MemberDto; isInvite?: boolean }) => void,
-  ) {
+  onMemberJoined(handler: (data: MemberJoinedEvent) => void) {
     this.socket?.on('channel:member_joined', handler);
   }
 
-  onMemberLeft(handler: (data: { channelId: string; userId: string; reason?: string }) => void) {
+  onMemberLeft(handler: (data: MemberLeftEvent) => void) {
     this.socket?.on('channel:member_left', handler);
   }
 
-  onMemberKicked(handler: (data: { channelId: string; userId: string; reason: string }) => void) {
+  onMemberKicked(handler: (data: MemberLeftEvent & { reason: string }) => void) {
     this.socket?.on('channel:member_kicked', handler);
   }
 
-  onChannelDeleted(handler: (data: { channelId: string }) => void) {
+  onChannelDeleted(handler: (data: ChannelActionPayload) => void) {
     this.socket?.on('channel:deleted', handler);
   }
 
-  onVoteUpdate(
-    handler: (data: {
-      channelId: string;
-      targetUserId: string;
-      currentVotes: number;
-      requiredVotes: number;
-    }) => void,
-  ) {
+  onVoteUpdate(handler: (data: VoteUpdateEvent) => void) {
     this.socket?.on('channel:vote_update', handler);
   }
 
-  // Відписка від подій (щоб не дублювались при перемонтуванні компонентів)
+  onUserStatusChanged(handler: (data: UserStatusEvent) => void) {
+    this.socket?.on('user:status:changed', handler);
+  }
+
+  onTyping(handler: (data: TypingEvent) => void) {
+    this.socket?.on('user:typing:start', handler);
+  }
+
   off(event: keyof ServerToClientEvents) {
     this.socket?.off(event);
+  }
+
+  async listChannels(): Promise<ChannelDto[]> {
+    const res = await this.emitWithAck<ChannelDto[]>('user:get:channels');
+    return res.data!;
   }
 }
 

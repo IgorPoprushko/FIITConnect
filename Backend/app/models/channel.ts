@@ -3,7 +3,7 @@ import { BaseModel, beforeCreate, belongsTo, column, hasMany } from '@adonisjs/l
 import { randomUUID } from 'node:crypto'
 import User from '#models/user'
 import type { BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
-import { ChannelType } from '#enums/channel_type'
+import { ChannelType } from '#enums/global_enums'
 import Member from './member.js'
 
 export default class Channel extends BaseModel {

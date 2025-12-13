@@ -11,7 +11,9 @@
       "pages/*": ["src/pages/*"],
       "assets/*": ["src/assets/*"],
       "boot/*": ["src/boot/*"],
-      "stores/*": ["src/stores/*"]
+      "stores/*": ["src/stores/*"],
+      "enums/*": ["src/enums/*"],
+      "contracts/*": ["src/contracts/*"],
     }
   },
   "exclude": ["node_modules", "dist", ".quasar"]

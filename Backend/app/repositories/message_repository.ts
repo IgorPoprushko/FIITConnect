@@ -1,5 +1,5 @@
 import Message from '#models/message'
-import { UserStatus } from '#enums/user_status'
+import { UserStatus } from '#enums/global_enums'
 import User from '#models/user'
 
 // --- Визначаємо типи прямо тут, щоб не залежати від зовнішніх файлів ---

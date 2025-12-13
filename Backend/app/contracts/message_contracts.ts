@@ -4,7 +4,7 @@ import { UserDto } from '#contracts/user_contracts'
 // --- MODELS (DTOs) ---
 
 export interface MessageDto {
-  id: number // ID повідомлення (BigInt краще передавати як string, якщо JS, але тут number ок для < 2^53)
+  id: string // ID повідомлення (BigInt краще передавати як string, якщо JS, але тут number ок для < 2^53)
   content: string
   sentAt: string // ISO Date string
   userId: string // ID автора (для швидкого порівняння "чи це я")
