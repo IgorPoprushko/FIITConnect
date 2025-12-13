@@ -1,7 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import { registerValidator, loginValidator } from '#validators/auth'
 import User from '#models/user'
-import { UserStatus } from '#enums/user_status'
+import { UserStatus } from '#enums/global_enums'
 import { RegisterPayload, LoginPayload, AuthResponse, MeResponse } from '#contracts/auth_contracts'
 
 export default class AuthController {
