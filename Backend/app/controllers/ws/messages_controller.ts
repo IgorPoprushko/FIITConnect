@@ -55,11 +55,17 @@ export default class MessagesController {
       membership.lastReadMessageId = newMessage.id
       await membership.save()
 
+      // --- FIX: TypeScript каже, що createdAt вже string ---
+      // Використовуємо приведення типів або перевірку, щоб задовольнити TS
+      const sentAtString =
+        typeof newMessage.createdAt === 'string'
+          ? newMessage.createdAt
+          : ((newMessage.createdAt as any)?.toISO?.() ?? new Date().toISOString())
+
       const messageDto: MessageDto = {
         id: newMessage.id,
         content: newMessage.content,
-        // FIX: Гарантуємо рядок, якщо toISO поверне null
-        sentAt: newMessage.createdAt,
+        sentAt: sentAtString,
         userId: user.id,
         user: {
           id: user.id,
@@ -72,7 +78,13 @@ export default class MessagesController {
         mentions: mentionedUserIds,
       }
 
-      Ws.getIo().to(channel.id).emit('message:new', messageDto)
+      // Відправляємо подію з channelId
+      Ws.getIo()
+        .to(channel.id)
+        .emit('message:new', {
+          ...messageDto,
+          channelId: channel.id,
+        })
 
       if (callback) callback({ status: 'ok', data: messageDto })
     } catch (error) {
@@ -117,22 +129,27 @@ export default class MessagesController {
         }
       }
 
-      const sortedMessages: MessageDto[] = messages.reverse().map((m) => ({
-        id: m.id,
-        content: m.content,
-        // FIX: Гарантуємо рядок
-        sentAt: m.createdAt.toISO() ?? '',
-        userId: m.user.id,
-        user: {
-          id: m.user.id,
-          nickname: m.user.nickname,
-          firstName: m.user.firstName,
-          lastName: m.user.lastName,
-          status: m.user.setting?.status,
-          lastSeenAt: m.user.lastSeenAt?.toISO() ?? null,
-        },
-        mentions: [],
-      }))
+      const sortedMessages: MessageDto[] = messages.reverse().map((m) => {
+        // --- FIX: Аналогічно для getMessages ---
+        const sentAtString =
+          typeof m.createdAt === 'string' ? m.createdAt : ((m.createdAt as any)?.toISO?.() ?? '')
+
+        return {
+          id: m.id,
+          content: m.content,
+          sentAt: sentAtString,
+          userId: m.user.id,
+          user: {
+            id: m.user.id,
+            nickname: m.user.nickname,
+            firstName: m.user.firstName,
+            lastName: m.user.lastName,
+            status: m.user.setting?.status,
+            lastSeenAt: m.user.lastSeenAt?.toISO() ?? null,
+          },
+          mentions: [],
+        }
+      })
 
       if (callback) callback({ status: 'ok', data: sortedMessages })
     } catch (error) {

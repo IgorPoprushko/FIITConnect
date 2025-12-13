@@ -1,5 +1,3 @@
-// frontend/src/stores/chat.ts (ФІНАЛЬНА ВЕРСІЯ З ДОДАТКОВИМИ ЛОГАМИ)
-
 import { defineStore } from 'pinia';
 import { socketService } from 'src/services/socketService';
 
@@ -11,7 +9,7 @@ import type {
   MemberJoinedEvent,
   MemberLeftEvent,
 } from 'src/contracts/channel_contracts';
-import type { NewMessageEvent } from 'src/contracts/message_contracts';
+import type { NewMessageEvent, MessageDto } from 'src/contracts/message_contracts';
 // ==========================
 
 import { useAuthStore } from './auth';
@@ -62,34 +60,57 @@ export const useChatStore = defineStore('chat', {
   }),
 
   getters: {
-    // ❗ ЗМІНА: Геттер активних повідомлень працює як раніше
+    // 🔥 ФІКС ТУТ: Сортування повідомлень
     activeMessages(state): IMessage[] {
       if (!state.activeChannelId) return [];
-      return state.messagesByChannel[state.activeChannelId] ?? [];
+
+      const messages = state.messagesByChannel[state.activeChannelId] ?? [];
+
+      // Ми створюємо копію масиву [...messages] і сортуємо її.
+      // Сортуємо від найстаріших до найновіших (a.date - b.date).
+      // Це гарантує, що 22:40 завжди буде перед 22:49, незалежно від того, коли вони прийшли.
+      return [...messages].sort((a, b) => a.date.getTime() - b.date.getTime());
     },
+
     activeChannel(state): ChannelDto | undefined {
       return state.channels.find((c) => c.id === state.activeChannelId);
     },
   },
 
   actions: {
+    async fetchMessages(channelId: string) {
+      if (!channelId) return;
+
+      if (!this.connected) {
+        console.log(`⏳ ChatStore: Socket not ready yet. Skipping fetch for ${channelId}.`);
+        return;
+      }
+
+      console.log(`📥 ChatStore: Fetching history for ${channelId}...`);
+      try {
+        const history: MessageDto[] = await socketService.getMessages(channelId);
+
+        const formattedMessages: IMessage[] = history.map((dto) =>
+          mapMessageDtoToDisplay({ ...dto, channelId }),
+        );
+
+        this.messagesByChannel[channelId] = formattedMessages;
+      } catch (err) {
+        console.error('❌ Failed to fetch history:', err);
+      }
+    },
+
     async loadChannels() {
       this.loadingChannels = true;
-      console.log('🟡 ChatStore: Executing loadChannels action...');
       try {
-        // >>> ДОДАНО ЛОГ: Чи ми викликаємо WS-сервіс?
-        console.log('🟡 ChatStore: Calling socketService.listChannels()...');
-        // 🔥 await тут КРИТИЧНО важливий, і він використовується коректно
         this.channels = await socketService.listChannels();
-
         console.log(`✅ ChatStore: Successfully loaded ${this.channels.length} channels.`);
       } catch (error) {
-        // Цей блок спрацьовує при таймауті
-        console.error('❌ Failed to load channels (Socket ACK Error):', error);
+        console.error('❌ Failed to load channels:', error);
       } finally {
         this.loadingChannels = false;
       }
-    }, // ПРАВИЛЬНИЙ createChannel (використовує WS)
+    },
 
     async createChannel(payload: JoinChannelPayload) {
       const channel = await socketService.joinOrCreateChannel(
@@ -112,31 +133,29 @@ export const useChatStore = defineStore('chat', {
 
     setActiveChannel(channelId: string | null) {
       this.activeChannelId = channelId;
-      if (channelId && !this.messagesByChannel[channelId]) {
-        this.messagesByChannel[channelId] = [];
+
+      if (channelId) {
+        if (!this.messagesByChannel[channelId]) {
+          this.messagesByChannel[channelId] = [];
+        }
+        void this.fetchMessages(channelId);
       }
     },
+
     connectSocket() {
       const auth = useAuthStore();
-      if (!auth.token) {
-        console.warn('❌ ChatStore: connectSocket Aborted. Auth token is missing.'); // Якщо auth.token відсутній, компонент, що викликає,
-        // повинен ПЕРЕВІРИТИ, чи authStore не перебуває у стані завантаження,
-        // і викликати connectSocket пізніше.
-        return;
-      }
+      if (!auth.token) return;
 
-      if (this.connected || this.connecting) {
-        console.debug('🟡 ChatStore: connectSocket ignored. Already connecting or connected.');
-        return;
-      }
+      if (this.connected || this.connecting) return;
 
-      console.log('🟢 ChatStore: Starting WS connection with token...');
+      console.log('🟢 ChatStore: Starting WS connection...');
       this.connecting = true;
-
       socketService.connect(auth.token);
 
+      // --- LISTENERS ---
+
       socketService.onNewMessage((payload: NewMessageEvent) => {
-        console.log(`[WS IN] New message in ${payload.channelId} from ${payload.user?.nickname}`); // ДОДАТКОВИЙ ЛОГ
+        console.log(`[WS IN] Msg in ${payload.channelId}`);
         this.appendMessage(mapMessageDtoToDisplay(payload));
       });
 
@@ -146,53 +165,29 @@ export const useChatStore = defineStore('chat', {
         if (this.activeChannelId === payload.channelId) {
           this.activeChannelId = null;
         }
-      }); // 4. ПРИЄДНАННЯ/ВІДХОДЖЕННЯ КОРИСТУВАЧА
+      });
 
       socketService.onMemberJoined((payload: MemberJoinedEvent) => {
-        console.debug(`[WS IN] Member joined: ${payload.member.nickname} in ${payload.channelId}`); // ДОДАТКОВИЙ ЛОГ
+        console.debug(`[WS IN] Member joined: ${payload.member.nickname}`);
       });
 
       socketService.onMemberLeft((payload: MemberLeftEvent) => {
-        console.debug(`[WS IN] Member left: ${payload.userId} from ${payload.channelId}`); // ДОДАТКОВИЙ ЛОГ
+        console.debug(`[WS IN] Member left: ${payload.userId}`);
       });
 
       socketService.onConnect(() => {
-        console.log('✅ ChatStore: WS Connected. Proceeding to load channels.');
+        console.log('✅ ChatStore: WS Connected.');
         this.connected = true;
         this.connecting = false;
 
-        const initializeChannels = () => {
-          // ❗ ЗМІНА: Перевіряємо, чи activeChannel існує
-          console.log(
-            `✅[INIT] Initializing channel. Current state: ${this.activeChannel ? this.activeChannel.name : 'null'}`,
-          ); // ДОДАТКОВИЙ ЛОГ
-          if (this.activeChannel && !this.activeChannelId) {
-            this.setActiveChannel(this.activeChannel.id);
-            console.debug(`✅[INIT] Channel initialized: set active to ${this.activeChannel.id}`);
-          } else if (!this.activeChannel) {
-            console.log('✅[INIT] No channel found after load.'); // ДОДАТКОВИЙ ЛОГ
+        void this.loadChannels().then(() => {
+          if (this.activeChannelId) {
+            console.log(
+              `🔄 ChatStore: Connection restored. Fetching pending messages for ${this.activeChannelId}`,
+            );
+            void this.fetchMessages(this.activeChannelId);
           }
-        }; // ❗ ВИПРАВЛЕННЯ ДУБЛЮВАННЯ + ВИПРАВЛЕННЯ ГОНКИ УМОВ (100 мс) ❗
-
-        setTimeout(() => {
-          console.log('✅[INIT] Timeout passed (100ms). Starting channel loading check...'); // ДОДАТКОВИЙ ЛОГ
-          // ❗ ЗМІНА: Перевіряємо, чи активний канал вже завантажено
-          if (!this.activeChannel) {
-            console.log('✅[INIT] Active channel is null. Calling loadChannels.'); // ДОДАТКОВИЙ ЛОГ
-            this.loadChannels()
-              .then(() => {
-                console.debug(`✅[INIT] Channel loaded: ${this.activeChannel?.name}`);
-                initializeChannels();
-              })
-              .catch((error) => {
-                console.error('❌ Failed to load channels on connect (Error in Promise):', error);
-                initializeChannels();
-              });
-          } else {
-            console.log('✅[INIT] Channel already populated. Initializing directly.'); // ДОДАТКОВИЙ ЛОГ
-            initializeChannels();
-          }
-        }, 100); // 100 мс для уникнення гонки умов
+        });
       });
 
       socketService.onDisconnect(() => {
@@ -202,16 +197,18 @@ export const useChatStore = defineStore('chat', {
     },
 
     disconnectSocket() {
-      console.warn('🛑 ChatStore: Manually disconnecting WS.'); // ДОДАТКОВИЙ ЛОГ
       socketService.disconnect();
       this.connected = false;
       this.connecting = false;
     },
 
     appendMessage(message: IMessage) {
-      console.log(`[MSG] Appending message ID ${message.id} to channel ${message.channelId}`); // ДОДАТКОВИЙ ЛОГ
       const bucket = (this.messagesByChannel[message.channelId] ||= []);
-      bucket.push(message); // ❗ ЗМІНА: Перевірка лише активного каналу
+      // Перевірка на дублікати
+      const exists = bucket.some((m) => m.id === message.id);
+      if (!exists) {
+        bucket.push(message);
+      }
 
       const channel = this.channels.find((c) => c.id === message.channelId);
       if (channel) {
@@ -219,25 +216,18 @@ export const useChatStore = defineStore('chat', {
           content: message.text,
           sentAt: message.date.toISOString(),
           senderNick: message.sender,
-        }; // TODO: Збільшення unreadCount, якщо канал не активний
+        };
       }
     },
 
-    sendMessage(content: string) {
-      if (!this.activeChannelId) return; // Генерація тимчасового ID
+    async sendMessage(content: string) {
+      if (!this.activeChannelId) return;
 
-      console.log(
-        `[MSG] Sending message to ${this.activeChannelId}: "${content.substring(0, 20)}..."`,
-      ); // ДОДАТКОВИЙ ЛОГ
-      // ... (Optimistic append logic)
-      const id =
-        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-          ? crypto.randomUUID()
-          : `${Date.now()}-${Math.random()}`; // Optimistic append
-
+      // 1. Оптимістичне додавання
+      const tempId = `temp-${Date.now()}`;
       const auth = useAuthStore();
       const optimisticMessage: IMessage = {
-        id,
+        id: tempId,
         channelId: this.activeChannelId,
         sender: auth.nickname || 'You',
         text: content,
@@ -246,29 +236,37 @@ export const useChatStore = defineStore('chat', {
         read: true,
       };
 
-      this.appendMessage(optimisticMessage); // Обробляємо Promise
-      void socketService.sendMessage(this.activeChannelId, content).catch((error) => {
-        console.error('❌ Failed to send message (WS ACK Error):', error); // ЗМІНЕНЕ ЛОГУВАННЯ
-        // TODO: Логіка відкату або позначки повідомлення як "не відправлене"
-      });
+      this.appendMessage(optimisticMessage);
+
+      try {
+        const realMessage = await socketService.sendMessage(this.activeChannelId, content);
+
+        const bucket = this.messagesByChannel[this.activeChannelId];
+        if (bucket) {
+          const tempIndex = bucket.findIndex((m) => m.id === tempId);
+          const realAlreadyExists = bucket.some((m) => m.id === realMessage.id);
+
+          if (tempIndex !== -1) {
+            if (realAlreadyExists) {
+              console.log('⚡ ChatStore: Race condition won by WS. Removing temp message.');
+              bucket.splice(tempIndex, 1);
+            } else {
+              console.log('⚡ ChatStore: ACK won. Updating temp ID to real ID.');
+              const msgToUpdate = bucket[tempIndex];
+              if (msgToUpdate) {
+                msgToUpdate.id = realMessage.id;
+                msgToUpdate.date = new Date(realMessage.sentAt);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('❌ Failed to send message:', error);
+      }
     },
 
     hydrateMockMessages() {
-      const firstChannel = this.channels[0];
-      if (!firstChannel) return;
-      const demoChannelId = firstChannel.id;
-      this.messagesByChannel[demoChannelId] = [
-        {
-          id: 'seed-1',
-          channelId: demoChannelId,
-          sender: 'System',
-          text: 'Welcome to FIITConnect!',
-          date: new Date(),
-          own: false,
-          read: true,
-        },
-      ];
-      this.activeChannelId = demoChannelId;
+      // Mock data if needed
     },
   },
 });

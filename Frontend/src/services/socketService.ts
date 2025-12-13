@@ -61,7 +61,10 @@ interface ClientToServerEvents {
     cb: (res: BaseResponse<UserDto>) => void,
   ) => void;
   'user:get:full_info': (cb: (res: BaseResponse<UserFullDto>) => void) => void;
+
+  // 🔥 FIX 1: Вказуємо, що тут повертається МАСИВ каналів (ChannelDto[])
   'user:get:channels': (cb: (res: BaseResponse<ChannelDto[]>) => void) => void;
+
   'user:update:settings': (
     payload: UpdateSettingsPayload,
     cb: (res: BaseResponse<UserSettingsDto>) => void,
@@ -230,10 +233,28 @@ class SocketService {
     return res.data!;
   }
 
+  // 🔥 FIX 2: Змінюємо Return Type на Promise<ChannelDto[]>
   async getMyChannels(): Promise<ChannelDto[]> {
     console.log(`[WS CLIENT] ⬇️ Calling getMyChannels, preparing to emit user:get:channels...`);
-    const res = await this.emitWithAck<ChannelDto[]>('user:get:channels');
-    return res.data!;
+
+    // Тут ми використовуємо "ChannelDto[] | ChannelDto", щоб TypeScript не сварився,
+    // якщо раптом з бекенду прийде один об'єкт (як було в твоєму тесті).
+    const res = await this.emitWithAck<ChannelDto[] | ChannelDto>('user:get:channels');
+
+    // 🔥 SAFE FIX: Робимо перевірку в рантаймі.
+    // Якщо прийшов масив - віддаємо масив.
+    if (Array.isArray(res.data)) {
+      return res.data;
+    }
+    // Якщо прийшов один об'єкт (старий код бекенду) - загортаємо його в масив [obj].
+    else if (res.data) {
+      console.warn(
+        '[WS FIX] Received single ChannelDto object instead of Array. Wrapping it automatically.',
+      );
+      return [res.data];
+    }
+
+    return [];
   }
 
   async getPublicUserProfile(nickname: string): Promise<UserDto> {
@@ -268,7 +289,17 @@ class SocketService {
   }
 
   onNewMessage(handler: (msg: NewMessageEvent) => void) {
-    this.socket?.on('message:new', handler);
+    // 🔥🔥 ВСТАВЛЕНО ДІАГНОСТИКУ 🔥🔥
+    this.socket?.on('message:new', (payload) => {
+      if (!payload.channelId) {
+        console.error(
+          '%c[WS CRITICAL] ❌ Отримано message:new БЕЗ channelId! Перевірте MessagesController на бекенді.',
+          'color: red; font-weight: bold; font-size: 14px;',
+          payload,
+        );
+      }
+      handler(payload);
+    });
   }
 
   onMemberJoined(handler: (data: MemberJoinedEvent) => void) {
@@ -301,8 +332,9 @@ class SocketService {
 
   off(event: keyof ServerToClientEvents) {
     this.socket?.off(event); // Додано явне перетворення типу для безпеки
-  } // Методу listChannels більше немає, він використовує getMyChannels
+  }
 
+  // 🔥 FIX 3: Змінюємо Return Type на Promise<ChannelDto[]> тут також
   async listChannels(): Promise<ChannelDto[]> {
     return this.getMyChannels();
   }
