@@ -14,6 +14,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'register', component: () => import('pages/auth/RegisterPage.vue') },
     ],
 
+    // Логіка перенаправлення: якщо залогінений, йдемо в чат
     beforeEnter: (to, from, next) => {
       const auth = useAuthStore();
       if (auth.isLoggedIn) {
@@ -35,6 +36,31 @@ const routes: RouteRecordRaw[] = [
       },
     ],
 
+    // Логіка захисту маршруту: якщо не залогінений, йдемо на логін
+    beforeEnter: (to, from, next) => {
+      const auth = useAuthStore();
+      if (auth.isLoggedIn) {
+        next();
+      } else {
+        next({ path: '/login' });
+      }
+    },
+  },
+
+  // ❗ ВИПРАВЛЕНО 1: Додано скісну риску '/' для усунення помилки Vue Router.
+  // ❗ ВИПРАВЛЕНО 2: Обгорнуто у ChatLayout для усунення помилки QPage needs QLayout.
+  // ❗ ВИПРАВЛЕНО 3: Додано перевірку автентифікації (beforeEnter).
+  {
+    path: '/ack',
+    component: () => import('layouts/ChatLayout.vue'),
+    children: [
+      {
+        path: '',
+        component: () => import('pages/AckTest.vue'),
+      },
+    ],
+
+    // Логіка захисту маршруту (тільки для залогінених)
     beforeEnter: (to, from, next) => {
       const auth = useAuthStore();
       if (auth.isLoggedIn) {

@@ -1,7 +1,11 @@
 <template>
   <div class="main-page-container">
     <div class="message-container">
-      <MessageList ref="messageListRef" :messages="messages" />
+      <!-- 
+        Ми прибрали ref="messageListRef", бо нам більше не треба
+        смикати цей компонент за ниточки. Він самостійний.
+      -->
+      <MessageList :messages="messages" :key="route.params.channelId?.toString() ?? ''" />
     </div>
 
     <q-drawer class="q-pa-md bg-primary" v-model="chatDrawer" side="right" :width="300" bordered>
@@ -22,28 +26,35 @@
           </q-item-section>
           <q-item-section>About</q-item-section>
         </q-item>
+        <q-item clickable v-ripple>
+          <q-item-section avatar>
+            <q-icon name="settings" />
+          </q-item-section>
+          <q-item-section>Settings</q-item-section>
+        </q-item>
+        <q-item clickable v-ripple>
+          <q-item-section avatar>
+            <q-icon name="logout" color="negative" />
+          </q-item-section>
+          <q-item-section class="text-negative">Logout</q-item-section>
+        </q-item>
       </q-list>
     </q-drawer>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, watch, onMounted } from 'vue';
+import { computed, watch, onMounted } from 'vue'; // Прибрали ref, nextTick, бо вони тут зайві
 import { useRoute } from 'vue-router';
 import { useChatDrawer } from 'src/composables/useChatDrawer';
 import MessageList from 'components/MessageList.vue';
 import { useChatStore } from 'src/stores/chat';
 
-// Описуємо структуру компонента, щоб TS не кастив його в 'any'
-interface MessageListExport {
-  scrollToBottom: () => void;
-}
-
 const { chatDrawer } = useChatDrawer();
 const chat = useChatStore();
 
-// ФІКС: тепер тут немає any, і лінтер задоволений
-const messageListRef = ref<MessageListExport | null>(null);
+// 🔥 ПРИБРАЛИ: const messageListRef і interface MessageListExport
+// Ми більше не ліземо в справи компонента MessageList.
 
 const route = useRoute();
 
@@ -60,13 +71,9 @@ onMounted(() => {
   syncChannelFromRoute();
 });
 
-watch(
-  () => messages.value.length,
-  async () => {
-    await nextTick();
-    messageListRef.value?.scrollToBottom();
-  },
-);
+// 🔥 ПРИБРАЛИ: watch на messages.value.length
+// MessageList.vue сам слідкує за змінами і скролить.
+// Тут цей код створював конфлікт і помилку.
 
 watch(
   () => route.params.channelId,
@@ -78,22 +85,18 @@ watch(
 
 <style scoped>
 .main-page-container {
-  height: 93vh;
   display: flex;
-  flex-direction: column;
+  height: calc(100vh - 60px); /* Adjust based on header height */
   overflow: hidden;
+  position: relative;
 }
 
 .message-container {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   overflow: hidden;
-  min-height: 0;
-}
-
-.chat-input-footer {
-  flex-shrink: 0;
-  z-index: 10;
-  width: 100%;
-  border-top: 1px solid rgba(0, 0, 0, 0.12);
+  position: relative;
 }
 </style>

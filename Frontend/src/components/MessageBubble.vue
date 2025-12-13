@@ -1,8 +1,8 @@
 <template>
   <q-chat-message
     text-color="white"
-    :label="getNextDay(previousMessage)"
-    :name="message.sender"
+    :label="dateLabel"
+    :name="shouldShowName ? message.sender : undefined"
     :text="[message.text]"
     :stamp="getTime(message.date)"
     :sent="message.own"
@@ -12,7 +12,7 @@
 </template>
 
 <script setup lang="ts">
-// ВИПРАВЛЕНО: Імпортуємо IMessage з Pinia Store, де він був перевизначений
+import { computed } from 'vue';
 import { type IMessage } from 'src/stores/chat';
 
 interface Props {
@@ -21,26 +21,39 @@ interface Props {
 }
 const props = defineProps<Props>();
 
-// Ми можемо використовувати props.message напряму без окремої змінної
-// const message = props.message;
+// 1. Логіка дати (День): показуємо, тільки якщо змінився день
+const dateLabel = computed(() => {
+  const currentDateStr = props.message.date.toDateString();
 
-function getNextDay(prevMessage: IMessage | undefined): string {
-  const dateLable = props.message.date.toDateString(); // Використовуємо props.message
-  // Перевіряємо, чи є попереднє повідомлення або чи це інший день
+  // Якщо попереднього немає — це початок історії, показуємо дату
+  if (!props.previousMessage) return currentDateStr;
 
-  if (prevMessage == undefined || prevMessage.date.toDateString() !== dateLable) return dateLable;
-  else return '';
-}
+  const prevDateStr = props.previousMessage.date.toDateString();
+  // Якщо дати різні — показуємо нову дату
+  return prevDateStr !== currentDateStr ? currentDateStr : undefined;
+});
+
+// 2. 🔥 ГОЛОВНИЙ ФІКС: Розумне відображення імені
+const shouldShowName = computed(() => {
+  // Якщо це перше повідомлення взагалі — показуємо
+  if (!props.previousMessage) return true;
+
+  // Якщо змінився день (ми показали лейбл дати) — показуємо ім'я знову для ясності
+  if (dateLabel.value) return true;
+
+  // Якщо змінився автор повідомлення — точно показуємо
+  if (props.previousMessage.sender !== props.message.sender) return true;
+
+  // (Опціонально) Якщо між повідомленнями пройшло більше 5 хвилин —
+  // вважаємо це новим "блоком" розмови і нагадуємо, хто пише.
+  const timeDiff = props.message.date.getTime() - props.previousMessage.date.getTime();
+  if (timeDiff > 5 * 60 * 1000) return true;
+
+  // В усіх інших випадках (той самий автор, той самий час) — ховаємо ім'я
+  return false;
+});
 
 function getTime(date: Date) {
-  // Форматуємо час (наприклад, 14:46)
-  return date.toTimeString().slice(0, 5);
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 </script>
-
-<style>
-.message-item {
-  max-width: 1150px;
-  margin: auto auto;
-}
-</style>
