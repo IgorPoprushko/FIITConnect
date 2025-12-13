@@ -1,4 +1,4 @@
-// frontend/src/stores/chat.ts (ФІНАЛЬНА ВЕРСІЯ)
+// frontend/src/stores/chat.ts (ФІНАЛЬНА ВЕРСІЯ З ДОДАТКОВИМИ ЛОГАМИ)
 
 import { defineStore } from 'pinia';
 import { socketService } from 'src/services/socketService';
@@ -62,6 +62,7 @@ export const useChatStore = defineStore('chat', {
   }),
 
   getters: {
+    // ❗ ЗМІНА: Геттер активних повідомлень працює як раніше
     activeMessages(state): IMessage[] {
       if (!state.activeChannelId) return [];
       return state.messagesByChannel[state.activeChannelId] ?? [];
@@ -74,7 +75,6 @@ export const useChatStore = defineStore('chat', {
   actions: {
     async loadChannels() {
       this.loadingChannels = true;
-      // >>> ДОДАНО ЛОГ: Чи ми сюди потрапляємо?
       console.log('🟡 ChatStore: Executing loadChannels action...');
       try {
         // >>> ДОДАНО ЛОГ: Чи ми викликаємо WS-сервіс?
@@ -133,11 +133,12 @@ export const useChatStore = defineStore('chat', {
       console.log('🟢 ChatStore: Starting WS connection with token...');
       this.connecting = true;
 
-      socketService.connect(auth.token); // 1. ПРИЙОМ НОВИХ ПОВІДОМЛЕНЬ
+      socketService.connect(auth.token);
 
       socketService.onNewMessage((payload: NewMessageEvent) => {
+        console.log(`[WS IN] New message in ${payload.channelId} from ${payload.user?.nickname}`); // ДОДАТКОВИЙ ЛОГ
         this.appendMessage(mapMessageDtoToDisplay(payload));
-      }); // 3. ВИДАЛЕННЯ КАНАЛУ
+      });
 
       socketService.onChannelDeleted((payload: ChannelActionPayload) => {
         this.channels = this.channels.filter((c) => c.id !== payload.channelId);
@@ -148,12 +149,12 @@ export const useChatStore = defineStore('chat', {
       }); // 4. ПРИЄДНАННЯ/ВІДХОДЖЕННЯ КОРИСТУВАЧА
 
       socketService.onMemberJoined((payload: MemberJoinedEvent) => {
-        console.debug('Member joined', payload);
+        console.debug(`[WS IN] Member joined: ${payload.member.nickname} in ${payload.channelId}`); // ДОДАТКОВИЙ ЛОГ
       });
 
       socketService.onMemberLeft((payload: MemberLeftEvent) => {
-        console.debug('Member left', payload);
-      }); // 5. ПІДКЛЮЧЕННЯ
+        console.debug(`[WS IN] Member left: ${payload.userId} from ${payload.channelId}`); // ДОДАТКОВИЙ ЛОГ
+      });
 
       socketService.onConnect(() => {
         console.log('✅ ChatStore: WS Connected. Proceeding to load channels.');
@@ -161,26 +162,37 @@ export const useChatStore = defineStore('chat', {
         this.connecting = false;
 
         const initializeChannels = () => {
-          const firstChannel = this.channels.at(0);
-          if (firstChannel && !this.activeChannelId) {
-            this.setActiveChannel(firstChannel.id);
-            console.debug(`Channel initialized: set active to ${firstChannel.id}`);
+          // ❗ ЗМІНА: Перевіряємо, чи activeChannel існує
+          console.log(
+            `✅[INIT] Initializing channel. Current state: ${this.activeChannel ? this.activeChannel.name : 'null'}`,
+          ); // ДОДАТКОВИЙ ЛОГ
+          if (this.activeChannel && !this.activeChannelId) {
+            this.setActiveChannel(this.activeChannel.id);
+            console.debug(`✅[INIT] Channel initialized: set active to ${this.activeChannel.id}`);
+          } else if (!this.activeChannel) {
+            console.log('✅[INIT] No channel found after load.'); // ДОДАТКОВИЙ ЛОГ
           }
-        };
+        }; // ❗ ВИПРАВЛЕННЯ ДУБЛЮВАННЯ + ВИПРАВЛЕННЯ ГОНКИ УМОВ (100 мс) ❗
 
-        if (!this.channels.length) {
-          this.loadChannels()
-            .then(() => {
-              console.debug(`Channels loaded: ${this.channels.length} items`);
-              initializeChannels();
-            })
-            .catch((error) => {
-              console.error('❌ Failed to load channels on connect:', error);
-              initializeChannels();
-            });
-        } else {
-          initializeChannels();
-        }
+        setTimeout(() => {
+          console.log('✅[INIT] Timeout passed (100ms). Starting channel loading check...'); // ДОДАТКОВИЙ ЛОГ
+          // ❗ ЗМІНА: Перевіряємо, чи активний канал вже завантажено
+          if (!this.activeChannel) {
+            console.log('✅[INIT] Active channel is null. Calling loadChannels.'); // ДОДАТКОВИЙ ЛОГ
+            this.loadChannels()
+              .then(() => {
+                console.debug(`✅[INIT] Channel loaded: ${this.activeChannel?.name}`);
+                initializeChannels();
+              })
+              .catch((error) => {
+                console.error('❌ Failed to load channels on connect (Error in Promise):', error);
+                initializeChannels();
+              });
+          } else {
+            console.log('✅[INIT] Channel already populated. Initializing directly.'); // ДОДАТКОВИЙ ЛОГ
+            initializeChannels();
+          }
+        }, 100); // 100 мс для уникнення гонки умов
       });
 
       socketService.onDisconnect(() => {
@@ -190,14 +202,16 @@ export const useChatStore = defineStore('chat', {
     },
 
     disconnectSocket() {
+      console.warn('🛑 ChatStore: Manually disconnecting WS.'); // ДОДАТКОВИЙ ЛОГ
       socketService.disconnect();
       this.connected = false;
       this.connecting = false;
     },
 
     appendMessage(message: IMessage) {
+      console.log(`[MSG] Appending message ID ${message.id} to channel ${message.channelId}`); // ДОДАТКОВИЙ ЛОГ
       const bucket = (this.messagesByChannel[message.channelId] ||= []);
-      bucket.push(message);
+      bucket.push(message); // ❗ ЗМІНА: Перевірка лише активного каналу
 
       const channel = this.channels.find((c) => c.id === message.channelId);
       if (channel) {
@@ -212,6 +226,10 @@ export const useChatStore = defineStore('chat', {
     sendMessage(content: string) {
       if (!this.activeChannelId) return; // Генерація тимчасового ID
 
+      console.log(
+        `[MSG] Sending message to ${this.activeChannelId}: "${content.substring(0, 20)}..."`,
+      ); // ДОДАТКОВИЙ ЛОГ
+      // ... (Optimistic append logic)
       const id =
         typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
           ? crypto.randomUUID()
@@ -230,7 +248,8 @@ export const useChatStore = defineStore('chat', {
 
       this.appendMessage(optimisticMessage); // Обробляємо Promise
       void socketService.sendMessage(this.activeChannelId, content).catch((error) => {
-        console.error('Failed to send message:', error); // TODO: Логіка відкату або позначки повідомлення як "не відправлене"
+        console.error('❌ Failed to send message (WS ACK Error):', error); // ЗМІНЕНЕ ЛОГУВАННЯ
+        // TODO: Логіка відкату або позначки повідомлення як "не відправлене"
       });
     },
 

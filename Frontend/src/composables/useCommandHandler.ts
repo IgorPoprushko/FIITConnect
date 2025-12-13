@@ -1,6 +1,20 @@
 import { ChannelType, UserRole } from 'src/enums/global_enums';
 import { useChatStore } from 'src/stores/chat';
 
+// ВИПРАВЛЕНО 1: Видалено неіснуючий імпорт 'ChatStore'.
+// Натомість ми визначаємо тип Store за допомогою ReturnType.
+type ChatStoreType = ReturnType<typeof useChatStore>;
+
+import type { ChannelDto } from 'src/contracts/channel_contracts';
+import type { JoinChannelPayload } from 'src/contracts/channel_contracts';
+import type {
+  Command,
+  CommandContext,
+  Suggestion,
+  SuggestionHandler,
+  CommandSuggestion,
+} from 'src/types/suggestions';
+
 // Define all available commands with their access requirements
 const commands: Command[] = [
   // JOIN commands
@@ -17,16 +31,28 @@ const commands: Command[] = [
         return;
       }
 
-      const chat = useChatStore();
+      // ВИПРАВЛЕНО 2: Використовуємо визначений тип Store: ChatStoreType
+      const chat: ChatStoreType = useChatStore();
       await chat.loadChannels();
 
-      let channel = chat.channels.find((c) => c.name.toLowerCase() === channelName.toLowerCase());
+      // Логіка пошуку. Шукаємо тільки в активному каналі.
+      let channel: ChannelDto | undefined;
+
+      if (
+        chat.activeChannel &&
+        chat.activeChannel.name.toLowerCase() === channelName.toLowerCase()
+      ) {
+        channel = chat.activeChannel;
+      }
 
       if (!channel) {
-        channel = await chat.createChannel({
-          name: channelName, // Тепер TS впевнений, що тут string
-          type: ChannelType.PUBLIC,
-        });
+        // Видалено поле 'type', щоб відповідати контракту JoinChannelPayload
+        const payload: JoinChannelPayload = {
+          channelName: channelName,
+        };
+
+        // Викликаємо метод Store для приєднання/створення
+        channel = await chat.createChannel(payload);
       }
 
       if (channel) {
@@ -42,11 +68,10 @@ const commands: Command[] = [
     usage: '/invite [nickname]',
     requiredChannelType: [ChannelType.PRIVATE],
     requiredUserRole: [UserRole.ADMIN],
-    // ФІКС: Прибрали async, бо всередині немає await
     handler: (args: string[]) => {
       const username = args[0];
       console.log('[Private/Admin] Inviting user to private channel:', username);
-      return Promise.resolve(); // Повертаємо проміс, щоб відповідати типу Command
+      return Promise.resolve();
     },
   },
   {
@@ -122,7 +147,7 @@ const commands: Command[] = [
     requiredChannelType: [ChannelType.PRIVATE, ChannelType.PUBLIC],
     requiredUserRole: [UserRole.ADMIN],
     handler: () => {
-      const chat = useChatStore();
+      const chat: ChatStoreType = useChatStore();
       if (chat.activeChannelId) {
         chat.setActiveChannel(null);
       }
@@ -138,7 +163,7 @@ const commands: Command[] = [
     requiredChannelType: [ChannelType.PRIVATE, ChannelType.PUBLIC],
     requiredUserRole: [UserRole.ADMIN],
     handler: () => {
-      const chat = useChatStore();
+      const chat: ChatStoreType = useChatStore();
       if (chat.activeChannelId) {
         chat.setActiveChannel(null);
       }
@@ -152,7 +177,7 @@ const commands: Command[] = [
     requiredChannelType: [ChannelType.PRIVATE, ChannelType.PUBLIC],
     requiredUserRole: [UserRole.MEMBER],
     handler: () => {
-      const chat = useChatStore();
+      const chat: ChatStoreType = useChatStore();
       chat.setActiveChannel(null);
       return Promise.resolve();
     },

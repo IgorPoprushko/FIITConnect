@@ -161,7 +161,7 @@ export default class UsersController {
       if (callback) callback({ status: 'ok', data: channels })
 
       console.log(
-        `[WS DEBUG] [${userId}] ACK callback sent successfully. Loaded ${channels.length} channels for user ${user.nickname}`
+        `[WS DEBUG] [${userId}] ACK callback sent successfully. Loaded ${memberships.length} channels for user ${user.nickname}`
       )
     } catch (error) {
       // Цей лог тепер має спрацьовувати ЛИШЕ на справжніх помилках SQL/коду
