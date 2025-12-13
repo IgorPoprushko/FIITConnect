@@ -3,11 +3,11 @@ import User from '#models/user'
 import Member from '#models/member'
 import { Exception } from '@adonisjs/core/exceptions'
 import type { AuthenticatedSocket } from '#services/ws'
-// import Message from '#models/message' // Видалено: ця модель більше не потрібна
+// Message імпорт видалено (TS6133)
 import { BaseResponse, UserStatus } from '#enums/global_enums'
 import { UserDto, UserFullDto, UserSettingsDto } from '#contracts/user_contracts'
 import { ChannelDto } from '#contracts/channel_contracts'
-import db from '@adonisjs/lucid/services/db' // Імпорт Database
+import db from '@adonisjs/lucid/services/db'
 
 @inject()
 export default class UsersController {
@@ -50,8 +50,6 @@ export default class UsersController {
       const user = socket.user!
       await user.load('setting')
 
-      // FIX: Якщо setting === null, ми не можемо брати user.setting.status.
-      // Ми повинні задати дефолтні значення вручну.
       const settingsDto: UserSettingsDto = user.setting
         ? {
             status: user.setting.status,
@@ -59,7 +57,7 @@ export default class UsersController {
             directNotificationsOnly: Boolean(user.setting.directNotificationsOnly),
           }
         : {
-            status: UserStatus.ONLINE, // Дефолтне значення
+            status: UserStatus.ONLINE,
             notificationsEnabled: true,
             directNotificationsOnly: false,
           }
@@ -87,40 +85,54 @@ export default class UsersController {
     socket: AuthenticatedSocket,
     callback?: (response: BaseResponse<ChannelDto[]>) => void
   ) {
+    const userId = socket.user!.id
+    console.log(`[WS DEBUG] [${userId}] Starting listChannels...`)
+
     try {
       const user = socket.user!
       const channels: ChannelDto[] = []
 
       // Створення будівельника підзапиту для обчислення непрочитаних повідомлень
+      // 🔥 ВИКОРИСТАННЯ db.raw() та whereExists ДЛЯ ОБХОДУ ПРОБЛЕМ З JOIN 🔥
       const unreadCountSubQuery = db
         .query()
-        .select(db.raw('count(*)')) // SELECT COUNT(*)
+        .select(db.raw('count(*)'))
         .from('messages')
-        .whereColumn('messages.channel_id', 'members.channel_id') // Зв'язок
-        .andWhere((query) => {
-          // Виправлення помилок 7006 (implicit any)
-          query.whereColumn('messages.created_at', '>', 'members.joined_at')
 
-          // Умова, що враховує lastReadMessage
-          query.andWhere((subQuery) => {
+        // 1. Повідомлення належить поточному каналу членства
+        .whereColumn('messages.channel_id', 'members.channel_id')
+
+        // 2. Повідомлення має бути новішим, ніж коли користувач приєднався
+        .whereColumn('messages.created_at', '>', 'members.joined_at')
+
+        // 3. ФІКС: Перевірка на дату останнього прочитаного повідомлення через ID.
+        // Ми перевіряємо, чи існує повідомлення (lrm) з датою, яка робить поточне повідомлення (messages) непрочитаним.
+        .andWhere((query) => {
+          query.whereExists((subQuery) => {
             subQuery
-              .whereColumn('messages.created_at', '>', 'last_read_message.created_at')
-              .orWhereNull('last_read_message.created_at')
+              .from('messages as lrm') // lrm = last read message
+              .select('id')
+              .whereColumn('lrm.id', 'members.last_read_message_id') // Зв'язок
+              .whereColumn('messages.created_at', '>', 'lrm.created_at') // Повідомлення новіше, ніж дата lrm
           })
+          // АБО: last_read_message_id ще не встановлено
+          query.orWhereNull('members.last_read_message_id')
         })
-        .as('unread_count') // Записуємо результат в нове поле
+        .as('unread_count')
+
+      console.log(`[WS DEBUG] [${userId}] Subquery constructed. Executing main query...`)
 
       // 1. ОДИН ОПТИМІЗОВАНИЙ ЗАПИТ до БД
       const memberships = await Member.query()
         .where('userId', user.id)
         .preload('channel')
         .preload('lastReadMessage')
-        // Додаємо підзапит як окремий стовпець
-        .select([
-          'members.*', // Обов'язково додайте всі стовпці, якщо ви використовуєте .select
-          unreadCountSubQuery,
-        ])
+        .select(['members.*', unreadCountSubQuery])
         .exec()
+
+      console.log(
+        `[WS DEBUG] [${userId}] Query executed successfully. Found ${memberships.length} memberships.`
+      )
 
       // 2. ОБРОБКА ТА МАПІНГ
       for (const m of memberships) {
@@ -128,7 +140,6 @@ export default class UsersController {
 
         const channel = m.channel!
 
-        // Витягуємо unreadCount з агрегованого поля $extras
         const unreadCount = m.$extras.unread_count ? Number.parseInt(m.$extras.unread_count, 10) : 0
 
         channels.push({
@@ -142,15 +153,22 @@ export default class UsersController {
         } as ChannelDto)
       }
 
-      // 3. ВІДПРАВКА ВІДПОВІДІ
+      for (const channel of channels) {
+        console.log(
+          `[SPEC] [${userId}] Channel: ${channel.name}, Unread Count: ${channel.unreadCount}`
+        )
+      } // 3. ВІДПРАВКА ВІДПОВІДІ
       if (callback) callback({ status: 'ok', data: channels })
-      else socket.emit('user:channels_list', channels)
 
-      const userNickname = user.nickname || 'Unknown'
-      console.log(`[WS] Loaded ${channels.length} channels for user ${userNickname}`)
+      console.log(
+        `[WS DEBUG] [${userId}] ACK callback sent successfully. Loaded ${channels.length} channels for user ${user.nickname}`
+      )
     } catch (error) {
-      console.error('LIST CHANNELS ERROR:', error)
-      if (callback) callback({ status: 'error', message: error.message })
+      // Цей лог тепер має спрацьовувати ЛИШЕ на справжніх помилках SQL/коду
+      console.error(`[WS CRITICAL] [${userId}] LIST CHANNELS ERROR:`, error.message)
+
+      if (callback)
+        callback({ status: 'error', message: error.message || 'Unknown database error' })
     }
   }
 }
