@@ -1,5 +1,5 @@
 import { BaseModel, beforeCreate, belongsTo, column } from '@adonisjs/lucid/orm'
-import { UserStatus } from '#enums/user_status'
+import { UserStatus } from '#enums/global_enums'
 import type { BelongsTo } from '@adonisjs/lucid/types/relations'
 import User from '#models/user'
 import { DateTime } from 'luxon'

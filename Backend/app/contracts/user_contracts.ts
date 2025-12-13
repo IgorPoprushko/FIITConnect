@@ -1,4 +1,4 @@
-import { UserStatus } from '#enums/user_status'
+import { UserStatus } from '#enums/global_enums'
 
 // --- DTOs (Data Transfer Objects) ---
 

@@ -1,4 +1,4 @@
-import { UserStatus } from '#enums/user_status'
+import { UserStatus } from '#enums/global_enums'
 import Setting from '#models/setting'
 import type { AuthenticatedSocket } from '#services/ws'
 import Member from '#models/member'

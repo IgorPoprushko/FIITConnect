@@ -5,8 +5,7 @@ import { Exception } from '@adonisjs/core/exceptions'
 import { updateSettingsValidator } from '#validators/user'
 import type { AuthenticatedSocket } from '#services/ws'
 import Ws from '#services/ws'
-import { BaseResponse } from '#enums/response_type' // Імпорт UserStatus
-import { UserStatus } from '#enums/user_status'
+import { BaseResponse, UserStatus } from '#enums/global_enums' // Імпорт UserStatus
 import {
   UserDto,
   UserFullDto,

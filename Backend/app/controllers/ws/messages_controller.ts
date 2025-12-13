@@ -7,7 +7,7 @@ import User from '#models/user'
 import Member from '#models/member'
 import { Exception } from '@adonisjs/core/exceptions'
 import Ws from '#services/ws'
-import { BaseResponse } from '#enums/response_type'
+import { BaseResponse } from '#enums/global_enums'
 import { SendMessagePayload, MessageDto, GetMessagesPayload } from '#contracts/message_contracts'
 
 @inject()

@@ -1,4 +1,4 @@
-import { ChannelType } from '#enums/channel_type'
+import { ChannelType } from '#enums/global_enums'
 import { UserDto } from '#contracts/user_contracts'
 import { DateTime } from 'luxon'
 
