@@ -1,14 +1,15 @@
-import { UserStatus } from '#enums/user_status'
-// import { inject } from '@adonisjs/core'  <-- ❌ Прибираємо inject
 import server from '@adonisjs/core/services/server'
 import app from '@adonisjs/core/services/app'
 import { Exception } from '@adonisjs/core/exceptions'
 import { Server, Socket } from 'socket.io'
 import { Secret } from '@adonisjs/core/helpers'
 
+// 👇 Імпорт наших потужних контролерів
 import ActivitiesController from '#controllers/ws/activities_controller'
 import MessagesController from '#controllers/ws/messages_controller'
-import CommandsController from '#controllers/ws/commands_controller'
+import UsersController from '#controllers/ws/users_controller'
+import ChannelsController from '#controllers/ws/channels_controller'
+
 import User from '#models/user'
 import Member from '#models/member'
 
@@ -16,7 +17,6 @@ export interface AuthenticatedSocket extends Socket {
   user?: User
 }
 
-// 👇 1. Прибрали "export default" і "@inject()"
 class Ws {
   public io: Server | undefined
   private booted = false
@@ -24,7 +24,6 @@ class Ws {
   private socketIdToUserId = new Map<string, string>()
   private userIdToSocketId = new Map<string, string>()
 
-  // 👇 2. Робимо boot публічним, щоб викликати його ззовні
   public boot() {
     if (this.booted) return
     this.booted = true
@@ -83,64 +82,89 @@ class Ws {
     }
   }
 
+  /**
+   * 🎛️ ГОЛОВНИЙ ПУЛЬТ КЕРУВАННЯ
+   * Тут ми підключаємо контролери до подій
+   */
   private async handleConnection(socket: AuthenticatedSocket) {
     const user = socket.user!
     console.log(`Socket connected: ${user.nickname} (ID: ${user.id}, Socket: ${socket.id})`)
 
-    const activitiesController = await app.container.make(ActivitiesController)
+    // 1. Ініціалізуємо контролери (Adonis Container сам розрулить залежності)
+    const usersController = await app.container.make(UsersController)
+    const channelsController = await app.container.make(ChannelsController)
     const messagesController = await app.container.make(MessagesController)
-    const commandsController = await app.container.make(CommandsController)
+    const activitiesController = await app.container.make(ActivitiesController)
 
+    // Мапінг сокетів для внутрішніх потреб
     this.socketIdToUserId.set(socket.id, user.id)
     this.userIdToSocketId.set(user.id, socket.id)
 
-    // Тепер це викличе метод у контролера, а контролер звернеться до цього ж екземпляра Ws
+    // Дії при підключенні (статус онлайн, джойн в кімнати)
     await activitiesController.onConnected(user.id)
     await this.joinUserToChannels(socket, user.id)
 
-    socket.on('command', (payload: { input: string; channelName: string }) => {
-      commandsController.handleCommand(socket, payload)
-    })
+    // ==========================================
+    // 👤 USERS CONTROLLER (Профіль, налаштування)
+    // ==========================================
+    socket.on('user:get:public_info', (payload, cb) =>
+      usersController.getPublicInfo(socket, payload, cb)
+    )
+    socket.on('user:get:full_info', (cb) => usersController.getFullInfo(socket, cb))
+    socket.on('user:get:channels', (cb) => usersController.listChannels(socket, cb))
+    socket.on('user:update:settings', (payload, cb) =>
+      usersController.changeSettings(socket, payload, cb)
+    )
 
-    socket.on('chat:send', (payload: { channelId: string; content: string }) => {
-      messagesController.onNewMessage(socket, {
-        channelId: payload.channelId,
-        content: payload.content,
-      })
-    })
+    // ==========================================
+    // 📺 CHANNELS CONTROLLER (Команди каналів)
+    // ==========================================
+    // /join або /create (якщо не існує)
+    socket.on('channel:join', (payload, cb) => channelsController.joinOrCreate(socket, payload, cb))
+    // /cancel (leave)
+    socket.on('channel:leave', (payload, cb) => channelsController.leave(socket, payload, cb))
+    // /quit (delete channel)
+    socket.on('channel:delete', (payload, cb) =>
+      channelsController.deleteChannel(socket, payload, cb)
+    )
+    // /invite
+    socket.on('channel:invite', (payload, cb) => channelsController.invite(socket, payload, cb))
+    // /revoke
+    socket.on('channel:revoke', (payload, cb) => channelsController.revoke(socket, payload, cb))
+    // /kick (vote or owner kick)
+    socket.on('channel:kick', (payload, cb) => channelsController.kick(socket, payload, cb))
+    // /list (members)
+    socket.on('channel:list_members', (payload, cb) =>
+      channelsController.listMembers(socket, payload, cb)
+    )
 
-    socket.on('chat:join', (payload: { channelId: string }) => {
-      socket.join(payload.channelId)
-      console.log(`User ${user.nickname} joined room: ${payload.channelId}`)
-    })
+    // ==========================================
+    // 💬 MESSAGES CONTROLLER (Чат)
+    // ==========================================
+    // Відправка повідомлення (з обробкою mentions)
+    socket.on('message:send', (payload, cb) => messagesController.sendMessage(socket, payload, cb))
+    // Отримання історії (infinite scroll)
+    socket.on('message:list', (payload, cb) => messagesController.getMessages(socket, payload, cb))
 
-    socket.on('chat:leave', (payload: { channelId: string }) => {
-      socket.leave(payload.channelId)
-      console.log(`User ${user.nickname} left room: ${payload.channelId}`)
-    })
-
-    socket.on('user:joinChannels', (_, channelIds: string[]) => {
-      if (!channelIds?.length) return
-      channelIds.forEach((id) => socket.join(id))
-      console.log(`User ${user.nickname} mass-joined ${channelIds.length} channels.`)
-    })
-
-    socket.on('user:change:status', (payload: { newStatus: UserStatus }) => {
+    // ==========================================
+    // ⚡ ACTIVITIES CONTROLLER (Статуси, тайпінг)
+    // ==========================================
+    socket.on('user:change:status', (payload) =>
       activitiesController.onChangeStatus({ userId: user.id, newStatus: payload.newStatus })
-    })
-
-    socket.on('typing:start', (payload: { channelName: string }) => {
+    )
+    socket.on('typing:start', (payload) =>
       activitiesController.onTypingStart(socket, payload.channelName)
-    })
-
-    socket.on('typing:stop', (payload: { channelName: string }) => {
+    ) // Тут краще слати channelId, перевір фронт
+    socket.on('typing:stop', (payload) =>
       activitiesController.onTypingStop(socket, payload.channelName)
-    })
-
-    socket.on('typing:draft_update', (payload: { channelName: string; draft: string }) => {
+    )
+    socket.on('typing:draft_update', (payload) =>
       activitiesController.onDraftUpdate(socket, payload)
-    })
+    )
 
+    // ==========================================
+    // 🔌 DISCONNECT
+    // ==========================================
     socket.on('disconnect', () => {
       const userId = this.socketIdToUserId.get(socket.id)
       if (userId) {
@@ -179,5 +203,4 @@ class Ws {
   }
 }
 
-// 👇 3. СТВОРЮЄМО І ЕКСПОРТУЄМО ЄДИНИЙ ЕКЗЕМПЛЯР
 export default new Ws()

@@ -1,91 +1,61 @@
-import type Channel from '#models/channel'
-import type Member from '#models/member'
-import type Message from '#models/message'
-import type User from '#models/user'
 import { ChannelType } from '#enums/channel_type'
+import { UserDto } from '#contracts/user_contracts'
 import { DateTime } from 'luxon'
 
-// *** Payloads ***
-export interface CreateChannelPayload {
+// --- DTOs ---
+
+export interface ChannelDto {
+  id: string
   name: string
   type: ChannelType
   description?: string | null
+  ownerUserId: string
+  unreadCount: number
+  lastMessage?: {
+    content: string
+    sentAt: Date
+    senderNick: string
+  } | null
+}
+
+export interface MemberDto extends UserDto {
+  // Додаткова інфа, якщо треба (наприклад, коли вступив)
+  joinedAt?: DateTime
+}
+
+// --- PAYLOADS ---
+
+export interface JoinChannelPayload {
+  channelName: string
+  isPrivate?: boolean
+}
+
+export interface ChannelActionPayload {
+  channelId: string // Для Leave, Delete, Info
 }
 
 export interface ManageMemberPayload {
+  channelName: string
   nickname: string
 }
 
-export interface MessageSentPayload {
-  content: string
-}
-export interface GetMessagesPayload {
-  limit?: number
-  beforeTime?: string
-  beforeId?: string
-}
+// --- EVENTS ---
 
-// *** Types ***
-export type SerializedUser = ReturnType<User['serialize']>
-export type SerializedMessage = ReturnType<Message['serialize']>
-export type SerializedChannel = ReturnType<Channel['serialize']>
-export type SerializedMember = ReturnType<Member['serialize']> & {
-  user: SerializedUser
-}
-
-// *** Responses ***
-export interface ChannelMinResponse {
-  channels: {
-    id: number
-    name: string
-    type: ChannelType
-    lastMessage: {
-      content: string
-      sentAt: DateTime
-    }
-    unreadCount: number
-  }[]
-}
-
-export interface ChannelFullResponse {
-  name: string
-  description?: string | null
-  type: ChannelType
-  ownerUserId: string
-  lastMessageAt?: DateTime | null
-  createdAt: DateTime
-  updatedAt: DateTime
-  countOfMembers: number
-}
-
-export interface ChannelMembersResponse {
-  members: SerializedMember[]
-}
-
-export interface ChannelMessagesResponse {
-  messages: ReturnType<Message['serialize']>[]
-}
-
-export interface ChannelSuccessResponse {
-  message: string
-}
-
-// *** WebSocket Events ***
-export interface ChannelMemberJoinedEvent {
+export interface MemberJoinedEvent {
   channelId: string
-  member: SerializedMember
+  member: MemberDto
+  isInvite?: boolean
 }
 
-export interface ChannelUpdatedEvent {
-  channel: SerializedChannel
-}
-
-export interface ChannelMemberLeftEvent {
+export interface MemberLeftEvent {
   channelId: string
   userId: string
+  reason?: string
 }
 
-export interface MessageSentEvent {
+export interface VoteUpdateEvent {
   channelId: string
-  message: SerializedMessage
+  targetUserId: string
+  currentVotes: number
+  requiredVotes: number
 }
