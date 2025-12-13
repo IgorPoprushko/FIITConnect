@@ -1,13 +1,49 @@
+// frontend/src/stores/chat.ts (ФІНАЛЬНА ВЕРСІЯ)
+
 import { defineStore } from 'pinia';
-import { channelService } from 'src/services/channelService';
 import { socketService } from 'src/services/socketService';
-import type { ChannelVisual, CreateChannelPayload } from 'src/types/channels';
-import type { ChatMessage, IMessage } from 'src/types/messages';
-import { mapChatMessageToDisplay } from 'src/types/messages';
+
+// === ІМПОРТИ КОНТРАКТІВ ===
+import type {
+  ChannelDto,
+  JoinChannelPayload,
+  ChannelActionPayload,
+  MemberJoinedEvent,
+  MemberLeftEvent,
+} from 'src/contracts/channel_contracts';
+import type { NewMessageEvent } from 'src/contracts/message_contracts';
+// ==========================
+
 import { useAuthStore } from './auth';
 
+// --- ЛОКАЛЬНІ ТИПИ ДЛЯ ВІДОБРАЖЕННЯ ---
+export interface IMessage {
+  id: string;
+  channelId: string;
+  sender: string;
+  text: string;
+  date: Date;
+  own: boolean;
+  read: boolean;
+}
+
+function mapMessageDtoToDisplay(payload: NewMessageEvent): IMessage {
+  const auth = useAuthStore();
+  return {
+    id: payload.id.toString(),
+    channelId: payload.channelId,
+    sender: payload.user?.nickname ?? 'Unknown',
+    text: payload.content,
+    date: new Date(payload.sentAt),
+    own: payload.userId === auth.user?.id,
+    read: true,
+  };
+}
+// ------------------------------------
+
+// --- STATE ---
 interface ChatState {
-  channels: ChannelVisual[];
+  channels: ChannelDto[];
   activeChannelId: string | null;
   messagesByChannel: Record<string, IMessage[]>;
   loadingChannels: boolean;
@@ -30,8 +66,7 @@ export const useChatStore = defineStore('chat', {
       if (!state.activeChannelId) return [];
       return state.messagesByChannel[state.activeChannelId] ?? [];
     },
-    // Додатковий геттер для активного каналу (корисний для відображення деталей)
-    activeChannel(state): ChannelVisual | undefined {
+    activeChannel(state): ChannelDto | undefined {
       return state.channels.find((c) => c.id === state.activeChannelId);
     },
   },
@@ -39,31 +74,37 @@ export const useChatStore = defineStore('chat', {
   actions: {
     async loadChannels() {
       this.loadingChannels = true;
+      // >>> ДОДАНО ЛОГ: Чи ми сюди потрапляємо?
+      console.log('🟡 ChatStore: Executing loadChannels action...');
       try {
-        // Тут ми припускаємо, що channelService.list повертає ChannelVisual[]
-        this.channels = await channelService.list();
+        // >>> ДОДАНО ЛОГ: Чи ми викликаємо WS-сервіс?
+        console.log('🟡 ChatStore: Calling socketService.listChannels()...');
+        this.channels = await socketService.listChannels();
+
+        console.log(`✅ ChatStore: Successfully loaded ${this.channels.length} channels.`);
       } catch (error) {
-        console.error('Failed to load channels', error);
+        console.error('❌ Failed to load channels (Socket ACK Error):', error);
       } finally {
         this.loadingChannels = false;
       }
     },
 
-    async createChannel(payload: CreateChannelPayload) {
-      const channel = await channelService.create(payload);
+    // ПРАВИЛЬНИЙ createChannel (використовує WS)
+    async createChannel(payload: JoinChannelPayload) {
+      const channel = await socketService.joinOrCreateChannel(
+        payload.channelName,
+        payload.isPrivate,
+      );
       this.channels = [channel, ...this.channels];
       this.setActiveChannel(channel.id);
       return channel;
     },
 
-    // Допоміжна функція для оновлення каналу в списку
-    updateChannel(updatedChannel: ChannelVisual) {
+    updateChannel(updatedChannel: ChannelDto) {
       const index = this.channels.findIndex((c) => c.id === updatedChannel.id);
       if (index !== -1) {
-        // Оновлюємо, зберігаючи порядок
         this.channels.splice(index, 1, updatedChannel);
       } else {
-        // Додаємо, якщо канал новий (наприклад, після запрошення)
         this.channels.unshift(updatedChannel);
       }
     },
@@ -73,88 +114,78 @@ export const useChatStore = defineStore('chat', {
       if (channelId && !this.messagesByChannel[channelId]) {
         this.messagesByChannel[channelId] = [];
       }
-      if (channelId) {
-        // Клієнт приєднується до кімнати на бекенді
-        socketService.joinChannel(channelId);
-      }
     },
-
     connectSocket() {
       const auth = useAuthStore();
-      if (!auth.token || this.connected || this.connecting) return;
+      if (!auth.token) {
+        console.warn('❌ ChatStore: connectSocket Aborted. Auth token is missing.'); // Якщо auth.token відсутній, компонент, що викликає,
+        // повинен ПЕРЕВІРИТИ, чи authStore не перебуває у стані завантаження,
+        // і викликати connectSocket пізніше.
+        return;
+      }
 
+      if (this.connected || this.connecting) {
+        console.debug('🟡 ChatStore: connectSocket ignored. Already connecting or connected.');
+        return;
+      }
+
+      console.log('🟢 ChatStore: Starting WS connection with token...');
       this.connecting = true;
 
-      socketService.connect(auth.token);
+      socketService.connect(auth.token); // 1. ПРИЙОМ НОВИХ ПОВІДОМЛЕНЬ
 
-      // 1. ПРИЙОМ НОВИХ ПОВІДОМЛЕНЬ
-      socketService.onMessage((message: ChatMessage) => {
-        this.appendMessage(mapChatMessageToDisplay(message));
+      socketService.onNewMessage((payload: NewMessageEvent) => {
+        this.appendMessage(mapMessageDtoToDisplay(payload));
+      }); // 3. ВИДАЛЕННЯ КАНАЛУ
 
-        // TODO: Логіка нотифікацій тут (перевірка visible/DND)
-      });
-
-      // 2. ОНОВЛЕННЯ КАНАЛУ (наприклад, після запрошення, зміни опису, або оновлення lastMessage)
-      // ФІКС 1 & 2: Виправляємо 'any' та 'onChannelUpdated'
-      // Тепер TypeScript знає, що channel має тип ChannelVisual
-      socketService.onChannelUpdated(({ channel }) => {
-        this.updateChannel(channel);
-      });
-
-      // 3. ВИДАЛЕННЯ КАНАЛУ (через /quit або неактивність)
-      socketService.onChannelDeleted(({ channelId }) => {
-        this.channels = this.channels.filter((c) => c.id !== channelId);
-        delete this.messagesByChannel[channelId];
-        if (this.activeChannelId === channelId) {
+      socketService.onChannelDeleted((payload: ChannelActionPayload) => {
+        this.channels = this.channels.filter((c) => c.id !== payload.channelId);
+        delete this.messagesByChannel[payload.channelId];
+        if (this.activeChannelId === payload.channelId) {
           this.activeChannelId = null;
         }
+      }); // 4. ПРИЄДНАННЯ/ВІДХОДЖЕННЯ КОРИСТУВАЧА
+
+      socketService.onMemberJoined((payload: MemberJoinedEvent) => {
+        console.debug('Member joined', payload);
       });
 
-      // 4. ПРИЄДНАННЯ/ВІДХОДЖЕННЯ КОРИСТУВАЧА
-      socketService.onMemberJoined(({ channelId, userId, nickname }) => {
-        console.debug('Member joined', { channelId, userId, nickname });
-        // TODO: Додати логіку для оновлення списку членів каналу
-      });
+      socketService.onMemberLeft((payload: MemberLeftEvent) => {
+        console.debug('Member left', payload);
+      }); // 5. ПІДКЛЮЧЕННЯ
 
-      socketService.onMemberLeft(({ channelId, userId, nickname }) => {
-        console.debug('Member left', { channelId, userId, nickname });
-        // TODO: Додати логіку для оновлення списку членів каналу
-      });
-
-      // 5. ПІДКЛЮЧЕННЯ
       socketService.onConnect(() => {
+        console.log('✅ ChatStore: WS Connected. Proceeding to load channels.');
         this.connected = true;
         this.connecting = false;
 
-        const joinChannelsAction = () => {
-          // ФІКС: socketService.joinUserChannels використовує channelIds, що є коректним
-          socketService.joinUserChannels(
-            auth.user?.id,
-            this.channels.map((c) => c.id),
-          );
-          if (this.activeChannelId) {
-            socketService.joinChannel(this.activeChannelId);
+        const initializeChannels = () => {
+          const firstChannel = this.channels.at(0);
+          if (firstChannel && !this.activeChannelId) {
+            this.setActiveChannel(firstChannel.id);
+            console.debug(`Channel initialized: set active to ${firstChannel.id}`);
           }
         };
 
         if (!this.channels.length) {
-          void this.loadChannels()
+          this.loadChannels()
             .then(() => {
-              joinChannelsAction();
+              console.debug(`Channels loaded: ${this.channels.length} items`);
+              initializeChannels();
             })
             .catch((error) => {
-              console.error('Failed to load channels on connect:', error);
+              console.error('❌ Failed to load channels on connect:', error);
+              initializeChannels();
             });
         } else {
-          joinChannelsAction();
+          initializeChannels();
         }
       });
 
       socketService.onDisconnect(() => {
+        console.warn('🛑 ChatStore: WS Disconnected.');
         this.connected = false;
       });
-
-      // TODO: Додати обробники для typing:start/stop/draft_update
     },
 
     disconnectSocket() {
@@ -167,37 +198,40 @@ export const useChatStore = defineStore('chat', {
       const bucket = (this.messagesByChannel[message.channelId] ||= []);
       bucket.push(message);
 
-      // Оновлюємо інформацію про останнє повідомлення у списку каналів (UX)
       const channel = this.channels.find((c) => c.id === message.channelId);
       if (channel) {
-        // Припускаємо, що message.date вже є об'єктом Date
-        channel.lastMessage = { content: message.text, sendAt: message.date };
-        // TODO: Збільшення unreadCount, якщо канал не активний
+        channel.lastMessage = {
+          content: message.text,
+          sentAt: message.date.toISOString(),
+          senderNick: message.sender,
+        }; // TODO: Збільшення unreadCount, якщо канал не активний
       }
     },
 
     sendMessage(content: string) {
-      if (!this.activeChannelId) return;
+      if (!this.activeChannelId) return; // Генерація тимчасового ID
 
       const id =
         typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
           ? crypto.randomUUID()
-          : `${Date.now()}-${Math.random()}`;
+          : `${Date.now()}-${Math.random()}`; // Optimistic append
 
-      // Optimistic append
+      const auth = useAuthStore();
       const optimisticMessage: IMessage = {
         id,
         channelId: this.activeChannelId,
-        sender: useAuthStore().nickname || 'You',
+        sender: auth.nickname || 'You',
         text: content,
         date: new Date(),
         own: true,
         read: true,
       };
 
-      this.appendMessage(optimisticMessage);
-      // Відправляємо повідомлення на бекенд
-      socketService.sendMessage(this.activeChannelId, content);
+      this.appendMessage(optimisticMessage); // Обробляємо Promise
+      void socketService.sendMessage(this.activeChannelId, content).catch((error) => {
+        console.error('Failed to send message:', error);
+        // TODO: Логіка відкату або позначки повідомлення як "не відправлене"
+      });
     },
 
     hydrateMockMessages() {

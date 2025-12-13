@@ -1,13 +1,6 @@
 <template>
-  <q-scroll-area class="messages-wrapper">
-    <!-- Infinite scroll for old messages-->
-    <q-infinite-scroll
-      reverse
-      @load="onLoad"
-      :offset="250"
-      class="messages-scroll-area"
-      ref="scrollAreaRef"
-    >
+  <q-scroll-area class="messages-wrapper" ref="scrollAreaRef">
+    <q-infinite-scroll reverse @load="onLoad" :offset="250" class="messages-scroll-area">
       <template v-slot:loading>
         <div class="row justify-center q-my-md">
           <q-spinner-dots color="primary" name="dots" size="40px" />
@@ -20,11 +13,6 @@
         :message="msg"
         :previousMessage="currentMessages[i - 1]"
       />
-
-      <!-- <q-chat-message text-color="white" v-for="(message, index) in messages" :key="message.id"
-                :label="isNewDay(index) ? message.date : ''" :name="message.name" :avatar="message.avatar"
-                :text="[message.text]" :stamp="message.time" :sent="message.isMine"
-                :bg-color="message.isMine ? 'primary' : 'secondary'" class="q-mb-sm q-px-sm message-item" /> -->
     </q-infinite-scroll>
   </q-scroll-area>
 </template>
@@ -32,64 +20,118 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick, computed, watch } from 'vue';
 import MessageBubble from './MessageBubble.vue';
-import { type IMessage, type DoneFunction } from 'src/types/messages';
 import { QScrollArea } from 'quasar';
+import { type IMessage } from 'src/stores/chat'; // Імпортуємо IMessage зі стору
+
+// Тип для функції Done (з Quasar Infinite Scroll)
+type DoneFunction = (stop?: boolean) => void;
 
 interface Props {
-  messages: IMessage[];
+  messages: IMessage[]; // <-- ВИКОРИСТОВУЄМО IMessage
 }
 const props = defineProps<Props>();
-const messages = computed<IMessage[]>(() => props.messages || []);
+
+// Змінна, що містить УСІ повідомлення, які прийшли зі стору (props)
+const allMessages = computed<IMessage[]>(() => props.messages || []);
+
+// currentMessages містить лише ті повідомлення, які ми вже відображаємо у скролі.
 const currentMessages = ref<IMessage[]>([]);
 
+// Посилання на QScrollArea
 const scrollAreaRef = ref<InstanceType<typeof QScrollArea> | null>(null);
 
 function onLoad(index: number, done: DoneFunction) {
+  // Тут ти б викликав API: const oldMessages = await socketService.getMessages(channelId, currentMessages.value[0].id)
+
   setTimeout(() => {
-    const allMessages = messages.value;
     const loadedCount = currentMessages.value.length;
-    const end = allMessages.length - loadedCount;
-    if (end <= 0) {
-      done(true);
+
+    // Кількість повідомлень, які ще не завантажені
+    const remainingMessagesCount = allMessages.value.length - loadedCount;
+
+    if (remainingMessagesCount <= 0) {
+      done(true); // Зупиняємо нескінченний скрол
       return;
     }
-    const start = Math.max(end - 5, 0);
 
-    const loadingMessages = allMessages.slice(start, end);
+    // Визначаємо, скільки нових повідомлень завантажити
+    const batchSize = 20;
+    const end = allMessages.value.length - loadedCount;
+    // Починаємо з моменту, який на 20 повідомлень раніше від 'end'
+    const start = Math.max(end - batchSize, 0);
+
+    // Вирізаємо повідомлення, які потрібно завантажити (вони йдуть у зворотньому порядку, тому slice)
+    const loadingMessages = allMessages.value.slice(start, end);
+
+    // Додаємо їх на початок масиву (unshift, оскільки скрол reverse)
     currentMessages.value.unshift(...loadingMessages);
-    done();
-  }, 1500);
+
+    done(); // Продовжуємо нескінченний скрол
+  }, 500); // Зменшив таймаут для кращого UX
 }
 
-// Scroll to bottom on mount
-onMounted(async () => {
+// Прокручування вниз
+const scrollToBottom = async () => {
+  // Нам потрібна прокрутка не QScrollArea, а контейнера, де знаходиться QInfiniteScroll
+  // Оскільки ми використовуємо reverse, Quasar сам управляє скролом при завантаженні.
+  // Тут ми просто забезпечуємо, що при *новій* ініціалізації ми внизу.
   await nextTick();
-  scrollToBottom();
-});
-
-const scrollToBottom = () => {
-  if (scrollAreaRef.value?.$el) {
-    const scrollContainer = scrollAreaRef.value.$el;
-    scrollContainer.scrollTop = scrollContainer.scrollHeight;
+  const element = scrollAreaRef.value?.$el?.querySelector('.q-infinite-scroll');
+  if (element) {
+    // Прокрутка до останнього елемента
+    element.scrollTop = element.scrollHeight;
   }
 };
+
+// Scroll to bottom on mount
+onMounted(() => {
+  // Встановлюємо початкові повідомлення для відображення
+  currentMessages.value = allMessages.value.slice(-20);
+  // ВИПРАВЛЕНО РЯДОК 94
+  void nextTick(scrollToBottom);
+});
 
 // Expose method to scroll to bottom (for new messages)
 defineExpose({
   scrollToBottom,
 });
 
+// 💡 Watcher: Оновлюємо, коли змінюється основний список повідомлень (наприклад, прийшло нове)
 watch(
-  () => messages.value.length,
-  async () => {
-    currentMessages.value = [...messages.value.slice(-20)];
-    await nextTick();
-    scrollToBottom();
-  }
+  allMessages,
+  (newMessages, oldMessages) => {
+    // Якщо список не змінився або тільки почав завантажуватися, ігноруємо
+    if (!newMessages.length) return;
+
+    const diff = newMessages.length - oldMessages.length;
+
+    if (diff > 0) {
+      // Прийшло нове повідомлення (або більше)
+      const isUserAtBottom =
+        scrollAreaRef.value?.$el?.scrollTop > scrollAreaRef.value?.$el?.scrollHeight - 500;
+
+      // Додаємо нові повідомлення в кінець поточного списку
+      currentMessages.value.push(...newMessages.slice(-diff));
+
+      // Якщо юзер був близько до кінця, прокручуємо вниз
+      if (isUserAtBottom) {
+        // ВИПРАВЛЕНО РЯДОК 121
+        void nextTick(scrollToBottom);
+      }
+    } else if (diff < 0) {
+      // Завантаження нової історії (наприклад, зміна активного каналу)
+      // Перезавантажуємо останні 20 повідомлень
+      currentMessages.value = newMessages.slice(-20);
+      // ВИПРАВЛЕНО РЯДОК 127
+      void nextTick(scrollToBottom);
+    }
+  },
+  { deep: true },
 );
 </script>
 
 <style scoped>
+/* Стилі залишаються без змін */
 .messages-wrapper {
   height: 100%;
   width: 100%;

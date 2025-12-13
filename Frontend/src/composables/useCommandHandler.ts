@@ -1,13 +1,5 @@
-import { ChannelType } from 'src/types/channels';
-import { UserRole } from 'src/types/user';
+import { ChannelType, UserRole } from 'src/enums/global_enums';
 import { useChatStore } from 'src/stores/chat';
-import type {
-  Command,
-  CommandSuggestion,
-  Suggestion,
-  SuggestionHandler,
-  CommandContext,
-} from 'src/types/suggestions';
 
 // Define all available commands with their access requirements
 const commands: Command[] = [

@@ -1,5 +1,5 @@
 import vine from '@vinejs/vine'
-import { UserStatus } from '#enums/user_status'
+import { UserStatus } from '#enums/global_enums'
 
 const UserStatusValues = Object.values(UserStatus).filter((v) => typeof v === 'number') as number[]
 

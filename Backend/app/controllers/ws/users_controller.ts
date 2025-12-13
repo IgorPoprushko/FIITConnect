@@ -2,17 +2,12 @@ import { inject } from '@adonisjs/core'
 import User from '#models/user'
 import Member from '#models/member'
 import { Exception } from '@adonisjs/core/exceptions'
-import { updateSettingsValidator } from '#validators/user'
 import type { AuthenticatedSocket } from '#services/ws'
-import Ws from '#services/ws'
-import { BaseResponse, UserStatus } from '#enums/global_enums' // Імпорт UserStatus
-import {
-  UserDto,
-  UserFullDto,
-  UserSettingsDto,
-  UpdateSettingsPayload,
-} from '#contracts/user_contracts'
+// import Message from '#models/message' // Видалено: ця модель більше не потрібна
+import { BaseResponse, UserStatus } from '#enums/global_enums'
+import { UserDto, UserFullDto, UserSettingsDto } from '#contracts/user_contracts'
 import { ChannelDto } from '#contracts/channel_contracts'
+import db from '@adonisjs/lucid/services/db' // Імпорт Database
 
 @inject()
 export default class UsersController {
@@ -87,64 +82,75 @@ export default class UsersController {
     }
   }
 
-  // 3. LIST_CHANNELS
+  // 3. LIST_CHANNELS (Виправлений та оптимізований метод)
   public async listChannels(
     socket: AuthenticatedSocket,
     callback?: (response: BaseResponse<ChannelDto[]>) => void
   ) {
     try {
       const user = socket.user!
-      const memberships = await Member.query().where('userId', user.id).preload('channel').exec()
+      const channels: ChannelDto[] = []
 
-      const channels: ChannelDto[] = memberships
-        .filter((m) => m.channel && !m.isBanned)
-        .map((m) => ({
-          id: m.channel.id,
-          name: m.channel.name,
-          type: m.channel.type,
-          description: m.channel.description,
-          ownerUserId: m.channel.ownerUserId,
-          unreadCount: 0,
+      // Створення будівельника підзапиту для обчислення непрочитаних повідомлень
+      const unreadCountSubQuery = db
+        .query()
+        .select(db.raw('count(*)')) // SELECT COUNT(*)
+        .from('messages')
+        .whereColumn('messages.channel_id', 'members.channel_id') // Зв'язок
+        .andWhere((query) => {
+          // Виправлення помилок 7006 (implicit any)
+          query.whereColumn('messages.created_at', '>', 'members.joined_at')
+
+          // Умова, що враховує lastReadMessage
+          query.andWhere((subQuery) => {
+            subQuery
+              .whereColumn('messages.created_at', '>', 'last_read_message.created_at')
+              .orWhereNull('last_read_message.created_at')
+          })
+        })
+        .as('unread_count') // Записуємо результат в нове поле
+
+      // 1. ОДИН ОПТИМІЗОВАНИЙ ЗАПИТ до БД
+      const memberships = await Member.query()
+        .where('userId', user.id)
+        .preload('channel')
+        .preload('lastReadMessage')
+        // Додаємо підзапит як окремий стовпець
+        .select([
+          'members.*', // Обов'язково додайте всі стовпці, якщо ви використовуєте .select
+          unreadCountSubQuery,
+        ])
+        .exec()
+
+      // 2. ОБРОБКА ТА МАПІНГ
+      for (const m of memberships) {
+        if (!m.channel || m.isBanned) continue
+
+        const channel = m.channel!
+
+        // Витягуємо unreadCount з агрегованого поля $extras
+        const unreadCount = m.$extras.unread_count ? Number.parseInt(m.$extras.unread_count, 10) : 0
+
+        channels.push({
+          id: channel.id,
+          name: channel.name,
+          type: channel.type,
+          description: channel.description,
+          ownerUserId: channel.ownerUserId,
+          unreadCount: unreadCount,
           lastMessage: null,
-        }))
-
-      if (callback) callback({ status: 'ok', data: channels })
-      else socket.emit('user:channels_list', channels)
-    } catch (error) {
-      if (callback) callback({ status: 'error', message: error.message })
-    }
-  }
-
-  // 4. CHANGE_SETTINGS
-  public async changeSettings(
-    socket: AuthenticatedSocket,
-    payload: UpdateSettingsPayload,
-    callback?: (response: BaseResponse<UserSettingsDto>) => void
-  ) {
-    try {
-      const user = socket.user!
-      const validPayload = await updateSettingsValidator.validate(payload)
-
-      await user.load('setting')
-      const setting = user.setting
-
-      if (!setting) throw new Exception('Settings not initialized')
-
-      setting.merge(validPayload)
-      await setting.save()
-
-      const settingsDto: UserSettingsDto = {
-        status: setting.status,
-        notificationsEnabled: Boolean(setting.notificationsEnabled),
-        directNotificationsOnly: Boolean(setting.directNotificationsOnly),
+        } as ChannelDto)
       }
 
-      Ws.getIo().to(user.id).emit('user:settings_updated', settingsDto)
+      // 3. ВІДПРАВКА ВІДПОВІДІ
+      if (callback) callback({ status: 'ok', data: channels })
+      else socket.emit('user:channels_list', channels)
 
-      if (callback) callback({ status: 'ok', data: settingsDto })
+      const userNickname = user.nickname || 'Unknown'
+      console.log(`[WS] Loaded ${channels.length} channels for user ${userNickname}`)
     } catch (error) {
-      const message = error.messages ? JSON.stringify(error.messages) : error.message
-      if (callback) callback({ status: 'error', message })
+      console.error('LIST CHANNELS ERROR:', error)
+      if (callback) callback({ status: 'error', message: error.message })
     }
   }
 }

@@ -1,3 +1,5 @@
+// backend/app/controllers/ws/ChannelsController.ts
+
 import { inject } from '@adonisjs/core'
 import Channel from '#models/channel'
 import Member from '#models/member'
@@ -6,10 +8,16 @@ import ChannelKickBan from '#models/channel_kick_ban'
 import KickVote from '#models/kick_vote'
 import db from '@adonisjs/lucid/services/db'
 import { Exception } from '@adonisjs/core/exceptions'
-import { BaseResponse, ChannelType } from '#enums/global_enums'
+import { BaseResponse, ChannelType, UserStatus } from '#enums/global_enums'
 import type { AuthenticatedSocket } from '#services/ws'
 import Ws from '#services/ws'
-import { JoinChannelPayload, ChannelDto, MemberDto } from '#contracts/channel_contracts'
+import type {
+  JoinChannelPayload,
+  ChannelDto,
+  MemberDto,
+  ChannelActionPayload,
+  ManageMemberPayload,
+} from '#contracts/channel_contracts'
 
 @inject()
 export default class ChannelsController {
@@ -26,24 +34,21 @@ export default class ChannelsController {
     const user = socket.user!
 
     try {
-      let channel = await Channel.findBy('name', channelName)
+      let channel = await Channel.findBy('name', channelName) // --- СЦЕНАРІЙ А: КАНАЛ ВЖЕ ІСНУЄ ---
 
-      // --- СЦЕНАРІЙ А: КАНАЛ ВЖЕ ІСНУЄ ---
       if (channel) {
-        // Перевірка приватності: тільки інвайт
+        // Перевірки приватності, бану та додавання існуючих учасників...
         if (channel.type === ChannelType.PRIVATE) {
           const isMember = await Member.query()
             .where('channelId', channel.id)
             .where('userId', user.id)
             .first()
 
-          // Власника пускаємо завжди, інших - ні
           if (!isMember && channel.ownerUserId !== user.id) {
             throw new Exception(`Channel is private. Invite required.`, { status: 403 })
           }
-        }
+        } // Перевірка бану
 
-        // Перевірка бану
         const isBanned = await ChannelKickBan.query()
           .where('channelId', channel.id)
           .where('targetUserId', user.id)
@@ -51,9 +56,8 @@ export default class ChannelsController {
           .first()
 
         if (isBanned)
-          throw new Exception('You are permanently banned from this channel.', { status: 403 })
+          throw new Exception('You are permanently banned from this channel.', { status: 403 }) // Якщо ще не учасник - додаємо
 
-        // Якщо ще не учасник - додаємо
         const existing = await Member.query()
           .where('channelId', channel.id)
           .where('userId', user.id)
@@ -62,11 +66,8 @@ export default class ChannelsController {
           const newMember = await Member.create({ channelId: channel.id, userId: user.id })
           await this.notifyJoin(socket, channel, newMember)
         } else {
-          // Якщо вже учасник, просто підключаємо сокет, щоб слухав події
           socket.join(channel.id)
-        }
-
-        // --- СЦЕНАРІЙ Б: СТВОРЕННЯ НОВОГО ---
+        } // --- СЦЕНАРІ Б: СТВОРЕННЯ НОВОГО ---
       } else {
         channel = await Channel.create({
           name: channelName,
@@ -92,9 +93,8 @@ export default class ChannelsController {
     } catch (error) {
       if (callback) callback({ status: 'error', message: error.message })
     }
-  }
+  } // Допоміжний метод: підключає сокет і шле подію всім
 
-  // Допоміжний метод: підключає сокет і шле подію всім
   private async notifyJoin(socket: AuthenticatedSocket, channel: Channel, member: Member) {
     await member.load('user')
     socket.join(channel.id)
@@ -104,36 +104,32 @@ export default class ChannelsController {
       nickname: member.user.nickname,
       firstName: member.user.firstName,
       lastName: member.user.lastName,
-      status: member.user.setting?.status,
+      status: member.user.setting?.status ?? UserStatus.OFFLINE,
       lastSeenAt: member.user.lastSeenAt?.toISO() ?? null,
-      joinedAt: member.joinedAt,
+      joinedAt: member.joinedAt.toISO()!,
     }
 
     Ws.getIo().to(channel.id).emit('channel:member_joined', {
       channelId: channel.id,
       member: memberDto,
     })
-  }
-
-  /**
+  } /**
    * 2. LEAVE (/cancel)
-   * Якщо виходить власник -> канал видаляється (quit).
+   * ВИПРАВЛЕНО: Приймає ChannelActionPayload { channelId: string }
    */
+
   public async leave(
     socket: AuthenticatedSocket,
-    payload: { channelName: string }, // Фронт може слати channelName або ID, тут в ТЗ було Name
+    payload: ChannelActionPayload, // ВИПРАВЛЕНО: використовуємо ChannelActionPayload
     callback?: (res: BaseResponse) => void
   ) {
-    const { channelName } = payload
+    const { channelId } = payload
     const user = socket.user!
 
     try {
-      const channel = await Channel.findBy('name', channelName)
-      if (!channel) throw new Exception('Channel not found')
-
-      // Якщо ВЛАСНИК виходить -> видаляємо канал
+      const channel = await Channel.findOrFail(channelId) // Якщо ВЛАСНИК виходить -> видаляємо канал
       if (channel.ownerUserId === user.id) {
-        return this.deleteChannel(socket, { channelName }, callback)
+        return this.deleteChannel(socket, { channelId }, callback)
       }
 
       const member = await Member.query()
@@ -149,65 +145,57 @@ export default class ChannelsController {
         .emit('channel:member_left', { channelId: channel.id, userId: user.id })
       socket.leave(channel.id)
 
-      if (callback) callback({ status: 'ok', message: `Left channel ${channelName}` })
+      if (callback) callback({ status: 'ok', message: `Left channel ${channel.name}` })
     } catch (error) {
       if (callback) callback({ status: 'error', message: error.message })
     }
-  }
-
-  /**
+  } /**
    * 3. DELETE (/quit)
-   * Тільки власник.
+   * ВИПРАВЛЕНО: Приймає ChannelActionPayload { channelId: string }
    */
+
   public async deleteChannel(
     socket: AuthenticatedSocket,
-    payload: { channelName: string },
+    payload: ChannelActionPayload, // ВИПРАВЛЕНО: використовуємо ChannelActionPayload
     callback?: (res: BaseResponse) => void
   ) {
-    const { channelName } = payload
+    const { channelId } = payload
     const user = socket.user!
 
     try {
-      const channel = await Channel.findBy('name', channelName)
-      if (!channel) throw new Exception('Channel not found')
+      const channel = await Channel.findOrFail(channelId)
 
       if (channel.ownerUserId !== user.id) {
         throw new Exception('Only the channel owner can close the channel.')
-      }
+      } // Сповіщаємо про видалення
 
-      // Сповіщаємо про видалення
-      Ws.getIo().to(channel.id).emit('channel:deleted', { channelId: channel.id })
-      // Викидаємо всіх з кімнати
+      Ws.getIo().to(channel.id).emit('channel:deleted', { channelId: channel.id }) // Викидаємо всіх з кімнати
       Ws.getIo().in(channel.id).socketsLeave(channel.id)
 
       await channel.delete()
 
-      if (callback) callback({ status: 'ok', message: `Channel ${channelName} closed.` })
+      if (callback) callback({ status: 'ok', message: `Channel ${channel.name} closed.` })
     } catch (error) {
       if (callback) callback({ status: 'error', message: error.message })
     }
-  }
-
-  /**
+  } /**
    * 4. INVITE (/invite)
-   * Розбанює, якщо юзер був у бані.
+   * ВИПРАВЛЕНО: Приймає ManageMemberPayload { channelId: string; nickname: string }
    */
+
   public async invite(
     socket: AuthenticatedSocket,
-    payload: { channelName: string; nickname: string },
+    payload: ManageMemberPayload, // ВИПРАВЛЕНО: використовуємо ManageMemberPayload
     callback?: (res: BaseResponse) => void
   ) {
-    const { channelName, nickname } = payload
+    const { channelId, nickname } = payload
     const currentUser = socket.user!
 
     try {
-      const channel = await Channel.findBy('name', channelName)
-      if (!channel) throw new Exception('Channel not found')
-
+      const channel = await Channel.findOrFail(channelId)
       const targetUser = await User.findBy('nickname', nickname)
-      if (!targetUser) throw new Exception(`User ${nickname} not found`)
+      if (!targetUser) throw new Exception(`User ${nickname} not found`) // Перевірка прав
 
-      // Перевірка прав
       const inviterMember = await Member.query()
         .where('channelId', channel.id)
         .where('userId', currentUser.id)
@@ -222,9 +210,8 @@ export default class ChannelsController {
         .where('channelId', channel.id)
         .where('userId', targetUser.id)
         .first()
-      if (existing) throw new Exception(`${nickname} is already here.`)
+      if (existing) throw new Exception(`${nickname} is already here.`) // Логіка розбану (Restore)
 
-      // Логіка розбану (Restore)
       const ban = await ChannelKickBan.query()
         .where('channelId', channel.id)
         .where('targetUserId', targetUser.id)
@@ -237,20 +224,17 @@ export default class ChannelsController {
       }
 
       const newMember = await Member.create({ channelId: channel.id, userId: targetUser.id })
-      await newMember.load('user')
+      await newMember.load('user') // Магія: додаємо сокети запрошеного юзера в кімнату примусово
 
-      // Магія: додаємо сокети запрошеного юзера в кімнату примусово
       const io = Ws.getIo()
-      io.in(targetUser.id).socketsJoin(channel.id)
-
       const memberDto: MemberDto = {
         id: newMember.user.id,
         nickname: newMember.user.nickname,
         firstName: newMember.user.firstName,
         lastName: newMember.user.lastName,
-        status: newMember.user.setting?.status,
+        status: newMember.user.setting?.status ?? UserStatus.OFFLINE,
         lastSeenAt: newMember.user.lastSeenAt?.toISO() ?? null,
-        joinedAt: newMember.joinedAt,
+        joinedAt: newMember.joinedAt.toISO()!,
       }
 
       io.to(channel.id).emit('channel:member_joined', {
@@ -263,24 +247,21 @@ export default class ChannelsController {
     } catch (error) {
       if (callback) callback({ status: 'error', message: error.message })
     }
-  }
-
-  /**
+  } /**
    * 5. REVOKE (/revoke)
-   * Тільки Private, тільки Власник.
+   * ВИПРАВЛЕНО: Приймає ManageMemberPayload { channelId: string; nickname: string }
    */
+
   public async revoke(
     socket: AuthenticatedSocket,
-    payload: { channelName: string; nickname: string },
+    payload: ManageMemberPayload, // ВИПРАВЛЕНО: використовуємо ManageMemberPayload
     callback?: (res: BaseResponse) => void
   ) {
-    const { channelName, nickname } = payload
+    const { channelId, nickname } = payload
     const currentUser = socket.user!
 
     try {
-      const channel = await Channel.findBy('name', channelName)
-      if (!channel) throw new Exception('Channel not found')
-
+      const channel = await Channel.findOrFail(channelId)
       if (channel.type !== ChannelType.PRIVATE)
         throw new Exception('Revoke is for private channels only.')
       if (channel.ownerUserId !== currentUser.id) throw new Exception('Only owner can revoke.')
@@ -307,25 +288,21 @@ export default class ChannelsController {
     } catch (error) {
       if (callback) callback({ status: 'error', message: error.message })
     }
-  }
-
-  /**
+  } /**
    * 6. KICK (/kick)
-   * - Public: Голосування (3 голоси).
-   * - Admin: Миттєвий бан.
+   * ВИПРАВЛЕНО: Приймає ManageMemberPayload { channelId: string; nickname: string }
    */
+
   public async kick(
     socket: AuthenticatedSocket,
-    payload: { channelName: string; nickname: string },
+    payload: ManageMemberPayload, // ВИПРАВЛЕНО: використовуємо ManageMemberPayload
     callback?: (res: BaseResponse) => void
   ) {
-    const { channelName, nickname } = payload
+    const { channelId, nickname } = payload
     const currentUser = socket.user!
 
     try {
-      const channel = await Channel.findBy('name', channelName)
-      if (!channel) throw new Exception('Channel not found')
-
+      const channel = await Channel.findOrFail(channelId)
       const targetUser = await User.findBy('nickname', nickname)
       if (!targetUser) throw new Exception('User not found')
 
@@ -339,16 +316,14 @@ export default class ChannelsController {
       if (!targetMember) throw new Exception('User is not in channel')
 
       const io = Ws.getIo()
-      const isOwner = channel.ownerUserId === currentUser.id
+      const isOwner = channel.ownerUserId === currentUser.id // 1. АДМІН КІКАЄ
 
-      // 1. АДМІН КІКАЄ
       if (isOwner) {
         await this.performBan(channel, targetUser, 'Kicked by owner')
         if (callback) callback({ status: 'ok', message: `${nickname} kicked and banned.` })
         return
-      }
+      } // 2. ГОЛОСУВАННЯ
 
-      // 2. ГОЛОСУВАННЯ
       if (channel.type !== ChannelType.PUBLIC)
         throw new Exception('Voting is only for public channels.')
 
@@ -420,19 +395,18 @@ export default class ChannelsController {
       userId: user.id,
       reason,
     })
-  }
-
-  /**
+  } /**
    * 7. LIST MEMBERS (/list)
+   * ВИПРАВЛЕНО: Приймає ChannelActionPayload { channelId: string }
    */
+
   public async listMembers(
     socket: AuthenticatedSocket,
-    payload: { channelName: string },
+    payload: ChannelActionPayload, // ВИПРАВЛЕНО: використовуємо ChannelActionPayload
     callback?: (res: BaseResponse<MemberDto[]>) => void
   ) {
     try {
-      const channel = await Channel.findBy('name', payload.channelName)
-      if (!channel) throw new Exception('Not found')
+      const channel = await Channel.findOrFail(payload.channelId) // Шукаємо за ID
 
       const me = await Member.query()
         .where('channelId', channel.id)
@@ -450,9 +424,9 @@ export default class ChannelsController {
         nickname: m.user.nickname,
         firstName: m.user.firstName,
         lastName: m.user.lastName,
-        status: m.user.setting?.status,
+        status: m.user.setting?.status ?? UserStatus.OFFLINE,
         lastSeenAt: m.user.lastSeenAt?.toISO() ?? null,
-        joinedAt: m.joinedAt,
+        joinedAt: m.joinedAt.toISO()!,
       }))
 
       if (callback) callback({ status: 'ok', data })
