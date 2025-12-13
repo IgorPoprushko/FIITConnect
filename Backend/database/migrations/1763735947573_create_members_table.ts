@@ -21,6 +21,7 @@ export default class extends BaseSchema {
         .inTable('messages')
         .onDelete('SET NULL')
         .nullable()
+        .index('members_last_read_message_id_index')
 
       table.boolean('is_muted').notNullable().defaultTo(false)
       table.boolean('is_banned').notNullable().defaultTo(false)

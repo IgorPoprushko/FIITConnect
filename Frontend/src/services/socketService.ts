@@ -1,4 +1,4 @@
-// frontend/src/services/socketService.ts
+// frontend/src/services/socketService.ts (ВИПРАВЛЕНО: Усі методи всередині класу)
 
 import type { Socket } from 'socket.io-client';
 import { io } from 'socket.io-client';
@@ -101,6 +101,8 @@ class SocketService {
   private readonly url = import.meta.env.VITE_WS_URL || 'http://localhost:3333'; // --- CONNECTION ---
 
   connect(token: string) {
+    console.log(`[WS CLIENT] Attempting connection to ${this.url} with path /ws...`);
+
     if (this.socket) this.disconnect();
 
     this.socket = io(this.url, {
@@ -123,6 +125,7 @@ class SocketService {
 
   disconnect() {
     if (this.socket) {
+      console.log('[WS CLIENT] Disconnecting socket...');
       this.socket.disconnect();
       this.socket = null;
     }
@@ -136,6 +139,10 @@ class SocketService {
     return new Promise((resolve, reject) => {
       if (!this.socket) return reject(new Error('Socket not connected'));
 
+      console.log(
+        `[WS CLIENT] 🚀 EMITTING with ACK: ${event} (Payload: ${JSON.stringify(payload)})`,
+      );
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (this.socket.timeout(timeout).emit as any)(
         event,
@@ -145,6 +152,9 @@ class SocketService {
             console.error(`[WS ACK TIMEOUT] Event ${event} timed out after ${timeout}ms.`, err);
             return reject(new Error(`Socket ACK timeout for event ${event}`));
           }
+
+          console.log(`[WS CLIENT] 🟢 ACK RECEIVED for ${event}. Status: ${response.status}`);
+
           if (response.status === 'ok') {
             resolve(response);
           } else {
@@ -221,6 +231,7 @@ class SocketService {
   }
 
   async getMyChannels(): Promise<ChannelDto[]> {
+    console.log(`[WS CLIENT] ⬇️ Calling getMyChannels, preparing to emit user:get:channels...`);
     const res = await this.emitWithAck<ChannelDto[]>('user:get:channels');
     return res.data!;
   }
@@ -236,6 +247,7 @@ class SocketService {
   } // --- ACTIVITIES (Typing / Status) ---
 
   changeStatus(newStatus: UserStatus) {
+    console.log(`[WS CLIENT] ⚡ Emitting simple event: user:change:status (Status: ${newStatus})`);
     this.socket?.emit('user:change:status', { newStatus });
   }
 
@@ -288,12 +300,11 @@ class SocketService {
   }
 
   off(event: keyof ServerToClientEvents) {
-    this.socket?.off(event);
-  }
+    this.socket?.off(event); // Додано явне перетворення типу для безпеки
+  } // Методу listChannels більше немає, він використовує getMyChannels
 
   async listChannels(): Promise<ChannelDto[]> {
-    const res = await this.emitWithAck<ChannelDto[]>('user:get:channels');
-    return res.data!;
+    return this.getMyChannels();
   }
 }
 

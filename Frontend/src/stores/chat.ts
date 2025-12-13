@@ -79,17 +79,18 @@ export const useChatStore = defineStore('chat', {
       try {
         // >>> ДОДАНО ЛОГ: Чи ми викликаємо WS-сервіс?
         console.log('🟡 ChatStore: Calling socketService.listChannels()...');
+        // 🔥 await тут КРИТИЧНО важливий, і він використовується коректно
         this.channels = await socketService.listChannels();
 
         console.log(`✅ ChatStore: Successfully loaded ${this.channels.length} channels.`);
       } catch (error) {
+        // Цей блок спрацьовує при таймауті
         console.error('❌ Failed to load channels (Socket ACK Error):', error);
       } finally {
         this.loadingChannels = false;
       }
-    },
+    }, // ПРАВИЛЬНИЙ createChannel (використовує WS)
 
-    // ПРАВИЛЬНИЙ createChannel (використовує WS)
     async createChannel(payload: JoinChannelPayload) {
       const channel = await socketService.joinOrCreateChannel(
         payload.channelName,
@@ -229,8 +230,7 @@ export const useChatStore = defineStore('chat', {
 
       this.appendMessage(optimisticMessage); // Обробляємо Promise
       void socketService.sendMessage(this.activeChannelId, content).catch((error) => {
-        console.error('Failed to send message:', error);
-        // TODO: Логіка відкату або позначки повідомлення як "не відправлене"
+        console.error('Failed to send message:', error); // TODO: Логіка відкату або позначки повідомлення як "не відправлене"
       });
     },
 

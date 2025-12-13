@@ -25,7 +25,11 @@ export default class extends BaseSchema {
       table.boolean('is_deleted').notNullable().defaultTo(false)
       table.uuid('delete_by_user_id').nullable().references('id').inTable('users')
 
-      table.timestamp('created_at', { useTz: true }).defaultTo(this.now())
+      table.timestamp('created_at', { useTz: true }).defaultTo(this.now()).index()
+
+      // Індекси для прискорення запитів
+      table.index('channel_id', 'messages_channel_id_index')
+      table.index('user_id', 'messages_user_id_index')
     })
   }
 
