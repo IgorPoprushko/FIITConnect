@@ -98,9 +98,11 @@ class Ws {
    * Тут ми підключаємо контролери до подій
    */
 
+  // backend/app/services/Ws.ts
+
   private async handleConnection(socket: AuthenticatedSocket) {
     const user = socket.user!
-    console.log(`Socket connected: ${user.nickname} (ID: ${user.id}, Socket: ${socket.id})`) // 1. Ініціалізуємо контролери
+    console.log(`Socket connected: ${user.nickname} (ID: ${user.id}, Socket: ${socket.id})`) // 1. Ініціалізуємо контролери (Це відбувається швидко)
 
     const usersController = await app.container.make(UsersController)
     const channelsController = await app.container.make(ChannelsController)
@@ -108,25 +110,18 @@ class Ws {
     const activitiesController = await app.container.make(ActivitiesController) // Мапінг сокетів для внутрішніх потреб
 
     this.socketIdToUserId.set(socket.id, user.id)
-    this.userIdToSocketId.set(user.id, socket.id) // Дії при підключенні (статус онлайн, джойн в кімнати)
+    this.userIdToSocketId.set(user.id, user.id) // ВИПРАВЛЕНО: user.id тут має бути, а не socket.id
 
-    await activitiesController.onConnected(user.id)
-    await this.joinUserToChannels(socket, user.id)
-
-    console.log('[WS DEBUG] Registering all socket commands...')
+    console.log('[WS DEBUG] Registering all socket commands...') // ==========================================
+    // 🔥🔥 КРИТИЧНИЙ БЛОК: РЕЄСТРАЦІЯ УСІХ КОМАНД (ПЕРЕД await) 🔥🔥
     // ==========================================
     // 👤 USERS CONTROLLER (Профіль, налаштування)
-    // ==========================================
 
     socket.on('user:get:public_info', (payload, cb) =>
       usersController.getPublicInfo(socket, payload, cb)
     )
     socket.on('user:get:full_info', (cb) => usersController.getFullInfo(socket, cb))
     socket.on('user:get:channels', (cb) => usersController.listChannels(socket, cb))
-    // ==========================================
-    // 📺 CHANNELS CONTROLLER (Команди каналів)
-    // ==========================================
-
     socket.on('channel:join', (payload: JoinChannelPayload, cb) =>
       channelsController.joinOrCreate(socket, payload, cb)
     )
@@ -147,40 +142,25 @@ class Ws {
     )
     socket.on('channel:list_members', (payload: ChannelActionPayload, cb) =>
       channelsController.listMembers(socket, payload, cb)
-    ) // ==========================================
-    // 💬 MESSAGES CONTROLLER (Чат)
-    // ==========================================
+    ) // 💬 MESSAGES CONTROLLER (Чат)
 
     socket.on('message:send', (payload: SendMessagePayload, cb) =>
       messagesController.sendMessage(socket, payload, cb)
     )
     socket.on('message:list', (payload: GetMessagesPayload, cb) =>
       messagesController.getMessages(socket, payload, cb)
-    ) // ==========================================
-    // ⚡ ACTIVITIES CONTROLLER (Статуси, тайпінг)
-    // ==========================================
+    ) // ⚡ ACTIVITIES CONTROLLER (Статуси, тайпінг)
 
-    socket.on(
-      'user:change:status',
-      (
-        payload: { newStatus: UserStatus } // ВИПРАВЛЕНО
-      ) => activitiesController.onChangeStatus({ userId: user.id, newStatus: payload.newStatus })
+    socket.on('user:change:status', (payload: { newStatus: UserStatus }) =>
+      activitiesController.onChangeStatus({ userId: user.id, newStatus: payload.newStatus })
     )
-    socket.on(
-      'typing:start',
-      (
-        payload: ChannelActionPayload // ЗМІНЕНО: використовуємо ChannelActionPayload
-      ) => activitiesController.onTypingStart(socket, payload.channelId) // Використовуємо channelId
+    socket.on('typing:start', (payload: ChannelActionPayload) =>
+      activitiesController.onTypingStart(socket, payload.channelId)
     )
-    socket.on(
-      'typing:stop',
-      (
-        payload: ChannelActionPayload // ЗМІНЕНО: використовуємо ChannelActionPayload
-      ) => activitiesController.onTypingStop(socket, payload.channelId) // Використовуємо channelId
-    ) // ВИДАЛЕНО: socket.on('typing:draft_update', ...)
-    // ==========================================
-    // 🔌 DISCONNECT
-    // ==========================================
+    socket.on('typing:stop', (payload: ChannelActionPayload) =>
+      activitiesController.onTypingStop(socket, payload.channelId)
+    ) // 🔌 DISCONNECT (Має бути зареєстрований)
+
     socket.on('disconnect', () => {
       const userId = this.socketIdToUserId.get(socket.id)
       if (userId) {
@@ -190,6 +170,13 @@ class Ws {
         console.log(`Socket disconnected: ${user.nickname} (ID: ${userId})`)
       }
     })
+
+    console.log('[WS DEBUG] Successfully registered all commands.') // Новий лог
+    // 2. ПІСЛЯ РЕЄСТРАЦІЇ ВИКОНУЄМО ПОВІЛЬНІ АСИНХРОННІ ОПЕРАЦІЇ
+    // Дії при підключенні (статус онлайн, джойн в кімнати)
+
+    await activitiesController.onConnected(user.id)
+    await this.joinUserToChannels(socket, user.id)
   }
 
   public findSocketByUserId(userId: string): AuthenticatedSocket | undefined {
