@@ -4,6 +4,7 @@ import { inject } from '@adonisjs/core'
 import Channel from '#models/channel'
 import Member from '#models/member'
 import User from '#models/user'
+import Message from '#models/message' // 🔥 Додано імпорт
 import ChannelKickBan from '#models/channel_kick_ban'
 import KickVote from '#models/kick_vote'
 import db from '@adonisjs/lucid/services/db'
@@ -23,7 +24,6 @@ import type {
 export default class ChannelsController {
   /**
    * 1. JOIN OR CREATE
-   * Об'єднує логіку приєднання та створення.
    */
   public async joinOrCreate(
     socket: AuthenticatedSocket,
@@ -34,10 +34,9 @@ export default class ChannelsController {
     const user = socket.user!
 
     try {
-      let channel = await Channel.findBy('name', channelName) // --- СЦЕНАРІЙ А: КАНАЛ ВЖЕ ІСНУЄ ---
+      let channel = await Channel.findBy('name', channelName)
 
       if (channel) {
-        // Перевірки приватності, бану та додавання існуючих учасників...
         if (channel.type === ChannelType.PRIVATE) {
           const isMember = await Member.query()
             .where('channelId', channel.id)
@@ -47,7 +46,7 @@ export default class ChannelsController {
           if (!isMember && channel.ownerUserId !== user.id) {
             throw new Exception(`Channel is private. Invite required.`, { status: 403 })
           }
-        } // Перевірка бану
+        }
 
         const isBanned = await ChannelKickBan.query()
           .where('channelId', channel.id)
@@ -56,18 +55,23 @@ export default class ChannelsController {
           .first()
 
         if (isBanned)
-          throw new Exception('You are permanently banned from this channel.', { status: 403 }) // Якщо ще не учасник - додаємо
+          throw new Exception('You are permanently banned from this channel.', { status: 403 })
 
         const existing = await Member.query()
           .where('channelId', channel.id)
           .where('userId', user.id)
           .first()
         if (!existing) {
-          const newMember = await Member.create({ channelId: channel.id, userId: user.id })
+          // 🔥 Створюємо як НЕ новий (бо юзер сам зайшов)
+          const newMember = await Member.create({
+            channelId: channel.id,
+            userId: user.id,
+            isNew: false,
+          })
           await this.notifyJoin(socket, channel, newMember)
         } else {
           socket.join(channel.id)
-        } // --- СЦЕНАРІ Б: СТВОРЕННЯ НОВОГО ---
+        }
       } else {
         channel = await Channel.create({
           name: channelName,
@@ -75,7 +79,12 @@ export default class ChannelsController {
           type: isPrivate ? ChannelType.PRIVATE : ChannelType.PUBLIC,
           description: `Channel created by ${user.nickname}`,
         })
-        const newMember = await Member.create({ channelId: channel.id, userId: user.id })
+        // 🔥 Створюємо як НЕ новий (автор)
+        const newMember = await Member.create({
+          channelId: channel.id,
+          userId: user.id,
+          isNew: false,
+        })
         await this.notifyJoin(socket, channel, newMember)
       }
 
@@ -86,6 +95,7 @@ export default class ChannelsController {
         description: channel.description,
         ownerUserId: channel.ownerUserId,
         unreadCount: 0,
+        isNew: false,
         lastMessage: null,
       }
 
@@ -93,7 +103,7 @@ export default class ChannelsController {
     } catch (error) {
       if (callback) callback({ status: 'error', message: error.message })
     }
-  } // Допоміжний метод: підключає сокет і шле подію всім
+  }
 
   private async notifyJoin(socket: AuthenticatedSocket, channel: Channel, member: Member) {
     await member.load('user')
@@ -113,21 +123,18 @@ export default class ChannelsController {
       channelId: channel.id,
       member: memberDto,
     })
-  } /**
-   * 2. LEAVE (/cancel)
-   * ВИПРАВЛЕНО: Приймає ChannelActionPayload { channelId: string }
-   */
+  }
 
   public async leave(
     socket: AuthenticatedSocket,
-    payload: ChannelActionPayload, // ВИПРАВЛЕНО: використовуємо ChannelActionPayload
+    payload: ChannelActionPayload,
     callback?: (res: BaseResponse) => void
   ) {
     const { channelId } = payload
     const user = socket.user!
 
     try {
-      const channel = await Channel.findOrFail(channelId) // Якщо ВЛАСНИК виходить -> видаляємо канал
+      const channel = await Channel.findOrFail(channelId)
       if (channel.ownerUserId === user.id) {
         return this.deleteChannel(socket, { channelId }, callback)
       }
@@ -149,14 +156,11 @@ export default class ChannelsController {
     } catch (error) {
       if (callback) callback({ status: 'error', message: error.message })
     }
-  } /**
-   * 3. DELETE (/quit)
-   * ВИПРАВЛЕНО: Приймає ChannelActionPayload { channelId: string }
-   */
+  }
 
   public async deleteChannel(
     socket: AuthenticatedSocket,
-    payload: ChannelActionPayload, // ВИПРАВЛЕНО: використовуємо ChannelActionPayload
+    payload: ChannelActionPayload,
     callback?: (res: BaseResponse) => void
   ) {
     const { channelId } = payload
@@ -167,9 +171,9 @@ export default class ChannelsController {
 
       if (channel.ownerUserId !== user.id) {
         throw new Exception('Only the channel owner can close the channel.')
-      } // Сповіщаємо про видалення
+      }
 
-      Ws.getIo().to(channel.id).emit('channel:deleted', { channelId: channel.id }) // Викидаємо всіх з кімнати
+      Ws.getIo().to(channel.id).emit('channel:deleted', { channelId: channel.id })
       Ws.getIo().in(channel.id).socketsLeave(channel.id)
 
       await channel.delete()
@@ -178,14 +182,14 @@ export default class ChannelsController {
     } catch (error) {
       if (callback) callback({ status: 'error', message: error.message })
     }
-  } /**
-   * 4. INVITE (/invite)
-   * ВИПРАВЛЕНО: Приймає ManageMemberPayload { channelId: string; nickname: string }
-   */
+  }
 
+  /**
+   * 4. INVITE (/invite)
+   */
   public async invite(
     socket: AuthenticatedSocket,
-    payload: ManageMemberPayload, // ВИПРАВЛЕНО: використовуємо ManageMemberPayload
+    payload: ManageMemberPayload,
     callback?: (res: BaseResponse) => void
   ) {
     const { channelId, nickname } = payload
@@ -194,7 +198,9 @@ export default class ChannelsController {
     try {
       const channel = await Channel.findOrFail(channelId)
       const targetUser = await User.findBy('nickname', nickname)
-      if (!targetUser) throw new Exception(`User ${nickname} not found`) // Перевірка прав
+
+      // 1. Перевірки
+      if (!targetUser) throw new Exception(`User @${nickname} not found`)
 
       const inviterMember = await Member.query()
         .where('channelId', channel.id)
@@ -210,7 +216,7 @@ export default class ChannelsController {
         .where('channelId', channel.id)
         .where('userId', targetUser.id)
         .first()
-      if (existing) throw new Exception(`${nickname} is already here.`) // Логіка розбану (Restore)
+      if (existing) throw new Exception(`${nickname} is already in the channel.`)
 
       const ban = await ChannelKickBan.query()
         .where('channelId', channel.id)
@@ -223,10 +229,18 @@ export default class ChannelsController {
         await ban.delete()
       }
 
-      const newMember = await Member.create({ channelId: channel.id, userId: targetUser.id })
-      await newMember.load('user') // Магія: додаємо сокети запрошеного юзера в кімнату примусово
+      // 2. Створюємо запис в БД як НОВИЙ
+      const newMember = await Member.create({
+        channelId: channel.id,
+        userId: targetUser.id,
+        isNew: true,
+      })
+      await newMember.load('user')
 
       const io = Ws.getIo()
+      io.in(targetUser.id).socketsJoin(channel.id)
+
+      // 3. Сповіщаємо всіх в кімнаті про нового учасника
       const memberDto: MemberDto = {
         id: newMember.user.id,
         nickname: newMember.user.nickname,
@@ -243,18 +257,50 @@ export default class ChannelsController {
         isInvite: true,
       })
 
+      // 4. 🔥 FIX: Отримуємо реальне останнє повідомлення для прев'ю
+      const lastMsg = await Message.query()
+        .where('channelId', channel.id)
+        .orderBy('createdAt', 'desc')
+        .preload('user')
+        .first()
+
+      let lastMessageDto = null
+      if (lastMsg) {
+        const sentAtString =
+          typeof lastMsg.createdAt === 'string'
+            ? lastMsg.createdAt
+            : ((lastMsg.createdAt as any)?.toISO?.() ?? new Date().toISOString())
+
+        lastMessageDto = {
+          content: lastMsg.content,
+          sentAt: sentAtString,
+          senderNick: lastMsg.user.nickname,
+        }
+      }
+
+      // 5. Відправляємо подію персонально запрошеному
+      const channelDto: ChannelDto = {
+        id: channel.id,
+        name: channel.name,
+        type: channel.type,
+        description: channel.description,
+        ownerUserId: channel.ownerUserId,
+        unreadCount: 1, // Щоб світилось як нове
+        isNew: true, // Щоб потрапило в "New Invitations"
+        lastMessage: lastMessageDto, // 🔥 Тепер тут не null
+      }
+
+      io.to(targetUser.id).emit('user:invited', channelDto)
+
       if (callback) callback({ status: 'ok', message: `Invited ${nickname}` })
     } catch (error) {
       if (callback) callback({ status: 'error', message: error.message })
     }
-  } /**
-   * 5. REVOKE (/revoke)
-   * ВИПРАВЛЕНО: Приймає ManageMemberPayload { channelId: string; nickname: string }
-   */
+  }
 
   public async revoke(
     socket: AuthenticatedSocket,
-    payload: ManageMemberPayload, // ВИПРАВЛЕНО: використовуємо ManageMemberPayload
+    payload: ManageMemberPayload,
     callback?: (res: BaseResponse) => void
   ) {
     const { channelId, nickname } = payload
@@ -295,14 +341,11 @@ export default class ChannelsController {
     } catch (error) {
       if (callback) callback({ status: 'error', message: error.message })
     }
-  } /**
-   * 6. KICK (/kick)
-   * ВИПРАВЛЕНО: Приймає ManageMemberPayload { channelId: string; nickname: string }
-   */
+  }
 
   public async kick(
     socket: AuthenticatedSocket,
-    payload: ManageMemberPayload, // ВИПРАВЛЕНО: використовуємо ManageMemberPayload
+    payload: ManageMemberPayload,
     callback?: (res: BaseResponse) => void
   ) {
     const { channelId, nickname } = payload
@@ -436,18 +479,15 @@ export default class ChannelsController {
       userId: user.id,
       reason,
     })
-  } /**
-   * 7. LIST MEMBERS (/list)
-   * ВИПРАВЛЕНО: Приймає ChannelActionPayload { channelId: string }
-   */
+  }
 
   public async listMembers(
     socket: AuthenticatedSocket,
-    payload: ChannelActionPayload, // ВИПРАВЛЕНО: використовуємо ChannelActionPayload
+    payload: ChannelActionPayload,
     callback?: (res: BaseResponse<MemberDto[]>) => void
   ) {
     try {
-      const channel = await Channel.findOrFail(payload.channelId) // Шукаємо за ID
+      const channel = await Channel.findOrFail(payload.channelId)
 
       const me = await Member.query()
         .where('channelId', channel.id)

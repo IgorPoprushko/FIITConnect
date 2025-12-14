@@ -27,8 +27,8 @@
 
       <!-- ПРАВА ЧАСТИНА: Кнопки дій -->
       <div class="row q-gutter-sm items-center">
-        <!-- Інвайт -->
-        <q-btn flat round dense color="grey-7" icon="person_add" @click="onInvite">
+        <!-- 🔥 ІНВАЙТ: Тепер відкриває діалог -->
+        <q-btn flat round dense color="grey-7" icon="person_add" @click="inviteDialog.open()">
           <q-tooltip>Invite users</q-tooltip>
         </q-btn>
 
@@ -60,6 +60,20 @@
     <FormDialog v-model="leaveDialog.isOpen.value" title="Leave Channel" confirm-color="negative"
       description="Do you want to leave channel?" confirm-label="Leave" :loading="leaveDialog.loading.value"
       @confirm="leaveChannel" @cancel="closeLeaveDialog" @close="closeLeaveDialog">
+    </FormDialog>
+
+    <!-- 🔥 НОВИЙ ДІАЛОГ ЗАПРОШЕННЯ (INVITE DIALOG) -->
+    <FormDialog v-model="inviteDialog.isOpen.value" title="Invite User" confirm-label="Invite" confirm-color="secondary"
+      :loading="inviteDialog.loading.value" :disable-confirm="!inviteNickname.trim()" @confirm="submitInvite"
+      @cancel="closeInvite" @close="closeInvite">
+      <template #content>
+        <q-input v-model="inviteNickname" label="User Nickname" dense outlined autofocus @keyup.enter="submitInvite"
+          hint="Enter the exact nickname of the user">
+          <template v-slot:prepend>
+            <q-icon name="person_search" />
+          </template>
+        </q-input>
+      </template>
     </FormDialog>
 
     <!-- Правий Drawer (Профіль) -->
@@ -99,15 +113,17 @@
 </template>
 
 <script setup lang="ts">
-// 🔥 ДОДАНО: import onUnmounted
-import { computed, watch, onMounted, onUnmounted } from 'vue';
+import { computed, watch, onMounted, onUnmounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useChatDrawer } from 'src/composables/useChatDrawer';
 import MessageList from 'components/MessageList.vue';
-import FormDialog from 'src/components/FormDialog.vue';
 import { useChatStore } from 'src/stores/chat';
-import { useQuasar } from 'quasar';
+// 🔥 FIX: Імпортуємо Notify напряму, щоб уникнути помилок з $q
+import { Notify } from 'quasar';
 import { ChannelType } from 'src/enums/global_enums';
+
+// 🔥 IMPORT COMPONENTS FOR INVITE
+import FormDialog from 'src/components/FormDialog.vue';
 import { useFormDialog } from 'src/composables/useFormDialog';
 
 const { chatDrawer, toggleChatDrawer } = useChatDrawer();
@@ -115,10 +131,53 @@ const chat = useChatStore();
 const route = useRoute();
 const router = useRouter();
 const $q = useQuasar();
+// const $q = useQuasar(); // Більше не потрібно для Notify
+
+const confirmLeave = ref(false);
 
 const messages = computed(() => chat.activeMessages);
-
 const currentChannel = computed(() => chat.activeChannel);
+
+// --- INVITE LOGIC ---
+const inviteDialog = useFormDialog();
+const inviteNickname = ref('');
+
+const closeInvite = () => {
+  inviteDialog.close();
+  inviteNickname.value = '';
+};
+
+const submitInvite = async () => {
+  if (!inviteNickname.value.trim()) return;
+
+  inviteDialog.setLoading(true);
+  try {
+    await chat.inviteUser(inviteNickname.value.trim());
+
+    Notify.create({
+      message: `User ${inviteNickname.value} invited successfully!`,
+      color: 'positive',
+      icon: 'check',
+    });
+
+    closeInvite();
+  } catch (err: unknown) {
+    let message = 'Failed to invite user';
+
+    if (err instanceof Error) {
+      message = err.message;
+    }
+
+    Notify.create({
+      message,
+      color: 'negative',
+      icon: 'error',
+    });
+  } finally {
+    inviteDialog.setLoading(false);
+  }
+};
+// --------------------
 
 const syncChannelFromRoute = () => {
   const channelId = route.params.channelId as string | undefined;
@@ -132,7 +191,6 @@ const syncChannelFromRoute = () => {
 // --- ФУНКЦІЯ ДЛЯ ОБРОБКИ НАТИСКАННЯ КЛАВІШ ---
 const handleGlobalKeydown = (event: KeyboardEvent) => {
   // 1. FIX: Перевіряємо, чи ми не друкуємо в цей момент
-  // Якщо фокус у полі вводу (input або textarea), ігноруємо ESC (бо користувач може хотіти просто скасувати ввід)
   const target = event.target as HTMLElement;
   if (['INPUT', 'TEXTAREA'].includes(target.tagName)) return;
 
