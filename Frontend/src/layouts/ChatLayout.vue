@@ -2,13 +2,27 @@
   <q-layout view="lHr LpR lFr">
     <q-drawer v-model="groupDrawer" side="left" show-if-above bordered class="q-pa-sm">
       <q-toolbar class="q-pa-none justify-between">
-        <q-btn outline rounded color="secondary" class="text-bold" :label="auth.nickname"
-          @click="profileDialog.open()" />
+        <q-btn
+          outline
+          rounded
+          color="secondary"
+          class="text-bold"
+          :label="auth.nickname"
+          @click="profileDialog.open()"
+        />
         <q-btn round flat dense icon="mail" class="q-ml-xs" />
       </q-toolbar>
 
       <q-toolbar class="q-pa-none">
-        <q-input rounded standout dense clearable placeholder="Search" v-model="search" class="fit text-accent">
+        <q-input
+          rounded
+          standout
+          dense
+          clearable
+          placeholder="Search"
+          v-model="search"
+          class="fit text-accent"
+        >
           <template v-slot:append>
             <q-icon name="search" color="secondary" />
           </template>
@@ -19,36 +33,81 @@
       <q-separator />
 
       <q-list>
-        <GroupItem v-for="group in filteredGroups" :key="group.id" clickable :group-data="group"
-          @select="selectChannel(group.id)" />
+        <!-- 
+          🔥 ВИПРАВЛЕНО (Issue 2):
+          Замість чекати ID від події (@select="(id) => ..."), ми передаємо group.id напряму з циклу.
+          Використовуємо `() => void ...`, щоб задовольнити лінтер.
+        -->
+        <GroupItem
+          v-for="group in filteredGroups"
+          :key="group.id"
+          clickable
+          :group-data="group"
+          @select="() => void selectChannel(group.id)"
+        />
       </q-list>
     </q-drawer>
 
     <q-footer class="q-pa-none">
-      <MessageInput :channel-type="activeChannel?.type ?? ChannelType.PUBLIC" :user-role="activeUserRole"
-        @send="handleSend" />
+      <MessageInput
+        :channel-type="activeChannel?.type ?? ChannelType.PUBLIC"
+        :user-role="activeUserRole"
+        @send="handleSend"
+      />
     </q-footer>
 
-    <FormDialog v-model="createDialog.isOpen.value" title="Create Channel" confirm-color="secondary"
-      description="Create a new channel to start chatting with others" confirm-label="Create"
-      :loading="createDialog.loading.value" :disable-confirm="!createForm.name.trim()" @confirm="submitCreate"
-      @cancel="closeCreate" @close="closeCreate">
+    <FormDialog
+      v-model="createDialog.isOpen.value"
+      title="Create Channel"
+      confirm-color="secondary"
+      description="Create a new channel to start chatting with others"
+      confirm-label="Create"
+      :loading="createDialog.loading.value"
+      :disable-confirm="!createForm.name.trim()"
+      @confirm="submitCreate"
+      @cancel="closeCreate"
+      @close="closeCreate"
+    >
       <template #content>
         <q-form class="column q-gutter-md">
-          <q-input v-model="createForm.name" label="Channel Name" color="secondary" dense outlined required
-            :rules="[(val) => !!val?.trim() || 'Name is required']">
+          <q-input
+            v-model="createForm.name"
+            label="Channel Name"
+            color="secondary"
+            dense
+            outlined
+            required
+            :rules="[(val) => !!val?.trim() || 'Name is required']"
+          >
             <template v-slot:prepend> <q-icon name="tag" /> </template>
           </q-input>
 
-          <q-input v-model="createForm.description" label="Description (optional)" type="textarea" color="secondary"
-            autogrow dense outlined rows="2" max-rows="4">
+          <q-input
+            v-model="createForm.description"
+            label="Description (optional)"
+            type="textarea"
+            color="secondary"
+            autogrow
+            dense
+            outlined
+            rows="2"
+            max-rows="4"
+          >
             <template v-slot:prepend>
               <q-icon name="description" />
             </template>
           </q-input>
 
-          <q-select v-model="createForm.type" :options="channelTypeOptions" label="Channel Type" color="secondary" dense
-            outlined emit-value map-options>
+          <q-select
+            v-model="createForm.type"
+            :options="channelTypeOptions"
+            label="Channel Type"
+            color="secondary"
+            dense
+            outlined
+            emit-value
+            map-options
+          >
             <template v-slot:prepend>
               <q-icon name="visibility" />
             </template>
@@ -57,9 +116,17 @@
       </template>
     </FormDialog>
 
-    <FormDialog v-model="profileDialog.isOpen.value" title="User Profile" confirm-color="secondary"
-      confirm-label="Apply" :loading="profileDialog.loading.value" :disable-confirm="checkChange()"
-      @confirm="submitProfile" @cancel="closeProfile" @close="closeProfile">
+    <FormDialog
+      v-model="profileDialog.isOpen.value"
+      title="User Profile"
+      confirm-color="secondary"
+      confirm-label="Apply"
+      :loading="profileDialog.loading.value"
+      :disable-confirm="checkChange()"
+      @confirm="submitProfile"
+      @cancel="closeProfile"
+      @close="closeProfile"
+    >
       <template #content>
         <div class="column q-gutter-md">
           <div class="column q-gutter-sm q-pb-md">
@@ -83,26 +150,53 @@
           <q-separator />
 
           <q-form class="column q-gutter-md q-pt-sm">
-            <q-input v-model="profileForm.firstName" label="First Name" dense outlined color="secondary">
+            <q-input
+              v-model="profileForm.firstName"
+              label="First Name"
+              dense
+              outlined
+              color="secondary"
+            >
               <template v-slot:prepend>
                 <q-icon name="person" color="secondary" />
               </template>
             </q-input>
 
-            <q-input v-model="profileForm.lastName" label="Last Name" dense outlined color="secondary">
+            <q-input
+              v-model="profileForm.lastName"
+              label="Last Name"
+              dense
+              outlined
+              color="secondary"
+            >
               <template v-slot:prepend>
                 <q-icon name="person" color="secondary" />
               </template>
             </q-input>
 
-            <q-input v-model="profileForm.email" label="Email" type="email" dense outlined color="secondary">
+            <q-input
+              v-model="profileForm.email"
+              label="Email"
+              type="email"
+              dense
+              outlined
+              color="secondary"
+            >
               <template v-slot:prepend>
                 <q-icon name="email" color="secondary" />
               </template>
             </q-input>
 
-            <q-select v-model="profileForm.status" :options="statusOptions" label="Status" dense outlined
-              color="secondary" emit-value map-options>
+            <q-select
+              v-model="profileForm.status"
+              :options="statusOptions"
+              label="Status"
+              dense
+              outlined
+              color="secondary"
+              emit-value
+              map-options
+            >
               <template v-slot:prepend>
                 <q-icon name="circle" :color="getStatusColor(profileForm.status)" />
               </template>
@@ -126,8 +220,20 @@
               <q-toggle v-model="profileForm.directNotificationsOnly" color="secondary" />
             </div>
 
-            <q-btn outline rounded dense color="negative" label="Logout" class="text-h6 text-bold"
-              @click="handleLogout" />
+            <!-- 
+              🔥 ВИПРАВЛЕНО (Issue 1):
+              Використовуємо () => void handleLogout(), щоб явно позначити, 
+              що ми ігноруємо проміс у шаблоні.
+            -->
+            <q-btn
+              outline
+              rounded
+              dense
+              color="negative"
+              label="Logout"
+              class="text-h6 text-bold"
+              @click="() => void handleLogout()"
+            />
           </q-form>
         </div>
       </template>
@@ -142,7 +248,7 @@ import { ref, reactive, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 
 // === ІМПОРТИ КОНТРАКТІВ ===
-import type { ChannelDto, JoinChannelPayload } from 'src/contracts/channel_contracts'; // <--- Додано JoinChannelPayload
+import type { ChannelDto, JoinChannelPayload } from 'src/contracts/channel_contracts';
 import { ChannelType, UserRole, UserStatus } from 'src/enums/global_enums';
 import type { UpdateSettingsPayload } from 'src/contracts/user_contracts';
 // ==========================
@@ -161,17 +267,14 @@ const auth = useAuthStore();
 const chat = useChatStore();
 const search = ref<string>('');
 
-
 // === ЛОКАЛЬНІ ТИПИ ===
 
-// Тип для форми створення каналу
 interface CreateFormPayload {
   name: string;
   description: string;
   type: ChannelType;
 }
 
-// Тип для відображення каналу у списку (GroupItem)
 interface GroupItemProps {
   id: string;
   name: string;
@@ -180,7 +283,6 @@ interface GroupItemProps {
   unreadCount: number;
 }
 
-// Тип для форми профілю
 interface ProfileFormPayload {
   email: string;
   firstName: string;
@@ -213,9 +315,9 @@ const filteredGroups = computed(() =>
         lastMessage: c.lastMessage?.content ?? '',
         lastTime: c.lastMessage?.sentAt
           ? new Date(c.lastMessage.sentAt).toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-          })
+              hour: '2-digit',
+              minute: '2-digit',
+            })
           : '',
         unreadCount: c.unreadCount,
       }),
@@ -235,13 +337,8 @@ const channelTypeOptions = [
   { label: 'Private', value: ChannelType.PRIVATE },
 ];
 
-// ВИПРАВЛЕНО: Прибираємо loadChannels з onMounted, оскільки він має викликатися після connectSocket
-// Також прибираємо логіку setActiveChannel та hydrateMockMessages звідси.
 onMounted(() => {
-  // 1. Запускаємо процес з'єднання, який у своєму onConnect викликає loadChannels
-  chat.connectSocket(); // 2. Логіка вибору активного каналу та завантаження повідомлень повинна бути у:
-  //    - router.currentRoute (якщо в URL є ID)
-  //    - обробнику chat.loadChannels, який викликається після успішного підключення.
+  chat.connectSocket();
 });
 
 async function selectChannel(channelId: string) {
@@ -249,8 +346,8 @@ async function selectChannel(channelId: string) {
   await router.push(`/chat/${channelId}`);
 }
 
-const handleSend = (text: string) => {
-  chat.sendMessage(text);
+const handleSend = async (text: string) => {
+  await chat.sendMessage(text);
 };
 
 function closeCreate() {
@@ -265,9 +362,8 @@ async function submitCreate() {
 
   createDialog.setLoading(true);
   try {
-    // ВИПРАВЛЕНО: Використовуємо імпортований JoinChannelPayload
     const joinPayload: JoinChannelPayload = {
-      channelName: createForm.name, // isPrivate є опціональним, але ми його передаємо, якщо канал приватний
+      channelName: createForm.name,
       isPrivate: createForm.type === ChannelType.PRIVATE,
     };
 
@@ -285,7 +381,6 @@ async function submitCreate() {
 
 //#region User profile dialog
 
-// Мапінг для відображення ENUM-статусу
 const statusDisplayMap: Record<UserStatus, string> = {
   [UserStatus.ONLINE]: 'Online',
   [UserStatus.DND]: 'DND',
@@ -294,7 +389,6 @@ const statusDisplayMap: Record<UserStatus, string> = {
 
 const profileDialog = useFormDialog();
 
-// ВИПРАВЛЕНО: Використовуємо ProfileFormPayload
 const profileForm = reactive<ProfileFormPayload>({
   email: auth.user?.email ?? '',
   firstName: auth.user?.firstName ?? '',
@@ -334,7 +428,7 @@ function checkChange() {
 }
 
 function closeProfile() {
-  profileDialog.close(); // Скидання полів форми до початкових значень
+  profileDialog.close();
   profileForm.email = auth.user?.email ?? '';
   profileForm.firstName = auth.user?.firstName ?? '';
   profileForm.lastName = auth.user?.lastName ?? '';
@@ -344,11 +438,10 @@ function closeProfile() {
 }
 
 function submitProfile() {
-  profileDialog.setLoading(true); // ВИКОРИСТОВУЄМО ІМПОРТОВАНИЙ UpdateSettingsPayload
+  profileDialog.setLoading(true);
 
   const updatePayload: UpdateSettingsPayload = {};
-  let shouldUpdate = false; // ... (логіка оновлення даних та налаштувань) ...
-  // 2. Зміни налаштувань
+  let shouldUpdate = false;
 
   if (profileForm.status !== (auth.settings?.status ?? UserStatus.ONLINE)) {
     updatePayload.status = profileForm.status;
@@ -362,9 +455,7 @@ function submitProfile() {
   }
 
   if (shouldUpdate && Object.keys(updatePayload).length > 0) {
-    // TODO: Реалізувати updateSettings API call
-    // Тут має бути виклик authService.updateSettings(updatePayload)
-    // або socketService.updateSettings(updatePayload)
+    // Logic placeholder
   }
 
   profileDialog.setLoading(false);
@@ -372,9 +463,17 @@ function submitProfile() {
 }
 //#endregion
 
+// 🔥 ВИПРАВЛЕНО (Issue 1):
+// Робимо функцію чистою async, а "глушимо" проміс у місці виклику (в шаблоні).
 const handleLogout = async () => {
-  await authService.logout();
-  chat.disconnectSocket();
-  await router.push('/login');
+  try {
+    await authService.logout();
+  } catch (error) {
+    console.error('Logout failed:', error);
+  } finally {
+    // Завжди відключаємось і йдемо на логін
+    chat.disconnectSocket();
+    await router.push('/login');
+  }
 };
 </script>

@@ -60,15 +60,12 @@ export const useChatStore = defineStore('chat', {
   }),
 
   getters: {
-    // 🔥 ФІКС ТУТ: Сортування повідомлень
     activeMessages(state): IMessage[] {
       if (!state.activeChannelId) return [];
 
       const messages = state.messagesByChannel[state.activeChannelId] ?? [];
 
-      // Ми створюємо копію масиву [...messages] і сортуємо її.
-      // Сортуємо від найстаріших до найновіших (a.date - b.date).
-      // Це гарантує, що 22:40 завжди буде перед 22:49, незалежно від того, коли вони прийшли.
+      // Сортуємо від найстаріших до найновіших
       return [...messages].sort((a, b) => a.date.getTime() - b.date.getTime());
     },
 
@@ -120,6 +117,25 @@ export const useChatStore = defineStore('chat', {
       this.channels = [channel, ...this.channels];
       this.setActiveChannel(channel.id);
       return channel;
+    },
+
+    // 🔥 НОВА ДІЯ: Покинути канал
+    async leaveChannel(channelId: string) {
+      try {
+        // 1. Кажемо серверу "Па-па!"
+        await socketService.leaveChannel(channelId);
+
+        // 2. Видаляємо канал з нашого локального списку (щоб він зник з меню зліва)
+        this.channels = this.channels.filter((c) => c.id !== channelId);
+
+        // 3. Якщо ми зараз дивились на цей канал - закриваємо його
+        if (this.activeChannelId === channelId) {
+          this.activeChannelId = null;
+        }
+      } catch (error) {
+        console.error('❌ Failed to leave channel:', error);
+        throw error; // Викидаємо помилку далі, щоб UI міг показати повідомлення
+      }
     },
 
     updateChannel(updatedChannel: ChannelDto) {
@@ -204,7 +220,6 @@ export const useChatStore = defineStore('chat', {
 
     appendMessage(message: IMessage) {
       const bucket = (this.messagesByChannel[message.channelId] ||= []);
-      // Перевірка на дублікати
       const exists = bucket.some((m) => m.id === message.id);
       if (!exists) {
         bucket.push(message);
@@ -223,7 +238,6 @@ export const useChatStore = defineStore('chat', {
     async sendMessage(content: string) {
       if (!this.activeChannelId) return;
 
-      // 1. Оптимістичне додавання
       const tempId = `temp-${Date.now()}`;
       const auth = useAuthStore();
       const optimisticMessage: IMessage = {
