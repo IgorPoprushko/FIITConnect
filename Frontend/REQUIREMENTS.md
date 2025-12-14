@@ -127,10 +127,10 @@
 
 ### 11. Ak má používateľ aktívny niektorý z kanálov (nachádza sa v okne správ pre daný kanál) vidí v stavovej lište informáciu o tom, kto aktuálne píše správu (napr. Ed is typing) 
 - Show nickname when someone typing
-  - [ ] Logic
-  - [ ] Visual
+  - [x] Logic
+  - [x] Visual
 - After clicking on nickname, he can view the typing text in real time
-  - [ ] Logic
+  - [x] Logic
   - [ ] Visual
 
 ### Dátový model:
