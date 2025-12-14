@@ -338,6 +338,7 @@ export const useChatStore = defineStore('chat', {
         void this.loadChannels().then(() => {
           if (this.activeChannelId) {
             void this.fetchMessages(this.activeChannelId);
+            void this.fetchMembers(this.activeChannelId);
           }
         });
       });
@@ -414,6 +415,12 @@ export const useChatStore = defineStore('chat', {
 
       const tempId = `temp-${Date.now()}`;
       const auth = useAuthStore();
+
+      // Parse mentions from content to check if user mentions themselves
+      const mentionRegex = /@([a-zA-Z0-9_]+)/g;
+      const mentionedNicknames = [...content.matchAll(mentionRegex)].map((match) => match[1]);
+      const mentionsMe = mentionedNicknames.includes(auth.nickname || '');
+
       const optimisticMessage: IMessage = {
         id: tempId,
         channelId: this.activeChannelId,
@@ -422,7 +429,7 @@ export const useChatStore = defineStore('chat', {
         date: new Date(),
         own: true,
         read: true,
-        mentionsMe: false,
+        mentionsMe,
         mentions: [],
       };
 
