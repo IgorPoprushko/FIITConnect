@@ -32,15 +32,48 @@
 
       <q-separator class="q-mt-md" />
 
-      <q-list>
-        <GroupItem
-          v-for="group in filteredGroups"
-          :key="group.id"
-          clickable
-          v-bind="group"
-          @select="(id) => void selectChannel(id)"
-        />
-      </q-list>
+      <!-- 🔥 СЕКЦІЯ НОВИХ ЗАПРОШЕНЬ -->
+      <div v-if="newGroups.length > 0" class="q-pa-xs">
+        <q-item-label header class="text-weight-bold text-green q-pb-none row items-center q-mb-sm">
+          <q-avatar size="24px" color="green" text-color="white" icon="mail" class="q-mr-sm" />
+          New Invitations
+        </q-item-label>
+
+        <q-list class="q-mt-sm q-mb-md">
+          <GroupItem
+            v-for="group in newGroups"
+            :key="group.id"
+            clickable
+            v-bind="group"
+            @select="(id) => void selectChannel(id)"
+            class="bg-grey-9"
+          />
+        </q-list>
+
+        <q-separator />
+      </div>
+
+      <!-- 🔥 СЕКЦІЯ ЗВИЧАЙНИХ КАНАЛІВ -->
+      <div class="q-pa-xs">
+        <q-item-label
+          header
+          v-if="regularGroups.length > 0"
+          class="text-weight-bold text-grey-7 q-pb-none row items-center q-mb-sm"
+        >
+          <q-avatar size="22px" color="grey-7" text-color="white" icon="groups" class="q-mr-sm" />
+          Channels
+        </q-item-label>
+
+        <q-list class="q-mt-xs">
+          <GroupItem
+            v-for="group in regularGroups"
+            :key="group.id"
+            clickable
+            v-bind="group"
+            @select="(id) => void selectChannel(id)"
+          />
+        </q-list>
+      </div>
     </q-drawer>
 
     <q-footer class="q-pa-none">
@@ -273,6 +306,7 @@ interface GroupItemProps {
   lastTime: string | Date | null;
   unreadCount: number;
   isActive: boolean;
+  isNew: boolean;
 }
 
 interface ProfileFormPayload {
@@ -296,7 +330,8 @@ const activeUserRole = computed(() => {
 
 const normalizedSearch = computed(() => search.value.toLowerCase().trim());
 
-const filteredGroups = computed(() =>
+// 1. Спочатку фільтруємо та мапимо все
+const allFilteredGroups = computed(() =>
   chat.channels
     .filter((c: ChannelDto): c is ChannelDto => Boolean(c && c.name))
     .filter((c: ChannelDto) => c.name.toLowerCase().includes(normalizedSearch.value))
@@ -310,15 +345,33 @@ const filteredGroups = computed(() =>
         lastTime: c.lastMessage?.sentAt ? new Date(c.lastMessage.sentAt) : null,
         unreadCount: c.unreadCount,
         isActive: c.id === chat.activeChannelId,
+        isNew: c.isNew,
       }),
-    )
+    ),
+);
+
+// 2. Секція "New Invitations": Тільки isNew === true
+const newGroups = computed(() =>
+  allFilteredGroups.value
+    .filter((g) => g.isNew)
     .sort((a, b) => {
-      // 🔥 FIX TS Error: 'getTime' does not exist on type 'string | Date'
-      // Ми явно створюємо Date об'єкт перед викликом getTime(),
-      // бо TypeScript боїться, що a.lastTime може бути string (хоча ми знаємо, що там Date)
       const timeA = a.lastTime ? new Date(a.lastTime).getTime() : 0;
       const timeB = b.lastTime ? new Date(b.lastTime).getTime() : 0;
-      return timeB - timeA;
+      // 🔥 Стабільне сортування: якщо час однаковий, сортуємо за назвою
+      return timeB - timeA || a.name.localeCompare(b.name);
+    }),
+);
+
+// 3. Секція "Channels": Тільки isNew === false
+const regularGroups = computed(() =>
+  allFilteredGroups.value
+    .filter((g) => !g.isNew)
+    .sort((a, b) => {
+      // Сортуємо звичайні по часу останнього повідомлення
+      const timeA = a.lastTime ? new Date(a.lastTime).getTime() : 0;
+      const timeB = b.lastTime ? new Date(b.lastTime).getTime() : 0;
+      // 🔥 Стабільне сортування: якщо час однаковий, сортуємо за назвою
+      return timeB - timeA || a.name.localeCompare(b.name);
     }),
 );
 
@@ -340,6 +393,12 @@ onMounted(() => {
 });
 
 async function selectChannel(channelId: string) {
+  // 🔥 Миттєве переміщення: знаходимо канал в сторі і ставимо isNew = false
+  const channelInStore = chat.channels.find((c) => c.id === channelId);
+  if (channelInStore && channelInStore.isNew) {
+    channelInStore.isNew = false;
+  }
+
   chat.setActiveChannel(channelId);
   await router.push(`/chat/${channelId}`);
 }
@@ -469,8 +528,6 @@ const handleLogout = async () => {
     console.error('Logout failed:', error);
   } finally {
     chat.disconnectSocket();
-    // 🔥 FIX: Додаємо .catch(), щоб обробити можливі помилки роутера (наприклад, якщо ми вже на /login)
-    // Це задовольняє правило no-floating-promises
     await router.push('/login').catch(() => {});
   }
 };

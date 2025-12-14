@@ -188,7 +188,6 @@ const submitInvite = async () => {
   try {
     await chat.inviteUser(inviteNickname.value.trim());
 
-    // 🔥 FIX: Використовуємо Notify.create напряму
     Notify.create({
       message: `User ${inviteNickname.value} invited successfully!`,
       color: 'positive',
@@ -196,9 +195,15 @@ const submitInvite = async () => {
     });
 
     closeInvite();
-  } catch (err: any) {
+  } catch (err: unknown) {
+    let message = 'Failed to invite user';
+
+    if (err instanceof Error) {
+      message = err.message;
+    }
+
     Notify.create({
-      message: err.message || 'Failed to invite user',
+      message,
       color: 'negative',
       icon: 'error',
     });

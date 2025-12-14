@@ -120,20 +120,15 @@ class Ws {
     // ==========================================
 
     // 👤 USERS CONTROLLER (Профіль, налаштування)
-
-    // Тут ми очікуємо payload, тому все ок: (payload, cb)
     socket.on('user:get:public_info', (payload, cb) =>
       usersController.getPublicInfo(socket, payload, cb)
     )
 
-    // 🔴 ВИПРАВЛЕНО: Гнучка обробка аргументів (Smart Callback Handling)
-    // Клієнт може надіслати (cb) або (null, cb). Ми перевіряємо, що є функцією.
     socket.on('user:get:full_info', (arg1, arg2) => {
       const cb = typeof arg1 === 'function' ? arg1 : arg2
       return usersController.getFullInfo(socket, cb)
     })
 
-    // 🔴 ВИПРАВЛЕНО: Те саме для каналів (це наступний крок твого тесту)
     socket.on('user:get:channels', (arg1, arg2) => {
       const cb = typeof arg1 === 'function' ? arg1 : arg2
       return usersController.listChannels(socket, cb)
@@ -196,6 +191,12 @@ class Ws {
     // 2. ПІСЛЯ РЕЄСТРАЦІЇ ВИКОНУЄМО ПОВІЛЬНІ АСИНХРОННІ ОПЕРАЦІЇ
     // Дії при підключенні (статус онлайн, джойн в кімнати)
     await activitiesController.onConnected(user.id)
+
+    // 🔥🔥🔥 ВИПРАВЛЕННЯ: Примусово додаємо сокет в "особисту кімнату" юзера.
+    // Без цього повідомлення io.to(userId) не доходять!
+    socket.join(user.id)
+    console.log(`[WS DEBUG] Joined personal room: ${user.id}`)
+
     await this.joinUserToChannels(socket, user.id)
   }
 

@@ -4,6 +4,7 @@ import { inject } from '@adonisjs/core'
 import Channel from '#models/channel'
 import Member from '#models/member'
 import User from '#models/user'
+import Message from '#models/message' // 🔥 Додано імпорт
 import ChannelKickBan from '#models/channel_kick_ban'
 import KickVote from '#models/kick_vote'
 import db from '@adonisjs/lucid/services/db'
@@ -61,7 +62,12 @@ export default class ChannelsController {
           .where('userId', user.id)
           .first()
         if (!existing) {
-          const newMember = await Member.create({ channelId: channel.id, userId: user.id })
+          // 🔥 Створюємо як НЕ новий (бо юзер сам зайшов)
+          const newMember = await Member.create({
+            channelId: channel.id,
+            userId: user.id,
+            isNew: false,
+          })
           await this.notifyJoin(socket, channel, newMember)
         } else {
           socket.join(channel.id)
@@ -73,7 +79,12 @@ export default class ChannelsController {
           type: isPrivate ? ChannelType.PRIVATE : ChannelType.PUBLIC,
           description: `Channel created by ${user.nickname}`,
         })
-        const newMember = await Member.create({ channelId: channel.id, userId: user.id })
+        // 🔥 Створюємо як НЕ новий (автор)
+        const newMember = await Member.create({
+          channelId: channel.id,
+          userId: user.id,
+          isNew: false,
+        })
         await this.notifyJoin(socket, channel, newMember)
       }
 
@@ -84,6 +95,7 @@ export default class ChannelsController {
         description: channel.description,
         ownerUserId: channel.ownerUserId,
         unreadCount: 0,
+        isNew: false,
         lastMessage: null,
       }
 
@@ -174,7 +186,6 @@ export default class ChannelsController {
 
   /**
    * 4. INVITE (/invite)
-   * 🔥 ОНОВЛЕНО: Тепер ми надсилаємо подію запрошеному юзеру, щоб він побачив канал
    */
   public async invite(
     socket: AuthenticatedSocket,
@@ -218,17 +229,18 @@ export default class ChannelsController {
         await ban.delete()
       }
 
-      // 2. Створюємо запис в БД
-      const newMember = await Member.create({ channelId: channel.id, userId: targetUser.id })
+      // 2. Створюємо запис в БД як НОВИЙ
+      const newMember = await Member.create({
+        channelId: channel.id,
+        userId: targetUser.id,
+        isNew: true,
+      })
       await newMember.load('user')
 
       const io = Ws.getIo()
-
-      // 3. 🔥 ВАЖЛИВО: Примусово додаємо сокет юзера в кімнату
-      // Це дозволяє йому відразу отримувати повідомлення
       io.in(targetUser.id).socketsJoin(channel.id)
 
-      // 4. Сповіщаємо всіх в кімнаті (щоб оновився список учасників у інших)
+      // 3. Сповіщаємо всіх в кімнаті про нового учасника
       const memberDto: MemberDto = {
         id: newMember.user.id,
         nickname: newMember.user.nickname,
@@ -245,19 +257,39 @@ export default class ChannelsController {
         isInvite: true,
       })
 
-      // 5. 🔥 НОВЕ: Сповіщаємо особисто запрошеного юзера, щоб у нього з'явився канал в списку!
-      // Ми формуємо для нього ChannelDto
+      // 4. 🔥 FIX: Отримуємо реальне останнє повідомлення для прев'ю
+      const lastMsg = await Message.query()
+        .where('channelId', channel.id)
+        .orderBy('createdAt', 'desc')
+        .preload('user')
+        .first()
+
+      let lastMessageDto = null
+      if (lastMsg) {
+        const sentAtString =
+          typeof lastMsg.createdAt === 'string'
+            ? lastMsg.createdAt
+            : ((lastMsg.createdAt as any)?.toISO?.() ?? new Date().toISOString())
+
+        lastMessageDto = {
+          content: lastMsg.content,
+          sentAt: sentAtString,
+          senderNick: lastMsg.user.nickname,
+        }
+      }
+
+      // 5. Відправляємо подію персонально запрошеному
       const channelDto: ChannelDto = {
         id: channel.id,
         name: channel.name,
         type: channel.type,
         description: channel.description,
         ownerUserId: channel.ownerUserId,
-        unreadCount: 1, // 🔥 Ставимо 1, щоб він світився як "новий"
-        lastMessage: null,
+        unreadCount: 1, // Щоб світилось як нове
+        isNew: true, // Щоб потрапило в "New Invitations"
+        lastMessage: lastMessageDto, // 🔥 Тепер тут не null
       }
 
-      // Надсилаємо подію 'user:invited' в особисту кімнату юзера
       io.to(targetUser.id).emit('user:invited', channelDto)
 
       if (callback) callback({ status: 'ok', message: `Invited ${nickname}` })

@@ -11,55 +11,44 @@ export interface ChannelDto {
   description?: string | null;
   ownerUserId: string;
   unreadCount: number;
+  isNew: boolean;
   lastMessage?: {
     content: string;
-    sentAt: string; // ВИПРАВЛЕНО: ISO string (замість Date)
+    sentAt: string;
     senderNick: string;
   } | null;
 }
 
-// Розширення UserDto для інформації про учасника каналу
 export interface MemberDto extends UserDto {
-  // Додаткова інфа, коли вступив
-  joinedAt: string; // ВИПРАВЛЕНО: ISO string (замість DateTime)
+  joinedAt: string;
 }
 
-// --- PAYLOADS (Дані, що відправляються на бекенд) ---
-
-// Для приєднання/створення каналу
 export interface JoinChannelPayload {
   channelName: string;
   isPrivate?: boolean;
 }
 
-// Для Leave, Delete, List Members (де достатньо лише ID)
 export interface ChannelActionPayload {
   channelId: string;
 }
 
-// Для Invite, Kick, Revoke (потрібен ID каналу та цільовий користувач)
 export interface ManageMemberPayload {
-  channelId: string; // ВИПРАВЛЕНО: Завжди використовуємо ID
+  channelId: string;
   nickname: string;
 }
 
-// --- EVENTS (Події, що йдуть через WebSocket) ---
-
-// Приєднання нового учасника
 export interface MemberJoinedEvent {
   channelId: string;
   member: MemberDto;
   isInvite?: boolean;
 }
 
-// Вихід/Кік учасника
 export interface MemberLeftEvent {
   channelId: string;
   userId: string;
   reason?: string;
 }
 
-// Оновлення голосування
 export interface VoteUpdateEvent {
   channelId: string;
   targetUserId: string;
