@@ -222,6 +222,19 @@ export const useChatStore = defineStore('chat', {
         console.debug(`[WS IN] Member left: ${payload.userId}`);
       });
 
+      socketService.onMemberKicked((payload) => {
+        console.debug(`[WS IN] Member kicked: ${payload.userId} from ${payload.channelId}`);
+        if (payload.userId === auth.user?.id) {
+          this.channels = this.channels.filter((c) => c.id !== payload.channelId);
+          delete this.messagesByChannel[payload.channelId];
+          if (this.activeChannelId === payload.channelId) {
+            this.activeChannelId = null;
+          }
+          // Refresh in case there are other server-side side effects (roles, counts, etc)
+          void this.loadChannels();
+        }
+      });
+
       socketService.onConnect(() => {
         console.log('✅ ChatStore: WS Connected.');
         this.connected = true;
@@ -267,6 +280,26 @@ export const useChatStore = defineStore('chat', {
         if (this.activeChannelId !== message.channelId && !message.own) {
           channel.unreadCount = (channel.unreadCount || 0) + 1;
         }
+      }
+    },
+
+    async revokeUser(nickname: string) {
+      if (!nickname) {
+        console.warn('Nickname is required to revoke a user');
+        return;
+      }
+
+      if (!this.activeChannelId) {
+        console.warn('No active channel selected for revoke');
+        return;
+      }
+
+      try {
+        await socketService.revokeUser(this.activeChannelId, nickname);
+        console.log(`[ChatStore] User ${nickname} revoked from channel ${this.activeChannelId}`);
+      } catch (error) {
+        console.error('Failed to revoke user:', error);
+        throw error;
       }
     },
 

@@ -9,21 +9,20 @@ import type {
   CommandSuggestion,
 } from 'src/types/suggestions';
 
-type ChatStoreType = ReturnType<typeof useChatStore>;
+const chat: ReturnType<typeof useChatStore> = useChatStore();
 
 const commands: Command[] = [
+  // JOIN
   {
     name: '/join',
     description: 'Join a public channel or Create new channel',
     usage: '/join [channel_name]',
-    handler: async (args: string[]) => {
-      const channelName = args[0];
+    handler: async (channelName: string) => {
       if (!channelName) {
         console.warn('Channel name is required');
         return;
       }
 
-      const chat: ChatStoreType = useChatStore();
       await chat.loadChannels();
 
       const existing = chat.channels.find(
@@ -43,15 +42,15 @@ const commands: Command[] = [
     },
   },
 
+  // INVITE
   {
     name: '/invite',
     description: 'Invite a user to this channel',
     usage: '/invite [nickname]',
     requiredChannelType: [ChannelType.PRIVATE],
     requiredUserRole: [UserRole.ADMIN],
-    handler: (args: string[]) => {
-      const username = args[0];
-      console.log('[Private/Admin] Inviting user to private channel:', username);
+    handler: (nickname: string) => {
+      console.log('[Private/Admin] Inviting user to private channel:', nickname);
       return Promise.resolve();
     },
   },
@@ -61,9 +60,8 @@ const commands: Command[] = [
     usage: '/invite [nickname]',
     requiredChannelType: [ChannelType.PUBLIC],
     requiredUserRole: [UserRole.ADMIN],
-    handler: (args: string[]) => {
-      const username = args[0];
-      console.log('[Public/Admin] Inviting/unbanning user to public channel:', username);
+    handler: (nickname: string) => {
+      console.log('[Public/Admin] Inviting/unbanning user to public channel:', nickname);
       return Promise.resolve();
     },
   },
@@ -73,35 +71,38 @@ const commands: Command[] = [
     usage: '/invite [nickname]',
     requiredChannelType: [ChannelType.PUBLIC],
     requiredUserRole: [UserRole.MEMBER],
-    handler: (args: string[]) => {
-      const username = args[0];
-      console.log('[Public/Normal] Inviting non-banned user to public channel:', username);
+    handler: (nickname: string) => {
+      console.log('[Public/Normal] Inviting non-banned user to public channel:', nickname);
       return Promise.resolve();
     },
   },
 
+  // REVOKE
   {
     name: '/revoke',
     description: 'Kick a user from this channel',
     usage: '/revoke [nickname]',
     requiredChannelType: [ChannelType.PRIVATE],
     requiredUserRole: [UserRole.ADMIN],
-    handler: (args: string[]) => {
-      const username = args[0];
-      console.log('Revoking user:', username);
-      return Promise.resolve();
+    handler: async (nickname: string) => {
+      if (!nickname) {
+        console.warn('Nickname is required to revoke a user');
+        return;
+      }
+
+      await chat.revokeUser(nickname);
     },
   },
 
+  // KICK
   {
     name: '/kick',
     description: 'Ban a user from this channel',
     usage: '/kick [nickname]',
     requiredChannelType: [ChannelType.PUBLIC],
     requiredUserRole: [UserRole.ADMIN],
-    handler: (args: string[]) => {
-      const username = args[0];
-      console.log('Kicking user:', username);
+    handler: (nickname: string) => {
+      console.log('Kicking user:', nickname);
       return Promise.resolve();
     },
   },
@@ -111,13 +112,13 @@ const commands: Command[] = [
     usage: '/kick [nickname]',
     requiredChannelType: [ChannelType.PUBLIC],
     requiredUserRole: [UserRole.MEMBER],
-    handler: (args: string[]) => {
-      const username = args[0];
-      console.log('Voting to kick user:', username);
+    handler: (nickname: string) => {
+      console.log('Voting to kick user:', nickname);
       return Promise.resolve();
     },
   },
 
+  // QUIT
   {
     name: '/quit',
     description: 'Permamently DELETE the channel',
@@ -129,6 +130,7 @@ const commands: Command[] = [
     },
   },
 
+  // CANCEL
   {
     name: '/cancel',
     description: 'Leave and DELETE the channel',
@@ -219,7 +221,7 @@ export function useCommandHandler(): SuggestionHandler {
   ): Promise<boolean> => {
     const parts = commandText.trim().split(/\s+/);
     const commandName = parts[0];
-    const args = parts.slice(1);
+    const args = parts.slice(1).join(' ');
 
     const availableCommands = commands.filter(
       (cmd) => cmd.name === commandName && isCommandAvailable(cmd, context),
@@ -227,7 +229,7 @@ export function useCommandHandler(): SuggestionHandler {
 
     if (!availableCommands.length) {
       console.warn('Command not available in current context:', commandName);
-      return false;
+      return true;
     }
 
     const command = availableCommands.reduce((prev, curr) => {
@@ -244,7 +246,7 @@ export function useCommandHandler(): SuggestionHandler {
       return true;
     } catch (error) {
       console.error('Error executing command:', error);
-      return false;
+      return true;
     }
   };
 

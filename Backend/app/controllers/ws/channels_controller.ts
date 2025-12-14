@@ -268,7 +268,9 @@ export default class ChannelsController {
 
       const targetUser = await User.findBy('nickname', nickname)
       if (!targetUser) throw new Exception('User not found')
-
+      if (channel.ownerUserId === targetUser.id) {
+        return this.deleteChannel(socket, { channelId }, callback)
+      }
       const member = await Member.query()
         .where('channelId', channel.id)
         .where('userId', targetUser.id)
@@ -278,6 +280,11 @@ export default class ChannelsController {
       await member.delete()
 
       Ws.getIo().in(targetUser.id).socketsLeave(channel.id)
+      Ws.getIo().to(channel.id).emit('channel:member_kicked', {
+        channelId: channel.id,
+        userId: targetUser.id,
+        reason: 'Revoked by owner',
+      })
       Ws.getIo().to(channel.id).emit('channel:member_left', {
         channelId: channel.id,
         userId: targetUser.id,

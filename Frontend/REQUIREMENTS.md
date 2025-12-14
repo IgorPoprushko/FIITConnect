@@ -19,20 +19,20 @@
   - [x] Logic
   - [x] Visual
 - Leave channel
-  - [ ] Logic
+  - [x] Logic
   - [x] Visual
 - Delete chanal if admin
-  - [ ] Logic
-  - [ ] Visual
+  - [x] Logic
+  - [x] Visual
 - Invite to channel
   - [ ] Logic
-  - [ ] Visual
+  - [x] Visual
 - Two types of channels (Private and Public Channel)
-  - [ ] Logic
-  - [ ] Visual
+  - [x] Logic
+  - [x] Visual
 - Admin is Channel creator
-  - [ ] Logic
-  - [ ] Visual
+  - [x] Logic
+  - [x] Visual
 - Delete channel after 30 days of inactivity
   - [ ] Logic
   - [ ] Visual
@@ -42,21 +42,21 @@
   - [x] Logic
   - [x] Visual
 - Send messages with Input
-  - [ ] Logic
+  - [x] Logic
   - [x] Visual
 - Send commans with Input
-  - [ ] Logic
+  - [x] Logic
   - [x] Visual
 
 ### 4. Vytvorenie komunikačného kanála (channel) cez príkazový riadok
 - Create channel wiht **/join [ChannelName]**
-  - [ ] Logic
+  - [x] Logic
   - [x] Visual
 - Invite to Private channel only by admin with **/invite [Username]**
   - [ ] Logic
   - [x] Visual
 - Kick to Private channel only by admin with **/revoke [Username]**
-  - [ ] Logic
+  - [x] Logic
   - [x] Visual
 - Join to Public channel with **/join [ChannelName]**. If channel dont exist create one
   - [ ] Logic
@@ -71,7 +71,7 @@
   - [ ] Logic
   - [x] Visual
 - Username and ChannelName are unique
-  - [ ] Logic
+  - [x] Logic
   - [x] Visual
 - Delete channel only by admin with **/quit**
   - [ ] Logic
@@ -82,8 +82,8 @@
   - [ ] Logic
   - [x] Visual
 - If admin leave channel, it deletes
-  - [ ] Logic
-  - [ ] Visual
+  - [x] Logic
+  - [x] Visual
 
 ### 6. Správu v kanáli je možné adresovať konkrétnemu používateľovi cez príkaz @nickname 
 - Message can be addressed to user with **@[Username]**
@@ -95,8 +95,8 @@
   
 ### 7. Používateľ si môže pozrieť kompletnú históriu správ
 - Load messages with Infinite Scroll
-  - [ ] Logic
-  - [ ] Visual
+  - [x] Logic
+  - [x] Visual
 
 ### 8. Používateľ je informovaný o každej novej správe prostredníctvom notifikácie
 - Notification will send only if app not visible (use quasar App Visibility)
@@ -109,4 +109,31 @@
   - [ ] Logic
   - [ ] Visual
 
-### ...
+### 9. Používateľ si môže nastaviť stav (online, DND, offline)
+- Status is displayed to the user
+  - [ ] Logic
+  - [x] Visual
+- If DND status is set, notifications do not arrive
+  - [ ] Logic
+  - [ ] Visual
+- If the offline status is set, the used doesn't recive messages, after switching back load data
+  - [ ] Logic
+  - [ ] Visual
+
+### 10. Používateľ si môže pozrieť zoznam členov kanála (ak je tiež členom kanála) príkazom /list
+- Use **/list** to show all members
+  - [ ] Logic
+  - [ ] Visual
+
+### 11. Ak má používateľ aktívny niektorý z kanálov (nachádza sa v okne správ pre daný kanál) vidí v stavovej lište informáciu o tom, kto aktuálne píše správu (napr. Ed is typing) 
+- Show nickname when someone typing
+  - [ ] Logic
+  - [ ] Visual
+- After clicking on nickname, he can view the typing text in real time
+  - [ ] Logic
+  - [ ] Visual
+
+### Dátový model:
+- Create JPG (JPEG) image of the logical data model (relational database) through migrations
+  - [ ] Logic
+  - [ ] Visual

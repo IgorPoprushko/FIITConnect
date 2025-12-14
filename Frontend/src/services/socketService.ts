@@ -42,7 +42,7 @@ interface ServerToClientEvents {
 
   'channel:member_joined': (payload: MemberJoinedEvent) => void;
   'channel:member_left': (payload: MemberLeftEvent) => void;
-  'channel:member_kicked': (payload: MemberLeftEvent & { reason: string }) => void;
+  'channel:member_kicked': (payload: MemberLeftEvent) => void;
   'channel:deleted': (payload: ChannelActionPayload) => void;
   'channel:vote_update': (payload: VoteUpdateEvent) => void;
 
@@ -310,7 +310,7 @@ class SocketService {
     this.socket?.on('channel:member_left', handler);
   }
 
-  onMemberKicked(handler: (data: MemberLeftEvent & { reason: string }) => void) {
+  onMemberKicked(handler: (data: MemberLeftEvent) => void) {
     this.socket?.on('channel:member_kicked', handler);
   }
 
