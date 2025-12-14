@@ -8,6 +8,9 @@ import type {
   SuggestionHandler,
   CommandSuggestion,
 } from 'src/types/suggestions';
+import { useRouter } from 'vue-router';
+import { socketService } from 'src/services/socketService';
+
 
 const chat: ReturnType<typeof useChatStore> = useChatStore();
 
@@ -31,6 +34,7 @@ const commands: Command[] = [
 
       if (existing) {
         chat.setActiveChannel(existing.id);
+        await useRouter().push('/chat/channel/' + existing.id);
         return;
       }
 
@@ -38,8 +42,24 @@ const commands: Command[] = [
       const channel = await chat.createChannel(payload);
       if (channel) {
         chat.setActiveChannel(channel.id);
+        await useRouter().push('/chat/channel/' + channel.id);
       }
     },
+  },
+
+  // LIST
+  {
+    name: '/list',
+    description: 'Show list of members in the current channel',
+    usage: '/list',
+    handler: async () => {
+      if (!chat.activeChannel) {
+        console.warn('No active channel to list members from');
+        return;
+      }
+      console.log("List of memebers command");
+
+    }
   },
 
   // INVITE
@@ -101,9 +121,16 @@ const commands: Command[] = [
     usage: '/kick [nickname]',
     requiredChannelType: [ChannelType.PUBLIC],
     requiredUserRole: [UserRole.ADMIN],
-    handler: (nickname: string) => {
-      console.log('Kicking user:', nickname);
-      return Promise.resolve();
+    handler: async (nickname: string) => {
+      if (!nickname) {
+        console.warn('Nickname is required to kick a user');
+        return;
+      }
+      if (!chat.activeChannel) {
+        console.warn('No active channel to kick user from');
+        return;
+      }
+      await socketService.kickUser(chat.activeChannel.id, nickname);
     },
   },
   {
@@ -112,9 +139,16 @@ const commands: Command[] = [
     usage: '/kick [nickname]',
     requiredChannelType: [ChannelType.PUBLIC],
     requiredUserRole: [UserRole.MEMBER],
-    handler: (nickname: string) => {
-      console.log('Voting to kick user:', nickname);
-      return Promise.resolve();
+    handler: async (nickname: string) => {
+      if (!nickname) {
+        console.warn('Nickname is required to kick a user');
+        return;
+      }
+      if (!chat.activeChannel) {
+        console.warn('No active channel to kick user from');
+        return;
+      }
+      await socketService.voteToKick(chat.activeChannel.id, nickname);
     },
   },
 
@@ -125,8 +159,10 @@ const commands: Command[] = [
     usage: '/quit',
     requiredChannelType: [ChannelType.PRIVATE, ChannelType.PUBLIC],
     requiredUserRole: [UserRole.ADMIN],
-    handler: () => {
-      console.log('Deleting channel');
+    handler: async () => {
+      if (!chat.activeChannel) return;
+      await chat.leaveChannel(chat.activeChannel.id);
+      await useRouter().push('/chat');
     },
   },
 
@@ -137,8 +173,10 @@ const commands: Command[] = [
     usage: '/cancel',
     requiredChannelType: [ChannelType.PRIVATE, ChannelType.PUBLIC],
     requiredUserRole: [UserRole.ADMIN],
-    handler: () => {
-      console.log('Deleting channel');
+    handler: async () => {
+      if (!chat.activeChannel) return;
+      await chat.leaveChannel(chat.activeChannel.id);
+      await useRouter().push('/chat');
     },
   },
   {
@@ -147,8 +185,10 @@ const commands: Command[] = [
     usage: '/cancel',
     requiredChannelType: [ChannelType.PRIVATE, ChannelType.PUBLIC],
     requiredUserRole: [UserRole.MEMBER],
-    handler: () => {
-      console.log('Canceling message');
+    handler: async () => {
+      if (!chat.activeChannel) return;
+      await chat.leaveChannel(chat.activeChannel.id);
+      await useRouter().push('/chat');
     },
   },
 ];
@@ -157,7 +197,7 @@ function isCommandAvailable(command: Command, context?: CommandContext): boolean
   if (!context) return true;
 
   if (command.requiredChannelType?.length) {
-    if (!command.requiredChannelType.includes(context.channelType)) return false;
+    if (context.channelType == null || !command.requiredChannelType.includes(context.channelType)) return false;
   }
   if (command.requiredUserRole?.length) {
     if (!command.requiredUserRole.includes(context.userRole)) return false;

@@ -6,6 +6,9 @@ import type {
   ChannelDto,
   JoinChannelPayload,
   ChannelActionPayload,
+  MemberDto,
+  MemberJoinedEvent,
+  MemberLeftEvent,
 } from 'src/contracts/channel_contracts';
 import type { NewMessageEvent, MessageDto } from 'src/contracts/message_contracts';
 // ==========================
@@ -42,6 +45,7 @@ interface ChatState {
   channels: ChannelDto[];
   activeChannelId: string | null;
   messagesByChannel: Record<string, IMessage[]>;
+  membersByChannel: Record<string, MemberDto[]>;
   loadingChannels: boolean;
   connecting: boolean;
   connected: boolean;
@@ -52,6 +56,7 @@ export const useChatStore = defineStore('chat', {
     channels: [],
     activeChannelId: null,
     messagesByChannel: {},
+    membersByChannel: {},
     loadingChannels: false,
     connecting: false,
     connected: false,
@@ -68,6 +73,11 @@ export const useChatStore = defineStore('chat', {
 
     activeChannel(state): ChannelDto | undefined {
       return state.channels.find((c) => c.id === state.activeChannelId);
+    },
+
+    activeMembers(state): MemberDto[] {
+      if (!state.activeChannelId) return [];
+      return state.membersByChannel[state.activeChannelId] ?? [];
     },
   },
 
@@ -115,6 +125,24 @@ export const useChatStore = defineStore('chat', {
         }
       } catch (err) {
         console.error('❌ Failed to fetch history:', err);
+      }
+    },
+
+    async fetchMembers(channelId: string) {
+      if (!channelId) return;
+
+      if (!this.connected) {
+        console.log(`⏳ ChatStore: Socket not ready yet. Skipping member fetch for ${channelId}.`);
+        return;
+      }
+
+      console.log(`👥 ChatStore: Fetching members for ${channelId}...`);
+      try {
+        const members: MemberDto[] = await socketService.getChannelMembers(channelId);
+        this.membersByChannel[channelId] = members;
+        console.log(`✅ ChatStore: Loaded ${members.length} members for channel ${channelId}`);
+      } catch (err) {
+        console.error('❌ Failed to fetch members:', err);
       }
     },
 
@@ -182,7 +210,12 @@ export const useChatStore = defineStore('chat', {
         if (!this.messagesByChannel[channelId]) {
           this.messagesByChannel[channelId] = [];
         }
+        if (!this.membersByChannel[channelId]) {
+          this.membersByChannel[channelId] = [];
+        }
+
         void this.fetchMessages(channelId);
+        void this.fetchMembers(channelId);
 
         const channel = this.channels.find((c) => c.id === channelId);
         if (channel) {
@@ -241,19 +274,48 @@ export const useChatStore = defineStore('chat', {
         }
       });
 
-      socketService.onMemberJoined((payload) => {
-        console.debug(`[WS IN] Member joined: ${payload.member.nickname}`);
+      socketService.onMemberJoined((payload: MemberJoinedEvent) => {
+        console.debug(`[WS IN] Member joined: ${payload.member.nickname} to channel ${payload.channelId}`);
+
+        // Add member to the channel's member list
+        const members = this.membersByChannel[payload.channelId];
+        if (members) {
+          const exists = members.some((m) => m.id === payload.member.id);
+          if (!exists) {
+            members.push(payload.member);
+          }
+        }
       });
 
-      socketService.onMemberLeft((payload) => {
-        console.debug(`[WS IN] Member left: ${payload.userId}`);
+      socketService.onMemberLeft((payload: MemberLeftEvent) => {
+        console.debug(`[WS IN] Member left: ${payload.userId} from channel ${payload.channelId}`);
+
+        // Remove member from the channel's member list
+        const members = this.membersByChannel[payload.channelId];
+        if (members) {
+          const index = members.findIndex((m) => m.id === payload.userId);
+          if (index !== -1) {
+            members.splice(index, 1);
+          }
+        }
       });
 
-      socketService.onMemberKicked((payload) => {
+      socketService.onMemberKicked((payload: MemberLeftEvent) => {
         console.debug(`[WS IN] Member kicked: ${payload.userId} from ${payload.channelId}`);
+
+        // Remove member from the channel's member list
+        const members = this.membersByChannel[payload.channelId];
+        if (members) {
+          const index = members.findIndex((m) => m.id === payload.userId);
+          if (index !== -1) {
+            members.splice(index, 1);
+          }
+        }
+
         if (payload.userId === auth.user?.id) {
           this.channels = this.channels.filter((c) => c.id !== payload.channelId);
           delete this.messagesByChannel[payload.channelId];
+          delete this.membersByChannel[payload.channelId];
           if (this.activeChannelId === payload.channelId) {
             this.activeChannelId = null;
           }

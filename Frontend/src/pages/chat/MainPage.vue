@@ -2,11 +2,8 @@
   <div class="main-page-container">
     <!-- 🔥 ХЕДЕР КАНАЛУ (ВИВІСКА) -->
     <!-- Показуємо тільки якщо є активний канал -->
-    <q-toolbar
-      v-if="currentChannel"
-      class="bg-primary text-white shadow-1 z-top"
-      style="height: 60px; min-height: 60px"
-    >
+    <q-toolbar v-if="currentChannel" class="bg-primary text-white shadow-1 z-top"
+      style="height: 60px; min-height: 60px">
       <!-- ЛІВА ЧАСТИНА: Інформація про канал (Як у Telegram) -->
       <div class="row no-wrap items-center cursor-pointer q-mr-md" @click="toggleChatDrawer">
         <q-avatar size="40px" color="secondary" text-color="white" class="q-mr-sm">
@@ -16,12 +13,7 @@
         <div class="column justify-center" style="line-height: 1.2">
           <div class="text-subtitle1 text-weight-bold row items-center q-gutter-xs">
             <span>{{ currentChannel.name }}</span>
-            <q-icon
-              v-if="currentChannel.type === ChannelType.PRIVATE"
-              name="lock"
-              size="xs"
-              color="grey"
-            />
+            <q-icon v-if="currentChannel.type === ChannelType.PRIVATE" name="lock" size="xs" color="grey" />
           </div>
           <!-- Підзаголовок: учасники або опис -->
           <div class="text-caption text-grey-7">
@@ -41,7 +33,7 @@
         </q-btn>
 
         <!-- Покинути канал -->
-        <q-btn flat round dense color="negative" icon="logout" @click="confirmLeave = true">
+        <q-btn flat round dense color="negative" icon="logout" @click="leaveDialog.open()">
           <q-tooltip>Leave channel</q-tooltip>
         </q-btn>
 
@@ -65,45 +57,18 @@
     </div>
 
     <!-- 🔥 ДІАЛОГ ПІДТВЕРДЖЕННЯ ВИХОДУ -->
-    <q-dialog v-model="confirmLeave" persistent>
-      <q-card>
-        <q-card-section class="row items-center">
-          <q-avatar icon="warning" color="negative" text-color="white" />
-          <span class="q-ml-sm">
-            Are you sure you want to leave <b>{{ currentChannel?.name }}</b
-            >?
-          </span>
-        </q-card-section>
-
-        <q-card-actions align="right">
-          <q-btn flat label="Cancel" color="primary" v-close-popup />
-          <q-btn flat label="Leave" color="negative" @click="onLeaveChannel" v-close-popup />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+    <FormDialog v-model="leaveDialog.isOpen.value" title="Leave Channel" confirm-color="negative"
+      description="Do you want to leave channel?" confirm-label="Leave" :loading="leaveDialog.loading.value"
+      @confirm="leaveChannel" @cancel="closeLeaveDialog" @close="closeLeaveDialog">
+    </FormDialog>
 
     <!-- 🔥 НОВИЙ ДІАЛОГ ЗАПРОШЕННЯ (INVITE DIALOG) -->
-    <FormDialog
-      v-model="inviteDialog.isOpen.value"
-      title="Invite User"
-      confirm-label="Invite"
-      confirm-color="secondary"
-      :loading="inviteDialog.loading.value"
-      :disable-confirm="!inviteNickname.trim()"
-      @confirm="submitInvite"
-      @cancel="closeInvite"
-      @close="closeInvite"
-    >
+    <FormDialog v-model="inviteDialog.isOpen.value" title="Invite User" confirm-label="Invite" confirm-color="secondary"
+      :loading="inviteDialog.loading.value" :disable-confirm="!inviteNickname.trim()" @confirm="submitInvite"
+      @cancel="closeInvite" @close="closeInvite">
       <template #content>
-        <q-input
-          v-model="inviteNickname"
-          label="User Nickname"
-          dense
-          outlined
-          autofocus
-          @keyup.enter="submitInvite"
-          hint="Enter the exact nickname of the user"
-        >
+        <q-input v-model="inviteNickname" label="User Nickname" dense outlined autofocus @keyup.enter="submitInvite"
+          hint="Enter the exact nickname of the user">
           <template v-slot:prepend>
             <q-icon name="person_search" />
           </template>
@@ -165,6 +130,7 @@ const { chatDrawer, toggleChatDrawer } = useChatDrawer();
 const chat = useChatStore();
 const route = useRoute();
 const router = useRouter();
+const $q = useQuasar();
 // const $q = useQuasar(); // Більше не потрібно для Notify
 
 const confirmLeave = ref(false);
@@ -253,30 +219,29 @@ watch(
   },
 );
 
-const onLeaveChannel = async () => {
+const onInvite = () => {
+  $q.notify({
+    message: 'Invite feature coming soon!',
+    color: 'info',
+    icon: 'person_add',
+  });
+};
+
+// Form Dialog
+
+const leaveDialog = useFormDialog();
+
+const leaveChannel = async () => {
   if (!currentChannel.value) return;
+  await chat.leaveChannel(currentChannel.value.id);
+  await router.push('/chat');
 
-  const channelName = currentChannel.value.name;
+  closeLeaveDialog()
+};
 
-  try {
-    // 1. Чекаємо виконання виходу (async)
-    await chat.leaveChannel(currentChannel.value.id);
-
-    Notify.create({
-      message: `You left ${channelName}`,
-      color: 'positive',
-      icon: 'check',
-    });
-
-    // 2. FIX: Додали await і змінили шлях на /chat
-    await router.push('/chat');
-  } catch {
-    Notify.create({
-      message: 'Failed to leave channel',
-      color: 'negative',
-      icon: 'error',
-    });
-  }
+const closeLeaveDialog = () => {
+  leaveDialog.setLoading(false);
+  leaveDialog.close();
 };
 </script>
 

@@ -18,14 +18,8 @@ import SuggestionMenu from 'components/SuggestionMenu.vue';
 import { useCommandHandler } from 'src/composables/useCommandHandler';
 
 // === КОНТРАКТИ ТА ЕНАМИ ===
-import { ChannelType, UserRole } from 'src/enums/global_enums'; // <--- ВИПРАВЛЕНО: Використовуємо глобальні енами
-
-// --- ЛОКАЛЬНІ ТИПИ (АДАПТОВАНІ ПІД КОНТРАКТИ) ---
-// Припускаємо, що це контекст, необхідний для виконання команд
-export interface CommandContext {
-  channelType: ChannelType;
-  userRole: UserRole;
-}
+import type { ChannelType, UserRole } from 'src/enums/global_enums'; // <--- ВИПРАВЛЕНО: Використовуємо глобальні енами
+import type { CommandContext } from 'src/types/suggestions';
 
 // Припускаємо, що це тип для випадаючого меню команд/меншинів
 export interface Suggestion {
@@ -36,18 +30,15 @@ export interface Suggestion {
 // ------------------------------------------------
 
 interface Props {
-  channelType?: ChannelType;
-  userRole?: UserRole;
+  channelType: ChannelType | null;
+  userRole: UserRole;
 }
 
 interface Emits {
   (e: 'send', text: string): void;
 }
 
-const props = withDefaults(defineProps<Props>(), {
-  channelType: ChannelType.PUBLIC,
-  userRole: UserRole.MEMBER,
-});
+const props = defineProps<Props>();
 
 const emit = defineEmits<Emits>();
 

@@ -3,7 +3,7 @@ import type { ChannelType, UserRole } from 'src/enums/global_enums';
 
 // Context for command filtering
 export interface CommandContext {
-  channelType: ChannelType;
+  channelType: ChannelType | null;
   userRole: UserRole;
 }
 
