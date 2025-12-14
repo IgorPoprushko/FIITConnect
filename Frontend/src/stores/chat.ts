@@ -11,6 +11,7 @@ import type { NewMessageEvent, MessageDto } from 'src/contracts/message_contract
 // ==========================
 
 import { useAuthStore } from './auth';
+import { Notify } from 'quasar'; // 🔥 Для повідомлень
 
 // --- ЛОКАЛЬНІ ТИПИ ДЛЯ ВІДОБРАЖЕННЯ ---
 export interface IMessage {
@@ -105,24 +106,18 @@ export const useChatStore = defineStore('chat', {
         this.channels = await socketService.listChannels();
 
         // 2. 🔥 FIX: "Гідратація" (підвантаження) останніх повідомлень
-        // Якщо сервер не віддав lastMessage у списку, ми запитуємо історію для кожного каналу окремо.
-        // Це гарантує, що після F5 у нас будуть дані для відображення у списку.
         await Promise.all(
           this.channels.map(async (channel) => {
-            // Якщо сервер вже був чемний і надіслав lastMessage — пропускаємо, не робимо зайву роботу
             if (channel.lastMessage) return;
 
             try {
-              // Робимо WS запит за повідомленнями для конкретного каналу
               const messages = await socketService.getMessages(channel.id);
 
               if (messages && messages.length > 0) {
-                // Знаходимо найсвіжіше повідомлення серед тих, що прийшли
                 const last = messages.reduce((prev, curr) =>
                   new Date(prev.sentAt) > new Date(curr.sentAt) ? prev : curr,
                 );
 
-                // Оновлюємо наш локальний канал цими даними
                 channel.lastMessage = {
                   content: last.content,
                   sentAt: last.sentAt,
@@ -206,6 +201,21 @@ export const useChatStore = defineStore('chat', {
         this.appendMessage(mapMessageDtoToDisplay(payload));
       });
 
+      // 🔥 НОВА РЕАКЦІЯ НА ІНВАЙТ
+      socketService.onUserInvited((channel: ChannelDto) => {
+        console.log(`[WS IN] You were invited to channel: ${channel.name}`);
+
+        // Додаємо в початок списку
+        this.channels = [channel, ...this.channels];
+
+        Notify.create({
+          message: `You were invited to ${channel.name}`,
+          color: 'positive',
+          icon: 'mail',
+          position: 'top-right',
+        });
+      });
+
       socketService.onChannelDeleted((payload: ChannelActionPayload) => {
         this.channels = this.channels.filter((c) => c.id !== payload.channelId);
         delete this.messagesByChannel[payload.channelId];
@@ -230,7 +240,6 @@ export const useChatStore = defineStore('chat', {
           if (this.activeChannelId === payload.channelId) {
             this.activeChannelId = null;
           }
-          // Refresh in case there are other server-side side effects (roles, counts, etc)
           void this.loadChannels();
         }
       });
@@ -300,6 +309,20 @@ export const useChatStore = defineStore('chat', {
       } catch (error) {
         console.error('Failed to revoke user:', error);
         throw error;
+      }
+    },
+
+    // 🔥 НОВА ДІЯ: INVITE USER
+    async inviteUser(nickname: string) {
+      if (!nickname) return;
+      if (!this.activeChannelId) return;
+
+      try {
+        await socketService.inviteUser(this.activeChannelId, nickname);
+        console.log(`[ChatStore] Invited ${nickname} to ${this.activeChannelId}`);
+      } catch (error) {
+        console.error('Failed to invite user:', error);
+        throw error; // Викидаємо помилку, щоб UI міг її показати
       }
     },
 

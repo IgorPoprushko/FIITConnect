@@ -35,8 +35,8 @@
 
       <!-- ПРАВА ЧАСТИНА: Кнопки дій -->
       <div class="row q-gutter-sm items-center">
-        <!-- Інвайт -->
-        <q-btn flat round dense color="grey-7" icon="person_add" @click="onInvite">
+        <!-- 🔥 ІНВАЙТ: Тепер відкриває діалог -->
+        <q-btn flat round dense color="grey-7" icon="person_add" @click="inviteDialog.open()">
           <q-tooltip>Invite users</q-tooltip>
         </q-btn>
 
@@ -69,10 +69,10 @@
       <q-card>
         <q-card-section class="row items-center">
           <q-avatar icon="warning" color="negative" text-color="white" />
-          <span class="q-ml-sm"
-            >Are you sure you want to leave <b>{{ currentChannel?.name }}</b
-            >?</span
-          >
+          <span class="q-ml-sm">
+            Are you sure you want to leave <b>{{ currentChannel?.name }}</b
+            >?
+          </span>
         </q-card-section>
 
         <q-card-actions align="right">
@@ -81,6 +81,35 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <!-- 🔥 НОВИЙ ДІАЛОГ ЗАПРОШЕННЯ (INVITE DIALOG) -->
+    <FormDialog
+      v-model="inviteDialog.isOpen.value"
+      title="Invite User"
+      confirm-label="Invite"
+      confirm-color="secondary"
+      :loading="inviteDialog.loading.value"
+      :disable-confirm="!inviteNickname.trim()"
+      @confirm="submitInvite"
+      @cancel="closeInvite"
+      @close="closeInvite"
+    >
+      <template #content>
+        <q-input
+          v-model="inviteNickname"
+          label="User Nickname"
+          dense
+          outlined
+          autofocus
+          @keyup.enter="submitInvite"
+          hint="Enter the exact nickname of the user"
+        >
+          <template v-slot:prepend>
+            <q-icon name="person_search" />
+          </template>
+        </q-input>
+      </template>
+    </FormDialog>
 
     <!-- Правий Drawer (Профіль) -->
     <q-drawer class="q-pa-md bg-primary" v-model="chatDrawer" side="right" :width="300" bordered>
@@ -119,26 +148,65 @@
 </template>
 
 <script setup lang="ts">
-// 🔥 ДОДАНО: import onUnmounted
 import { computed, watch, onMounted, onUnmounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useChatDrawer } from 'src/composables/useChatDrawer';
 import MessageList from 'components/MessageList.vue';
 import { useChatStore } from 'src/stores/chat';
-import { useQuasar } from 'quasar';
+// 🔥 FIX: Імпортуємо Notify напряму, щоб уникнути помилок з $q
+import { Notify } from 'quasar';
 import { ChannelType } from 'src/enums/global_enums';
+
+// 🔥 IMPORT COMPONENTS FOR INVITE
+import FormDialog from 'src/components/FormDialog.vue';
+import { useFormDialog } from 'src/composables/useFormDialog';
 
 const { chatDrawer, toggleChatDrawer } = useChatDrawer();
 const chat = useChatStore();
 const route = useRoute();
 const router = useRouter();
-const $q = useQuasar();
+// const $q = useQuasar(); // Більше не потрібно для Notify
 
 const confirmLeave = ref(false);
 
 const messages = computed(() => chat.activeMessages);
-
 const currentChannel = computed(() => chat.activeChannel);
+
+// --- INVITE LOGIC ---
+const inviteDialog = useFormDialog();
+const inviteNickname = ref('');
+
+const closeInvite = () => {
+  inviteDialog.close();
+  inviteNickname.value = '';
+};
+
+const submitInvite = async () => {
+  if (!inviteNickname.value.trim()) return;
+
+  inviteDialog.setLoading(true);
+  try {
+    await chat.inviteUser(inviteNickname.value.trim());
+
+    // 🔥 FIX: Використовуємо Notify.create напряму
+    Notify.create({
+      message: `User ${inviteNickname.value} invited successfully!`,
+      color: 'positive',
+      icon: 'check',
+    });
+
+    closeInvite();
+  } catch (err: any) {
+    Notify.create({
+      message: err.message || 'Failed to invite user',
+      color: 'negative',
+      icon: 'error',
+    });
+  } finally {
+    inviteDialog.setLoading(false);
+  }
+};
+// --------------------
 
 const syncChannelFromRoute = () => {
   const channelId = route.params.channelId as string | undefined;
@@ -152,7 +220,6 @@ const syncChannelFromRoute = () => {
 // --- ФУНКЦІЯ ДЛЯ ОБРОБКИ НАТИСКАННЯ КЛАВІШ ---
 const handleGlobalKeydown = (event: KeyboardEvent) => {
   // 1. FIX: Перевіряємо, чи ми не друкуємо в цей момент
-  // Якщо фокус у полі вводу (input або textarea), ігноруємо ESC (бо користувач може хотіти просто скасувати ввід)
   const target = event.target as HTMLElement;
   if (['INPUT', 'TEXTAREA'].includes(target.tagName)) return;
 
@@ -181,14 +248,6 @@ watch(
   },
 );
 
-const onInvite = () => {
-  $q.notify({
-    message: 'Invite feature coming soon!',
-    color: 'info',
-    icon: 'person_add',
-  });
-};
-
 const onLeaveChannel = async () => {
   if (!currentChannel.value) return;
 
@@ -198,7 +257,7 @@ const onLeaveChannel = async () => {
     // 1. Чекаємо виконання виходу (async)
     await chat.leaveChannel(currentChannel.value.id);
 
-    $q.notify({
+    Notify.create({
       message: `You left ${channelName}`,
       color: 'positive',
       icon: 'check',
@@ -207,8 +266,7 @@ const onLeaveChannel = async () => {
     // 2. FIX: Додали await і змінили шлях на /chat
     await router.push('/chat');
   } catch {
-    // 3. FIX: Прибрали (error), бо ми його не використовуємо (no-unused-vars)
-    $q.notify({
+    Notify.create({
       message: 'Failed to leave channel',
       color: 'negative',
       icon: 'error',

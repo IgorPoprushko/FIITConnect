@@ -49,6 +49,9 @@ interface ServerToClientEvents {
   'user:settings_updated': (settings: UserSettingsDto) => void;
   'user:status:changed': (payload: UserStatusEvent) => void;
 
+  // 🔥 НОВА ПОДІЯ: Коли мене запросили в новий канал
+  'user:invited': (channel: ChannelDto) => void;
+
   'user:typing:start': (payload: TypingEvent) => void;
   'user:typing:stop': (payload: TypingEvent) => void;
 }
@@ -62,7 +65,6 @@ interface ClientToServerEvents {
   ) => void;
   'user:get:full_info': (cb: (res: BaseResponse<UserFullDto>) => void) => void;
 
-  // 🔥 FIX 1: Вказуємо, що тут повертається МАСИВ каналів (ChannelDto[])
   'user:get:channels': (cb: (res: BaseResponse<ChannelDto[]>) => void) => void;
 
   'user:update:settings': (
@@ -101,7 +103,7 @@ interface ClientToServerEvents {
 
 class SocketService {
   private socket: Socket<ServerToClientEvents, ClientToServerEvents> | null = null;
-  private readonly url = import.meta.env.VITE_WS_URL; // --- CONNECTION ---
+  private readonly url = import.meta.env.VITE_WS_URL;
 
   connect(token: string) {
     console.log(`[WS CLIENT] Attempting connection to ${this.url} with path /ws...`);
@@ -132,7 +134,7 @@ class SocketService {
       this.socket.disconnect();
       this.socket = null;
     }
-  } // --- HELPER: Promise wrapper for emits ---
+  }
 
   private emitWithAck<T>(
     event: keyof ClientToServerEvents,
@@ -170,7 +172,9 @@ class SocketService {
   private async emitVoidAck(event: keyof ClientToServerEvents, payload?: unknown): Promise<void> {
     const res = await this.emitWithAck<void>(event, payload);
     return res.data;
-  } // --- MESSAGES API ---
+  }
+
+  // --- MESSAGES API ---
 
   async sendMessage(channelId: string, content: string): Promise<MessageDto> {
     const payload: SendMessagePayload = { channelId, content };
@@ -190,7 +194,9 @@ class SocketService {
 
     const res = await this.emitWithAck<MessageDto[]>('message:list', payload);
     return res.data!;
-  } // --- CHANNELS API ---
+  }
+
+  // --- CHANNELS API ---
 
   async joinOrCreateChannel(channelName: string, isPrivate: boolean = false): Promise<ChannelDto> {
     const payload: JoinChannelPayload = { channelName, isPrivate };
@@ -226,28 +232,23 @@ class SocketService {
   async getChannelMembers(channelId: string): Promise<MemberDto[]> {
     const res = await this.emitWithAck<MemberDto[]>('channel:list_members', { channelId });
     return res.data!;
-  } // --- USERS API ---
+  }
+
+  // --- USERS API ---
 
   async getMyProfile(): Promise<UserFullDto> {
     const res = await this.emitWithAck<UserFullDto>('user:get:full_info');
     return res.data!;
   }
 
-  // 🔥 FIX 2: Змінюємо Return Type на Promise<ChannelDto[]>
   async getMyChannels(): Promise<ChannelDto[]> {
     console.log(`[WS CLIENT] ⬇️ Calling getMyChannels, preparing to emit user:get:channels...`);
 
-    // Тут ми використовуємо "ChannelDto[] | ChannelDto", щоб TypeScript не сварився,
-    // якщо раптом з бекенду прийде один об'єкт (як було в твоєму тесті).
     const res = await this.emitWithAck<ChannelDto[] | ChannelDto>('user:get:channels');
 
-    // 🔥 SAFE FIX: Робимо перевірку в рантаймі.
-    // Якщо прийшов масив - віддаємо масив.
     if (Array.isArray(res.data)) {
       return res.data;
-    }
-    // Якщо прийшов один об'єкт (старий код бекенду) - загортаємо його в масив [obj].
-    else if (res.data) {
+    } else if (res.data) {
       console.warn(
         '[WS FIX] Received single ChannelDto object instead of Array. Wrapping it automatically.',
       );
@@ -265,7 +266,9 @@ class SocketService {
   async updateSettings(settings: UpdateSettingsPayload): Promise<UserSettingsDto> {
     const res = await this.emitWithAck<UserSettingsDto>('user:update:settings', settings);
     return res.data!;
-  } // --- ACTIVITIES (Typing / Status) ---
+  }
+
+  // --- ACTIVITIES (Typing / Status) ---
 
   changeStatus(newStatus: UserStatus) {
     console.log(`[WS CLIENT] ⚡ Emitting simple event: user:change:status (Status: ${newStatus})`);
@@ -278,7 +281,9 @@ class SocketService {
 
   stopTyping(channelId: string) {
     this.socket?.emit('typing:stop', { channelId });
-  } // --- LISTENERS (Підписка на події) ---
+  }
+
+  // --- LISTENERS (Підписка на події) ---
 
   public onConnect(handler: () => void) {
     this.socket?.on('connect', handler);
@@ -289,11 +294,10 @@ class SocketService {
   }
 
   onNewMessage(handler: (msg: NewMessageEvent) => void) {
-    // 🔥🔥 ВСТАВЛЕНО ДІАГНОСТИКУ 🔥🔥
     this.socket?.on('message:new', (payload) => {
       if (!payload.channelId) {
         console.error(
-          '%c[WS CRITICAL] ❌ Отримано message:new БЕЗ channelId! Перевірте MessagesController на бекенді.',
+          '%c[WS CRITICAL] ❌ Отримано message:new БЕЗ channelId!',
           'color: red; font-weight: bold; font-size: 14px;',
           payload,
         );
@@ -304,6 +308,11 @@ class SocketService {
 
   onMemberJoined(handler: (data: MemberJoinedEvent) => void) {
     this.socket?.on('channel:member_joined', handler);
+  }
+
+  // 🔥 НОВИЙ СЛУХАЧ
+  onUserInvited(handler: (channel: ChannelDto) => void) {
+    this.socket?.on('user:invited', handler);
   }
 
   onMemberLeft(handler: (data: MemberLeftEvent) => void) {
@@ -331,10 +340,9 @@ class SocketService {
   }
 
   off(event: keyof ServerToClientEvents) {
-    this.socket?.off(event); // Додано явне перетворення типу для безпеки
+    this.socket?.off(event);
   }
 
-  // 🔥 FIX 3: Змінюємо Return Type на Promise<ChannelDto[]> тут також
   async listChannels(): Promise<ChannelDto[]> {
     return this.getMyChannels();
   }
