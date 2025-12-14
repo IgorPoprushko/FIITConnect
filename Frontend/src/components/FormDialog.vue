@@ -1,5 +1,5 @@
 <template>
-    <q-dialog v-model="isOpen" @hide="onClose">
+    <q-dialog v-model="isOpen" @hide="onClose" class="z-top">
         <q-card :style="cardWidth">
             <!-- Header -->
             <q-card-section class="row items-center q-pb-none">
