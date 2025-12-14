@@ -149,6 +149,16 @@ export default class MessagesController {
         const sentAtString =
           typeof m.createdAt === 'string' ? m.createdAt : ((m.createdAt as any)?.toISO?.() ?? '')
 
+        // Parse mentions from database
+        let mentions: string[] = []
+        if (m.mentionedUserIds) {
+          try {
+            mentions = JSON.parse(m.mentionedUserIds)
+          } catch (e) {
+            console.error('Failed to parse mentionedUserIds:', e)
+          }
+        }
+
         return {
           id: m.id,
           content: m.content,
@@ -162,7 +172,7 @@ export default class MessagesController {
             status: m.user.setting?.status,
             lastSeenAt: m.user.lastSeenAt?.toISO() ?? null,
           },
-          mentions: [],
+          mentions,
         }
       })
 

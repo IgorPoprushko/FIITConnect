@@ -25,10 +25,15 @@ export interface IMessage {
   date: Date;
   own: boolean;
   read: boolean;
+  mentionsMe: boolean;
+  mentions: string[];
 }
 
 function mapMessageDtoToDisplay(payload: NewMessageEvent): IMessage {
   const auth = useAuthStore();
+  const mentions = payload.mentions ?? [];
+  const mentionsMe = mentions.includes(auth.user?.id ?? '');
+
   return {
     id: payload.id.toString(),
     channelId: payload.channelId,
@@ -37,6 +42,8 @@ function mapMessageDtoToDisplay(payload: NewMessageEvent): IMessage {
     date: new Date(payload.sentAt),
     own: payload.userId === auth.user?.id,
     read: true,
+    mentionsMe,
+    mentions,
   };
 }
 
@@ -415,6 +422,8 @@ export const useChatStore = defineStore('chat', {
         date: new Date(),
         own: true,
         read: true,
+        mentionsMe: false,
+        mentions: [],
       };
 
       this.appendMessage(optimisticMessage);

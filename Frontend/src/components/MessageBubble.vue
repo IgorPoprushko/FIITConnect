@@ -6,8 +6,8 @@
     :text="[message.text]"
     :stamp="getTime(message.date)"
     :sent="message.own"
-    :bg-color="message.own ? 'primary' : 'secondary'"
-    class="q-mb-sm q-px-sm message-item"
+    :bg-color="getBgColor"
+    :class="['q-mb-sm', 'q-px-sm', 'message-item', { 'mentioned-message': message.mentionsMe }]"
   />
 </template>
 
@@ -53,7 +53,30 @@ const shouldShowName = computed(() => {
   return false;
 });
 
+// 3. Background color based on mention status
+const getBgColor = computed(() => {
+  if (props.message.mentionsMe) {
+    return 'amber-8'; // Highlighted color for mentions
+  }
+  return props.message.own ? 'primary' : 'secondary';
+});
+
 function getTime(date: Date) {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 </script>
+
+<style scoped>
+.mentioned-message {
+  animation: pulse-mention 1s ease-in-out;
+}
+
+@keyframes pulse-mention {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+</style>
