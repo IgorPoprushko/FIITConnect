@@ -198,7 +198,6 @@ export default class ChannelsController {
     }
   }
 
-
   public async invite(
     socket: AuthenticatedSocket,
     payload: ManageMemberPayload,
