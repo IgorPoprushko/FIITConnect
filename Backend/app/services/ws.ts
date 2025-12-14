@@ -39,7 +39,7 @@ class Ws {
 
     this.io = new Server(server.getNodeServer(), {
       cors: {
-        origin: 'http://localhost:9000',
+        origin: ['http://localhost:9000', 'http://10.78.101.15:9000'],
         methods: ['GET', 'POST'],
         credentials: true,
       },

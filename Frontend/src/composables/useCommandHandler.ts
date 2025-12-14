@@ -49,6 +49,7 @@ const commands: Command[] = [
     name: '/list',
     description: 'Show list of members in the current channel',
     usage: '/list',
+    requiredChannelType: [ChannelType.PRIVATE, ChannelType.PUBLIC],
     handler: () => {
       if (!chat.activeChannel) {
         console.warn('No active channel to list members from');
