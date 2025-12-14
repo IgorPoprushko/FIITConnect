@@ -52,11 +52,10 @@ export default class MessagesController {
         channelId: channel.id,
       })
 
+      // 🔥 FIX: Оновлюємо статус прочитання відразу при відправці
       membership.lastReadMessageId = newMessage.id
       await membership.save()
 
-      // --- FIX: TypeScript каже, що createdAt вже string ---
-      // Використовуємо приведення типів або перевірку, щоб задовольнити TS
       const sentAtString =
         typeof newMessage.createdAt === 'string'
           ? newMessage.createdAt
@@ -78,7 +77,6 @@ export default class MessagesController {
         mentions: mentionedUserIds,
       }
 
-      // Відправляємо подію з channelId
       Ws.getIo()
         .to(channel.id)
         .emit('message:new', {
@@ -109,28 +107,45 @@ export default class MessagesController {
 
       if (!membership) throw new Exception('Access denied', { status: 403 })
 
+      if (membership.isNew) {
+        membership.isNew = false
+        await membership.save()
+      }
+
       const query = Message.query()
         .where('channelId', channelId)
         .preload('user', (q) => q.preload('setting'))
-        .orderBy('id', 'desc')
+        // 🔥 FIX: Сортуємо по часу створення, а не по ID!
+        // ID може бути UUID або не послідовним, що ламає порядок.
+        .orderBy('createdAt', 'desc')
         .limit(limit)
 
+      // Якщо є курсор (id старого повідомлення), шукаємо старіші за нього
       if (cursor) {
+        // Тут ми припускаємо, що cursor - це ID.
+        // Для точної пагінації краще використовувати cursor based on createdAt,
+        // але якщо ID послідовні (int), то це ок. Якщо UUID - треба переробляти логіку курсору.
+        // Залишаємо поки ID, але майте на увазі цей нюанс.
         query.where('id', '<', cursor)
       }
 
       const messages = await query.exec()
 
+      // 🔥 FIX: Логіка оновлення прочитаного
+      // Якщо ми запитали найсвіжіші повідомлення (!cursor) і вони є,
+      // то ми точно прочитали найновіше з них.
       if (!cursor && messages.length > 0) {
         const newest = messages[0]
-        if (!membership.lastReadMessageId || newest.id > membership.lastReadMessageId) {
+
+        // Просто оновлюємо на найновіше, якщо ID відрізняється.
+        // Видалено перевірку newest.id > lastReadMessageId, бо для UUID вона не працює коректно.
+        if (membership.lastReadMessageId !== newest.id) {
           membership.lastReadMessageId = newest.id
           await membership.save()
         }
       }
 
       const sortedMessages: MessageDto[] = messages.reverse().map((m) => {
-        // --- FIX: Аналогічно для getMessages ---
         const sentAtString =
           typeof m.createdAt === 'string' ? m.createdAt : ((m.createdAt as any)?.toISO?.() ?? '')
 

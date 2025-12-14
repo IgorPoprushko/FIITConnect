@@ -26,6 +26,8 @@ export default class extends BaseSchema {
       table.boolean('is_muted').notNullable().defaultTo(false)
       table.boolean('is_banned').notNullable().defaultTo(false)
 
+      table.boolean('is_new').notNullable().defaultTo(false)
+
       table.timestamp('joined_at').notNullable().defaultTo(this.now())
       table.timestamp('ban_until').nullable()
 

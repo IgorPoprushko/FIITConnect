@@ -36,6 +36,9 @@ export default class Member extends BaseModel {
   @column({ columnName: 'is_banned' })
   declare isBanned: boolean
 
+  @column({ columnName: 'is_new' })
+  declare isNew: boolean
+
   @column.dateTime({ autoCreate: true, columnName: 'joined_at' })
   declare joinedAt: DateTime
 
