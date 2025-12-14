@@ -7,7 +7,7 @@
     <q-infinite-scroll reverse @load="onLoad" :offset="250" class="messages-scroll-area">
       <template v-slot:loading>
         <div class="row justify-center q-my-md">
-          <q-spinner-dots color="primary" name="dots" size="40px" />
+          <q-spinner-dots color="teal-5" name="dots" size="40px" />
         </div>
       </template>
 

@@ -1,6 +1,6 @@
 <template>
   <q-layout view="lHr LpR lFr">
-    <q-drawer v-model="groupDrawer" side="left" show-if-above bordered class="q-pa-sm">
+    <q-drawer v-model="groupDrawer" side="left" show-if-above bordered class="q-pa-xs">
       <q-toolbar class="q-pa-none justify-between">
         <q-btn
           outline
@@ -30,20 +30,15 @@
         <q-btn round flat dense icon="add" class="q-ml-xs" @click="createDialog.open()" />
       </q-toolbar>
 
-      <q-separator />
+      <q-separator class="q-mt-md" />
 
       <q-list>
-        <!-- 
-          🔥 ВИПРАВЛЕНО (Issue 2):
-          Замість чекати ID від події (@select="(id) => ..."), ми передаємо group.id напряму з циклу.
-          Використовуємо `() => void ...`, щоб задовольнити лінтер.
-        -->
         <GroupItem
           v-for="group in filteredGroups"
           :key="group.id"
           clickable
-          :group-data="group"
-          @select="() => void selectChannel(group.id)"
+          v-bind="group"
+          @select="(id) => void selectChannel(id)"
         />
       </q-list>
     </q-drawer>
@@ -220,11 +215,6 @@
               <q-toggle v-model="profileForm.directNotificationsOnly" color="secondary" />
             </div>
 
-            <!-- 
-              🔥 ВИПРАВЛЕНО (Issue 1):
-              Використовуємо () => void handleLogout(), щоб явно позначити, 
-              що ми ігноруємо проміс у шаблоні.
-            -->
             <q-btn
               outline
               rounded
@@ -250,7 +240,6 @@ import { useRouter } from 'vue-router';
 // === ІМПОРТИ КОНТРАКТІВ ===
 import type { ChannelDto, JoinChannelPayload } from 'src/contracts/channel_contracts';
 import { ChannelType, UserRole, UserStatus } from 'src/enums/global_enums';
-import type { UpdateSettingsPayload } from 'src/contracts/user_contracts';
 // ==========================
 
 import GroupItem from 'components/GroupItem.vue';
@@ -278,9 +267,12 @@ interface CreateFormPayload {
 interface GroupItemProps {
   id: string;
   name: string;
+  isPrivate: boolean;
   lastMessage: string;
-  lastTime: string;
+  lastSender?: string;
+  lastTime: string | Date | null;
   unreadCount: number;
+  isActive: boolean;
 }
 
 interface ProfileFormPayload {
@@ -312,16 +304,22 @@ const filteredGroups = computed(() =>
       (c: ChannelDto): GroupItemProps => ({
         id: c.id,
         name: c.name,
+        isPrivate: c.type === ChannelType.PRIVATE,
         lastMessage: c.lastMessage?.content ?? '',
-        lastTime: c.lastMessage?.sentAt
-          ? new Date(c.lastMessage.sentAt).toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-            })
-          : '',
+        lastSender: c.lastMessage?.senderNick ?? '',
+        lastTime: c.lastMessage?.sentAt ? new Date(c.lastMessage.sentAt) : null,
         unreadCount: c.unreadCount,
+        isActive: c.id === chat.activeChannelId,
       }),
-    ),
+    )
+    .sort((a, b) => {
+      // 🔥 FIX TS Error: 'getTime' does not exist on type 'string | Date'
+      // Ми явно створюємо Date об'єкт перед викликом getTime(),
+      // бо TypeScript боїться, що a.lastTime може бути string (хоча ми знаємо, що там Date)
+      const timeA = a.lastTime ? new Date(a.lastTime).getTime() : 0;
+      const timeB = b.lastTime ? new Date(b.lastTime).getTime() : 0;
+      return timeB - timeA;
+    }),
 );
 
 //#region Create channel dialog
@@ -440,7 +438,8 @@ function closeProfile() {
 function submitProfile() {
   profileDialog.setLoading(true);
 
-  const updatePayload: UpdateSettingsPayload = {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const updatePayload: any = {};
   let shouldUpdate = false;
 
   if (profileForm.status !== (auth.settings?.status ?? UserStatus.ONLINE)) {
@@ -463,17 +462,16 @@ function submitProfile() {
 }
 //#endregion
 
-// 🔥 ВИПРАВЛЕНО (Issue 1):
-// Робимо функцію чистою async, а "глушимо" проміс у місці виклику (в шаблоні).
 const handleLogout = async () => {
   try {
     await authService.logout();
   } catch (error) {
     console.error('Logout failed:', error);
   } finally {
-    // Завжди відключаємось і йдемо на логін
     chat.disconnectSocket();
-    await router.push('/login');
+    // 🔥 FIX: Додаємо .catch(), щоб обробити можливі помилки роутера (наприклад, якщо ми вже на /login)
+    // Це задовольняє правило no-floating-promises
+    await router.push('/login').catch(() => {});
   }
 };
 </script>

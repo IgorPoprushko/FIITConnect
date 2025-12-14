@@ -6,8 +6,6 @@ import type {
   ChannelDto,
   JoinChannelPayload,
   ChannelActionPayload,
-  MemberJoinedEvent,
-  MemberLeftEvent,
 } from 'src/contracts/channel_contracts';
 import type { NewMessageEvent, MessageDto } from 'src/contracts/message_contracts';
 // ==========================
@@ -37,7 +35,6 @@ function mapMessageDtoToDisplay(payload: NewMessageEvent): IMessage {
     read: true,
   };
 }
-// ------------------------------------
 
 // --- STATE ---
 interface ChatState {
@@ -65,7 +62,6 @@ export const useChatStore = defineStore('chat', {
 
       const messages = state.messagesByChannel[state.activeChannelId] ?? [];
 
-      // Сортуємо від найстаріших до найновіших
       return [...messages].sort((a, b) => a.date.getTime() - b.date.getTime());
     },
 
@@ -92,6 +88,11 @@ export const useChatStore = defineStore('chat', {
         );
 
         this.messagesByChannel[channelId] = formattedMessages;
+
+        const channel = this.channels.find((c) => c.id === channelId);
+        if (channel && this.activeChannelId === channelId) {
+          channel.unreadCount = 0;
+        }
       } catch (err) {
         console.error('❌ Failed to fetch history:', err);
       }
@@ -100,7 +101,40 @@ export const useChatStore = defineStore('chat', {
     async loadChannels() {
       this.loadingChannels = true;
       try {
+        // 1. Завантажуємо список каналів
         this.channels = await socketService.listChannels();
+
+        // 2. 🔥 FIX: "Гідратація" (підвантаження) останніх повідомлень
+        // Якщо сервер не віддав lastMessage у списку, ми запитуємо історію для кожного каналу окремо.
+        // Це гарантує, що після F5 у нас будуть дані для відображення у списку.
+        await Promise.all(
+          this.channels.map(async (channel) => {
+            // Якщо сервер вже був чемний і надіслав lastMessage — пропускаємо, не робимо зайву роботу
+            if (channel.lastMessage) return;
+
+            try {
+              // Робимо WS запит за повідомленнями для конкретного каналу
+              const messages = await socketService.getMessages(channel.id);
+
+              if (messages && messages.length > 0) {
+                // Знаходимо найсвіжіше повідомлення серед тих, що прийшли
+                const last = messages.reduce((prev, curr) =>
+                  new Date(prev.sentAt) > new Date(curr.sentAt) ? prev : curr,
+                );
+
+                // Оновлюємо наш локальний канал цими даними
+                channel.lastMessage = {
+                  content: last.content,
+                  sentAt: last.sentAt,
+                  senderNick: last.user?.nickname ?? 'Unknown',
+                };
+              }
+            } catch (err) {
+              console.warn(`⚠️ Could not fetch last message for channel ${channel.name}`, err);
+            }
+          }),
+        );
+
         console.log(`✅ ChatStore: Successfully loaded ${this.channels.length} channels.`);
       } catch (error) {
         console.error('❌ Failed to load channels:', error);
@@ -119,22 +153,16 @@ export const useChatStore = defineStore('chat', {
       return channel;
     },
 
-    // 🔥 НОВА ДІЯ: Покинути канал
     async leaveChannel(channelId: string) {
       try {
-        // 1. Кажемо серверу "Па-па!"
         await socketService.leaveChannel(channelId);
-
-        // 2. Видаляємо канал з нашого локального списку (щоб він зник з меню зліва)
         this.channels = this.channels.filter((c) => c.id !== channelId);
-
-        // 3. Якщо ми зараз дивились на цей канал - закриваємо його
         if (this.activeChannelId === channelId) {
           this.activeChannelId = null;
         }
       } catch (error) {
         console.error('❌ Failed to leave channel:', error);
-        throw error; // Викидаємо помилку далі, щоб UI міг показати повідомлення
+        throw error;
       }
     },
 
@@ -155,6 +183,9 @@ export const useChatStore = defineStore('chat', {
           this.messagesByChannel[channelId] = [];
         }
         void this.fetchMessages(channelId);
+
+        const channel = this.channels.find((c) => c.id === channelId);
+        if (channel) channel.unreadCount = 0;
       }
     },
 
@@ -183,11 +214,11 @@ export const useChatStore = defineStore('chat', {
         }
       });
 
-      socketService.onMemberJoined((payload: MemberJoinedEvent) => {
+      socketService.onMemberJoined((payload) => {
         console.debug(`[WS IN] Member joined: ${payload.member.nickname}`);
       });
 
-      socketService.onMemberLeft((payload: MemberLeftEvent) => {
+      socketService.onMemberLeft((payload) => {
         console.debug(`[WS IN] Member left: ${payload.userId}`);
       });
 
@@ -232,6 +263,10 @@ export const useChatStore = defineStore('chat', {
           sentAt: message.date.toISOString(),
           senderNick: message.sender,
         };
+
+        if (this.activeChannelId !== message.channelId && !message.own) {
+          channel.unreadCount = (channel.unreadCount || 0) + 1;
+        }
       }
     },
 

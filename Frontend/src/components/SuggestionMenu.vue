@@ -20,8 +20,8 @@
         class="suggestion-item"
       >
         <q-item-section v-if="suggestion.type === 'command'">
-          <q-item-label class="text-bold text-primary">{{ suggestion.label }}</q-item-label>
-          <q-item-label caption class="text-grey-7">{{ suggestion.description }}</q-item-label>
+          <q-item-label class="text-bold text-teal-5">{{ suggestion.label }}</q-item-label>
+          <q-item-label caption class="text-grey-4">{{ suggestion.description }}</q-item-label>
           <q-item-label caption class="text-grey-6 text-italic">{{
             suggestion.usage
           }}</q-item-label>
