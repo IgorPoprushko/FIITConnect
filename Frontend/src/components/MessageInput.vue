@@ -1,38 +1,21 @@
 <template>
   <div class="relative">
     <div class="row items-center q-pa-sm bg-dark">
-      <q-input
-        ref="inputRef"
-        v-model="messageText"
-        placeholder="Type your message here..."
-        class="col q-mx-md"
-        dense
-        borderless
-        type="textarea"
-        autogrow
-        rows="1"
-        max-rows="6"
-        maxlength="1024"
-        @update:model-value="onInputChange"
-        @keydown="handleKeyDown"
-      />
+      <q-input ref="inputRef" v-model="messageText" placeholder="Type your message here..." class="col q-mx-md" dense
+        borderless type="textarea" autogrow rows="1" max-rows="6" maxlength="1024" @update:model-value="onInputChange"
+        @keydown="handleKeyDown" />
       <q-btn round icon="send" @click="handleSend" :disable="!messageText.trim()" />
     </div>
 
-    <SuggestionMenu
-      ref="suggestionMenuRef"
-      v-model="showSuggestionMenu"
-      :query="currentSuggestionQuery"
-      :context="commandContext"
-      @select="handleSuggestionSelect"
-    />
+    <SuggestionMenu ref="suggestionMenuRef" v-model="showSuggestionMenu" :query="currentSuggestionQuery"
+      :context="commandContext" @select="handleSuggestionSelect" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, nextTick } from 'vue';
 import SuggestionMenu from 'components/SuggestionMenu.vue';
-//import { useCommandHandler } from 'src/composables/useCommandHandler';
+import { useCommandHandler } from 'src/composables/useCommandHandler';
 
 // === КОНТРАКТИ ТА ЕНАМИ ===
 import { ChannelType, UserRole } from 'src/enums/global_enums'; // <--- ВИПРАВЛЕНО: Використовуємо глобальні енами
@@ -74,9 +57,9 @@ const inputRef = ref();
 const suggestionMenuRef = ref();
 const showSuggestionMenu = ref(false);
 
-// const commandHandler = useCommandHandler() as ReturnType<typeof useCommandHandler> & {
-//   executeCommand: (commandText: string, context?: CommandContext) => Promise<boolean>;
-// };
+const commandHandler = useCommandHandler() as ReturnType<typeof useCommandHandler> & {
+  executeCommand: (commandText: string, context?: CommandContext) => Promise<boolean>;
+};
 
 const commandContext = computed<CommandContext>(() => ({
   channelType: props.channelType,
@@ -167,16 +150,16 @@ const handleSuggestionSelect = (suggestion: Suggestion): void => {
   showSuggestionMenu.value = false;
 };
 
-const handleSend = (): void => {
+const handleSend = async (): Promise<void> => {
   const text = messageText.value.trim();
   if (!text) return;
 
   if (text.startsWith('/')) {
-    // const success = await commandHandler.executeCommand(text, commandContext.value);
-    // if (success) {
-    //   messageText.value = '';
-    //   return;
-    // }
+    const success = await commandHandler.executeCommand(text, commandContext.value);
+    if (success) {
+      messageText.value = '';
+      return;
+    }
   }
 
   emit('send', text);

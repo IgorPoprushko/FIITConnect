@@ -2,27 +2,13 @@
   <q-layout view="lHr LpR lFr">
     <q-drawer v-model="groupDrawer" side="left" show-if-above bordered class="q-pa-sm">
       <q-toolbar class="q-pa-none justify-between">
-        <q-btn
-          outline
-          rounded
-          color="secondary"
-          class="text-bold"
-          :label="auth.nickname"
-          @click="profileDialog.open()"
-        />
+        <q-btn outline rounded color="secondary" class="text-bold" :label="auth.nickname"
+          @click="profileDialog.open()" />
         <q-btn round flat dense icon="mail" class="q-ml-xs" />
       </q-toolbar>
 
       <q-toolbar class="q-pa-none">
-        <q-input
-          rounded
-          standout
-          dense
-          clearable
-          placeholder="Search"
-          v-model="search"
-          class="fit text-accent"
-        >
+        <q-input rounded standout dense clearable placeholder="Search" v-model="search" class="fit text-accent">
           <template v-slot:append>
             <q-icon name="search" color="secondary" />
           </template>
@@ -33,72 +19,36 @@
       <q-separator />
 
       <q-list>
-        <GroupItem
-          v-for="group in filteredGroups"
-          :key="group.id"
-          clickable
-          :group-data="group"
-          @select="selectChannel(group.id)"
-        />
+        <GroupItem v-for="group in filteredGroups" :key="group.id" clickable :group-data="group"
+          @select="selectChannel(group.id)" />
       </q-list>
     </q-drawer>
 
     <q-footer class="q-pa-none">
-      <MessageInput :channel-type="activeChannel?.type ?? ChannelType.PUBLIC" @send="handleSend" />
+      <MessageInput :channel-type="activeChannel?.type ?? ChannelType.PUBLIC" :user-role="activeUserRole"
+        @send="handleSend" />
     </q-footer>
 
-    <FormDialog
-      v-model="createDialog.isOpen.value"
-      title="Create Channel"
-      confirm-color="secondary"
-      description="Create a new channel to start chatting with others"
-      confirm-label="Create"
-      :loading="createDialog.loading.value"
-      :disable-confirm="!createForm.name.trim()"
-      @confirm="submitCreate"
-      @cancel="closeCreate"
-      @close="closeCreate"
-    >
+    <FormDialog v-model="createDialog.isOpen.value" title="Create Channel" confirm-color="secondary"
+      description="Create a new channel to start chatting with others" confirm-label="Create"
+      :loading="createDialog.loading.value" :disable-confirm="!createForm.name.trim()" @confirm="submitCreate"
+      @cancel="closeCreate" @close="closeCreate">
       <template #content>
         <q-form class="column q-gutter-md">
-          <q-input
-            v-model="createForm.name"
-            label="Channel Name"
-            color="secondary"
-            dense
-            outlined
-            required
-            :rules="[(val) => !!val?.trim() || 'Name is required']"
-          >
+          <q-input v-model="createForm.name" label="Channel Name" color="secondary" dense outlined required
+            :rules="[(val) => !!val?.trim() || 'Name is required']">
             <template v-slot:prepend> <q-icon name="tag" /> </template>
           </q-input>
 
-          <q-input
-            v-model="createForm.description"
-            label="Description (optional)"
-            type="textarea"
-            color="secondary"
-            autogrow
-            dense
-            outlined
-            rows="2"
-            max-rows="4"
-          >
+          <q-input v-model="createForm.description" label="Description (optional)" type="textarea" color="secondary"
+            autogrow dense outlined rows="2" max-rows="4">
             <template v-slot:prepend>
               <q-icon name="description" />
             </template>
           </q-input>
 
-          <q-select
-            v-model="createForm.type"
-            :options="channelTypeOptions"
-            label="Channel Type"
-            color="secondary"
-            dense
-            outlined
-            emit-value
-            map-options
-          >
+          <q-select v-model="createForm.type" :options="channelTypeOptions" label="Channel Type" color="secondary" dense
+            outlined emit-value map-options>
             <template v-slot:prepend>
               <q-icon name="visibility" />
             </template>
@@ -107,17 +57,9 @@
       </template>
     </FormDialog>
 
-    <FormDialog
-      v-model="profileDialog.isOpen.value"
-      title="User Profile"
-      confirm-color="secondary"
-      confirm-label="Apply"
-      :loading="profileDialog.loading.value"
-      :disable-confirm="checkChange()"
-      @confirm="submitProfile"
-      @cancel="closeProfile"
-      @close="closeProfile"
-    >
+    <FormDialog v-model="profileDialog.isOpen.value" title="User Profile" confirm-color="secondary"
+      confirm-label="Apply" :loading="profileDialog.loading.value" :disable-confirm="checkChange()"
+      @confirm="submitProfile" @cancel="closeProfile" @close="closeProfile">
       <template #content>
         <div class="column q-gutter-md">
           <div class="column q-gutter-sm q-pb-md">
@@ -141,53 +83,26 @@
           <q-separator />
 
           <q-form class="column q-gutter-md q-pt-sm">
-            <q-input
-              v-model="profileForm.firstName"
-              label="First Name"
-              dense
-              outlined
-              color="secondary"
-            >
+            <q-input v-model="profileForm.firstName" label="First Name" dense outlined color="secondary">
               <template v-slot:prepend>
                 <q-icon name="person" color="secondary" />
               </template>
             </q-input>
 
-            <q-input
-              v-model="profileForm.lastName"
-              label="Last Name"
-              dense
-              outlined
-              color="secondary"
-            >
+            <q-input v-model="profileForm.lastName" label="Last Name" dense outlined color="secondary">
               <template v-slot:prepend>
                 <q-icon name="person" color="secondary" />
               </template>
             </q-input>
 
-            <q-input
-              v-model="profileForm.email"
-              label="Email"
-              type="email"
-              dense
-              outlined
-              color="secondary"
-            >
+            <q-input v-model="profileForm.email" label="Email" type="email" dense outlined color="secondary">
               <template v-slot:prepend>
                 <q-icon name="email" color="secondary" />
               </template>
             </q-input>
 
-            <q-select
-              v-model="profileForm.status"
-              :options="statusOptions"
-              label="Status"
-              dense
-              outlined
-              color="secondary"
-              emit-value
-              map-options
-            >
+            <q-select v-model="profileForm.status" :options="statusOptions" label="Status" dense outlined
+              color="secondary" emit-value map-options>
               <template v-slot:prepend>
                 <q-icon name="circle" :color="getStatusColor(profileForm.status)" />
               </template>
@@ -211,15 +126,8 @@
               <q-toggle v-model="profileForm.directNotificationsOnly" color="secondary" />
             </div>
 
-            <q-btn
-              outline
-              rounded
-              dense
-              color="negative"
-              label="Logout"
-              class="text-h6 text-bold"
-              @click="handleLogout"
-            />
+            <q-btn outline rounded dense color="negative" label="Logout" class="text-h6 text-bold"
+              @click="handleLogout" />
           </q-form>
         </div>
       </template>
@@ -235,7 +143,7 @@ import { useRouter } from 'vue-router';
 
 // === ІМПОРТИ КОНТРАКТІВ ===
 import type { ChannelDto, JoinChannelPayload } from 'src/contracts/channel_contracts'; // <--- Додано JoinChannelPayload
-import { ChannelType, UserStatus } from 'src/enums/global_enums';
+import { ChannelType, UserRole, UserStatus } from 'src/enums/global_enums';
 import type { UpdateSettingsPayload } from 'src/contracts/user_contracts';
 // ==========================
 
@@ -252,6 +160,7 @@ const groupDrawer = ref(false);
 const auth = useAuthStore();
 const chat = useChatStore();
 const search = ref<string>('');
+
 
 // === ЛОКАЛЬНІ ТИПИ ===
 
@@ -286,6 +195,11 @@ interface ProfileFormPayload {
 const activeChannel = computed(
   () => chat.channels.find((c: ChannelDto) => c.id === chat.activeChannelId) || null,
 );
+const activeUserRole = computed(() => {
+  if (!auth.user || !chat.activeChannel) return UserRole.MEMBER;
+  return chat.activeChannel.ownerUserId === auth.user.id ? UserRole.ADMIN : UserRole.MEMBER;
+});
+
 const normalizedSearch = computed(() => search.value.toLowerCase().trim());
 
 const filteredGroups = computed(() =>
@@ -299,9 +213,9 @@ const filteredGroups = computed(() =>
         lastMessage: c.lastMessage?.content ?? '',
         lastTime: c.lastMessage?.sentAt
           ? new Date(c.lastMessage.sentAt).toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-            })
+            hour: '2-digit',
+            minute: '2-digit',
+          })
           : '',
         unreadCount: c.unreadCount,
       }),
