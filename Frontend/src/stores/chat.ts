@@ -14,7 +14,9 @@ import type { NewMessageEvent, MessageDto } from 'src/contracts/message_contract
 // ==========================
 
 import { useAuthStore } from './auth';
-import { Notify } from 'quasar'; // 🔥 Для повідомлень
+import { Notify } from 'quasar';
+// 🔥 ОБОВ'ЯЗКОВО ІМПОРТУЄМО СТАТУС
+import { UserStatus } from 'src/enums/global_enums';
 
 // --- ЛОКАЛЬНІ ТИПИ ДЛЯ ВІДОБРАЖЕННЯ ---
 export interface IMessage {
@@ -85,6 +87,15 @@ export const useChatStore = defineStore('chat', {
     async fetchMessages(channelId: string) {
       if (!channelId) return;
 
+      const auth = useAuthStore();
+
+      // 🔥 FIX: Якщо юзер OFFLINE, забороняємо завантаження історії.
+      // Таким чином, він не побачить нових повідомлень, поки не вийде в онлайн.
+      if (auth.settings?.status === UserStatus.OFFLINE) {
+        console.log(`🚫 ChatStore: User is OFFLINE. Skipping fetchMessages for ${channelId}.`);
+        return;
+      }
+
       if (!this.connected) {
         console.log(`⏳ ChatStore: Socket not ready yet. Skipping fetch for ${channelId}.`);
         return;
@@ -106,14 +117,9 @@ export const useChatStore = defineStore('chat', {
             channel.unreadCount = 0;
           }
 
-          // 🔥 FIX: Оновлюємо прев'ю каналу (останнє повідомлення) на основі завантаженої історії
-          // Це гарантує, що навіть якщо при завантаженні списку даних не було,
-          // після входу в чат вони з'являться.
+          // Оновлюємо прев'ю каналу
           if (history.length > 0) {
-            // history приходить від найстарішого до найновішого (зазвичай)
-            // Але перевіримо логіку сортування бекенду. Зазвичай [Oldest ... Newest]
             const latest = history[history.length - 1];
-
             if (latest) {
               channel.lastMessage = {
                 content: latest.content,
@@ -130,6 +136,13 @@ export const useChatStore = defineStore('chat', {
 
     async fetchMembers(channelId: string) {
       if (!channelId) return;
+
+      const auth = useAuthStore();
+      // 🔥 FIX: Також блокуємо завантаження учасників в офлайні
+      if (auth.settings?.status === UserStatus.OFFLINE) {
+        console.log(`🚫 ChatStore: User is OFFLINE. Skipping fetchMembers for ${channelId}.`);
+        return;
+      }
 
       if (!this.connected) {
         console.log(`⏳ ChatStore: Socket not ready yet. Skipping member fetch for ${channelId}.`);
@@ -154,9 +167,6 @@ export const useChatStore = defineStore('chat', {
         // 1. Завантажуємо список каналів
         this.channels = await socketService.listChannels();
 
-        // 🔥 FIX: Страховка від багів бекенду.
-        // Якщо останнє повідомлення від МЕНЕ, то unreadCount має бути 0.
-        // Це виправляє ситуацію, коли "відправник бачить непрочитане".
         this.channels.forEach((c) => {
           if (c.lastMessage?.senderNick === auth.user?.nickname) {
             c.unreadCount = 0;
@@ -164,6 +174,15 @@ export const useChatStore = defineStore('chat', {
         });
 
         console.log(`✅ ChatStore: Successfully loaded ${this.channels.length} channels.`);
+
+        // 🔥 АВТО-ОНОВЛЕННЯ ПРИ ЗМІНІ СТАТУСУ НА ONLINE
+        // Якщо ми вже в каналі і перейшли в онлайн, довантажуємо повідомлення
+        if (this.activeChannelId) {
+          // Тут fetchMessages спрацює, бо статус вже не Offline
+          // (ми це перевірили перед викликом loadChannels в ChatLayout)
+          await this.fetchMessages(this.activeChannelId);
+          await this.fetchMembers(this.activeChannelId);
+        }
       } catch (error) {
         console.error('❌ Failed to load channels:', error);
       } finally {
@@ -214,14 +233,13 @@ export const useChatStore = defineStore('chat', {
           this.membersByChannel[channelId] = [];
         }
 
+        // Тут викликаються методи, які тепер мають захист від OFFLINE
         void this.fetchMessages(channelId);
         void this.fetchMembers(channelId);
 
         const channel = this.channels.find((c) => c.id === channelId);
         if (channel) {
-          // 🔥 Якщо ми зайшли в канал, він стає прочитаним
           channel.unreadCount = 0;
-          // 🔥 І перестає бути "Новим"
           if (channel.isNew) channel.isNew = false;
         }
       }
@@ -242,11 +260,8 @@ export const useChatStore = defineStore('chat', {
       socketService.onNewMessage((payload: NewMessageEvent) => {
         console.log(`[WS IN] Msg in ${payload.channelId}`);
 
-        // 🔥 FIX: Ігноруємо власні повідомлення, які приходять через WebSocket,
-        // тому що ми їх вже додали оптимістично в методі sendMessage.
-        // Це запобігає дублюванню (1 sms shows 2 times).
         if (payload.userId === auth.user?.id) {
-          console.log('[WS IN] Ignoring own message (already handled via optimistic UI)');
+          console.log('[WS IN] Ignoring own message');
           return;
         }
 
@@ -255,7 +270,6 @@ export const useChatStore = defineStore('chat', {
 
       socketService.onUserInvited((channel: ChannelDto) => {
         console.log(`[WS IN] You were invited to channel: ${channel.name}`);
-        // Додаємо в початок списку
         this.channels = [channel, ...this.channels];
         Notify.create({
           message: `You were invited to ${channel.name}`,
@@ -275,41 +289,29 @@ export const useChatStore = defineStore('chat', {
       });
 
       socketService.onMemberJoined((payload: MemberJoinedEvent) => {
-        console.debug(`[WS IN] Member joined: ${payload.member.nickname} to channel ${payload.channelId}`);
-
-        // Add member to the channel's member list
+        console.debug(`[WS IN] Member joined: ${payload.member.nickname}`);
         const members = this.membersByChannel[payload.channelId];
         if (members) {
           const exists = members.some((m) => m.id === payload.member.id);
-          if (!exists) {
-            members.push(payload.member);
-          }
+          if (!exists) members.push(payload.member);
         }
       });
 
       socketService.onMemberLeft((payload: MemberLeftEvent) => {
-        console.debug(`[WS IN] Member left: ${payload.userId} from channel ${payload.channelId}`);
-
-        // Remove member from the channel's member list
+        console.debug(`[WS IN] Member left: ${payload.userId}`);
         const members = this.membersByChannel[payload.channelId];
         if (members) {
           const index = members.findIndex((m) => m.id === payload.userId);
-          if (index !== -1) {
-            members.splice(index, 1);
-          }
+          if (index !== -1) members.splice(index, 1);
         }
       });
 
       socketService.onMemberKicked((payload: MemberLeftEvent) => {
-        console.debug(`[WS IN] Member kicked: ${payload.userId} from ${payload.channelId}`);
-
-        // Remove member from the channel's member list
+        console.debug(`[WS IN] Member kicked: ${payload.userId}`);
         const members = this.membersByChannel[payload.channelId];
         if (members) {
           const index = members.findIndex((m) => m.id === payload.userId);
-          if (index !== -1) {
-            members.splice(index, 1);
-          }
+          if (index !== -1) members.splice(index, 1);
         }
 
         if (payload.userId === auth.user?.id) {
@@ -362,7 +364,6 @@ export const useChatStore = defineStore('chat', {
           senderNick: message.sender,
         };
 
-        // 🔥 FIX: Не збільшуємо unreadCount, якщо повідомлення наше
         if (this.activeChannelId !== message.channelId && !message.own) {
           channel.unreadCount = (channel.unreadCount || 0) + 1;
         }
@@ -370,16 +371,7 @@ export const useChatStore = defineStore('chat', {
     },
 
     async revokeUser(nickname: string) {
-      if (!nickname) {
-        console.warn('Nickname is required to revoke a user');
-        return;
-      }
-
-      if (!this.activeChannelId) {
-        console.warn('No active channel selected for revoke');
-        return;
-      }
-
+      if (!nickname || !this.activeChannelId) return;
       try {
         await socketService.revokeUser(this.activeChannelId, nickname);
       } catch (error) {
@@ -427,8 +419,6 @@ export const useChatStore = defineStore('chat', {
           const tempIndex = bucket.findIndex((m) => m.id === tempId);
           if (tempIndex !== -1) {
             const msgToUpdate = bucket[tempIndex];
-            // Якщо WS подія прийшла раніше (race condition), реальне повідомлення вже може бути в бакеті
-            // Але в більшості випадків ми просто оновлюємо ID
             if (msgToUpdate) {
               msgToUpdate.id = realMessage.id;
               msgToUpdate.date = new Date(realMessage.sentAt);
@@ -440,6 +430,6 @@ export const useChatStore = defineStore('chat', {
       }
     },
 
-    hydrateMockMessages() { },
+    hydrateMockMessages() {},
   },
 });

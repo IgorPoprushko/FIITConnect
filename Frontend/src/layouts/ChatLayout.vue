@@ -2,13 +2,27 @@
   <q-layout view="lHr LpR lFr">
     <q-drawer v-model="groupDrawer" side="left" show-if-above bordered class="q-pa-xs">
       <q-toolbar class="q-pa-none justify-between">
-        <q-btn outline rounded color="secondary" class="text-bold" :label="auth.nickname"
-          @click="profileDialog.open()" />
+        <q-btn
+          outline
+          rounded
+          color="secondary"
+          class="text-bold"
+          :label="auth.nickname"
+          @click="profileDialog.open()"
+        />
         <q-btn round flat dense icon="mail" class="q-ml-xs" />
       </q-toolbar>
 
       <q-toolbar class="q-pa-none">
-        <q-input rounded standout dense clearable placeholder="Search" v-model="search" class="fit text-accent">
+        <q-input
+          rounded
+          standout
+          dense
+          clearable
+          placeholder="Search"
+          v-model="search"
+          class="fit text-accent"
+        >
           <template v-slot:append>
             <q-icon name="search" color="secondary" />
           </template>
@@ -26,8 +40,14 @@
         </q-item-label>
 
         <q-list class="q-mt-sm q-mb-md">
-          <GroupItem v-for="group in newGroups" :key="group.id" clickable v-bind="group"
-            @select="(id) => void selectChannel(id)" class="bg-grey-9" />
+          <GroupItem
+            v-for="group in newGroups"
+            :key="group.id"
+            clickable
+            v-bind="group"
+            @select="(id) => void selectChannel(id)"
+            class="bg-grey-9"
+          />
         </q-list>
 
         <q-separator />
@@ -35,44 +55,87 @@
 
       <!-- 🔥 СЕКЦІЯ ЗВИЧАЙНИХ КАНАЛІВ -->
       <div class="q-pa-xs">
-        <q-item-label header v-if="regularGroups.length > 0"
-          class="text-weight-bold text-grey-7 q-pb-none row items-center q-mb-sm">
+        <q-item-label
+          header
+          v-if="regularGroups.length > 0"
+          class="text-weight-bold text-grey-7 q-pb-none row items-center q-mb-sm"
+        >
           <q-avatar size="22px" color="grey-7" text-color="white" icon="groups" class="q-mr-sm" />
           Channels
         </q-item-label>
 
         <q-list class="q-mt-xs">
-          <GroupItem v-for="group in regularGroups" :key="group.id" clickable v-bind="group"
-            @select="(id) => void selectChannel(id)" />
+          <GroupItem
+            v-for="group in regularGroups"
+            :key="group.id"
+            clickable
+            v-bind="group"
+            @select="(id) => void selectChannel(id)"
+          />
         </q-list>
       </div>
     </q-drawer>
 
     <q-footer class="q-pa-none">
-      <MessageInput :channel-type="activeChannel?.type ?? null" :user-role="activeUserRole ?? null"
-        @send="handleSend" />
+      <MessageInput
+        :channel-type="activeChannel?.type ?? null"
+        :user-role="activeUserRole ?? null"
+        @send="handleSend"
+      />
     </q-footer>
 
-    <FormDialog v-model="createDialog.isOpen.value" title="Create Channel" confirm-color="secondary"
-      description="Create a new channel to start chatting with others" confirm-label="Create"
-      :loading="createDialog.loading.value" :disable-confirm="!createForm.name.trim()" @confirm="submitCreate"
-      @cancel="closeCreate" @close="closeCreate">
+    <FormDialog
+      v-model="createDialog.isOpen.value"
+      title="Create Channel"
+      confirm-color="secondary"
+      description="Create a new channel to start chatting with others"
+      confirm-label="Create"
+      :loading="createDialog.loading.value"
+      :disable-confirm="!createForm.name.trim()"
+      @confirm="submitCreate"
+      @cancel="closeCreate"
+      @close="closeCreate"
+    >
       <template #content>
         <q-form class="column q-gutter-md">
-          <q-input v-model="createForm.name" label="Channel Name" color="secondary" dense outlined required
-            :rules="[(val) => !!val?.trim() || 'Name is required']">
+          <q-input
+            v-model="createForm.name"
+            label="Channel Name"
+            color="secondary"
+            dense
+            outlined
+            required
+            :rules="[(val) => !!val?.trim() || 'Name is required']"
+          >
             <template v-slot:prepend> <q-icon name="tag" /> </template>
           </q-input>
 
-          <q-input v-model="createForm.description" label="Description (optional)" type="textarea" color="secondary"
-            autogrow dense outlined rows="2" max-rows="4">
+          <q-input
+            v-model="createForm.description"
+            label="Description (optional)"
+            type="textarea"
+            color="secondary"
+            autogrow
+            dense
+            outlined
+            rows="2"
+            max-rows="4"
+          >
             <template v-slot:prepend>
               <q-icon name="description" />
             </template>
           </q-input>
 
-          <q-select v-model="createForm.type" :options="channelTypeOptions" label="Channel Type" color="secondary" dense
-            outlined emit-value map-options>
+          <q-select
+            v-model="createForm.type"
+            :options="channelTypeOptions"
+            label="Channel Type"
+            color="secondary"
+            dense
+            outlined
+            emit-value
+            map-options
+          >
             <template v-slot:prepend>
               <q-icon name="visibility" />
             </template>
@@ -81,9 +144,17 @@
       </template>
     </FormDialog>
 
-    <FormDialog v-model="profileDialog.isOpen.value" title="User Profile" confirm-color="secondary"
-      confirm-label="Apply" :loading="profileDialog.loading.value" :disable-confirm="checkChange()"
-      @confirm="submitProfile" @cancel="closeProfile" @close="closeProfile">
+    <FormDialog
+      v-model="profileDialog.isOpen.value"
+      title="User Profile"
+      confirm-color="secondary"
+      confirm-label="Apply"
+      :loading="profileDialog.loading.value"
+      :disable-confirm="checkChange()"
+      @confirm="submitProfile"
+      @cancel="closeProfile"
+      @close="closeProfile"
+    >
       <template #content>
         <div class="column q-gutter-md">
           <div class="column q-gutter-sm q-pb-md">
@@ -107,26 +178,53 @@
           <q-separator />
 
           <q-form class="column q-gutter-md q-pt-sm">
-            <q-input v-model="profileForm.firstName" label="First Name" dense outlined color="secondary">
+            <q-input
+              v-model="profileForm.firstName"
+              label="First Name"
+              dense
+              outlined
+              color="secondary"
+            >
               <template v-slot:prepend>
                 <q-icon name="person" color="secondary" />
               </template>
             </q-input>
 
-            <q-input v-model="profileForm.lastName" label="Last Name" dense outlined color="secondary">
+            <q-input
+              v-model="profileForm.lastName"
+              label="Last Name"
+              dense
+              outlined
+              color="secondary"
+            >
               <template v-slot:prepend>
                 <q-icon name="person" color="secondary" />
               </template>
             </q-input>
 
-            <q-input v-model="profileForm.email" label="Email" type="email" dense outlined color="secondary">
+            <q-input
+              v-model="profileForm.email"
+              label="Email"
+              type="email"
+              dense
+              outlined
+              color="secondary"
+            >
               <template v-slot:prepend>
                 <q-icon name="email" color="secondary" />
               </template>
             </q-input>
 
-            <q-select v-model="profileForm.status" :options="statusOptions" label="Status" dense outlined
-              color="secondary" emit-value map-options>
+            <q-select
+              v-model="profileForm.status"
+              :options="statusOptions"
+              label="Status"
+              dense
+              outlined
+              color="secondary"
+              emit-value
+              map-options
+            >
               <template v-slot:prepend>
                 <q-icon name="circle" :color="getStatusColor(profileForm.status)" />
               </template>
@@ -150,8 +248,15 @@
               <q-toggle v-model="profileForm.directNotificationsOnly" color="secondary" />
             </div>
 
-            <q-btn outline rounded dense color="negative" label="Logout" class="text-h6 text-bold"
-              @click="() => void handleLogout()" />
+            <q-btn
+              outline
+              rounded
+              dense
+              color="negative"
+              label="Logout"
+              class="text-h6 text-bold"
+              @click="() => void handleLogout()"
+            />
           </q-form>
         </div>
       </template>
@@ -177,6 +282,7 @@ import { useAuthStore } from 'src/stores/auth';
 import { useChatStore } from 'src/stores/chat';
 import MessageInput from 'src/components/MessageInput.vue';
 import { authService } from 'src/services/authService';
+import { socketService } from 'src/services/socketService';
 
 const router = useRouter();
 const groupDrawer = ref(false);
@@ -381,6 +487,7 @@ function checkChange() {
 
 function closeProfile() {
   profileDialog.close();
+  // Reset values to store values
   profileForm.email = auth.user?.email ?? '';
   profileForm.firstName = auth.user?.firstName ?? '';
   profileForm.lastName = auth.user?.lastName ?? '';
@@ -389,30 +496,78 @@ function closeProfile() {
   profileForm.directNotificationsOnly = auth.settings?.directNotificationsOnly ?? false;
 }
 
-function submitProfile() {
+async function submitProfile() {
   profileDialog.setLoading(true);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const updatePayload: any = {};
-  let shouldUpdate = false;
+  try {
+    // 1. ОНОВЛЕННЯ НАЛАШТУВАНЬ (SOCKET)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const settingsPayload: any = {};
+    let settingsChanged = false;
+    const wasOffline = auth.settings?.status === UserStatus.OFFLINE;
 
-  if (profileForm.status !== (auth.settings?.status ?? UserStatus.ONLINE)) {
-    updatePayload.status = profileForm.status;
-    console.log('Change Status');
-    shouldUpdate = true;
-  }
-  if (profileForm.directNotificationsOnly !== (auth.settings?.directNotificationsOnly ?? false)) {
-    updatePayload.directNotificationsOnly = profileForm.directNotificationsOnly;
-    console.log('Change Notification');
-    shouldUpdate = true;
-  }
+    if (profileForm.status !== (auth.settings?.status ?? UserStatus.ONLINE)) {
+      settingsPayload.status = profileForm.status;
+      settingsChanged = true;
+    }
+    if (profileForm.directNotificationsOnly !== (auth.settings?.directNotificationsOnly ?? false)) {
+      settingsPayload.directNotificationsOnly = profileForm.directNotificationsOnly;
+      settingsChanged = true;
+    }
 
-  if (shouldUpdate && Object.keys(updatePayload).length > 0) {
-    // Logic placeholder
-  }
+    if (settingsChanged) {
+      // Send update via socket
+      const newSettings = await socketService.updateSettings(settingsPayload);
 
-  profileDialog.setLoading(false);
-  closeProfile();
+      // 🔥 FIX: Викликаємо auth.setSettings, щоб зберегти в localStorage
+      auth.setSettings(newSettings);
+
+      // Також оновлюємо вкладений об'єкт у user, якщо він існує
+      if (auth.user) {
+        auth.user.settings = newSettings;
+        auth.setUser(auth.user); // Це оновить і localStorage['user']
+      }
+
+      // If we switched FROM Offline TO Online/DND, fetch latest channels
+      if (wasOffline && newSettings.status !== UserStatus.OFFLINE) {
+        console.log('Switched from OFFLINE to ONLINE -> Refreshing channels...');
+        await chat.loadChannels();
+      }
+    }
+
+    // 2. ОНОВЛЕННЯ ПРОФІЛЮ (ІМ'Я, ПРІЗВИЩЕ, EMAIL)
+    // Перевіряємо, чи змінились дані профілю
+    const profileChanged =
+      profileForm.firstName !== (auth.user?.firstName ?? '') ||
+      profileForm.lastName !== (auth.user?.lastName ?? '') ||
+      profileForm.email !== (auth.user?.email ?? '');
+
+    if (profileChanged) {
+      // Б) Відправляємо на сервер через WebSocket (так надійніше)
+      try {
+        const updatedUser = await socketService.updateProfile({
+          firstName: profileForm.firstName,
+          lastName: profileForm.lastName,
+          email: profileForm.email,
+        });
+        console.log('Profile updated on server via WebSocket');
+
+        // А) Оновлюємо локальний store ПРАВИЛЬНО (через setUser)
+        // Ми беремо updatedUser з сервера, щоб бути впевненими, що дані збереглись
+        if (auth.user) {
+          auth.setUser(updatedUser);
+        }
+      } catch (err) {
+        console.error('Failed to update profile on server:', err);
+      }
+    }
+
+    closeProfile();
+  } catch (error) {
+    console.error('Failed to update settings:', error);
+  } finally {
+    profileDialog.setLoading(false);
+  }
 }
 //#endregion
 
@@ -423,7 +578,7 @@ const handleLogout = async () => {
     console.error('Logout failed:', error);
   } finally {
     chat.disconnectSocket();
-    await router.push('/login').catch(() => { });
+    await router.push('/login').catch(() => {});
   }
 };
 </script>

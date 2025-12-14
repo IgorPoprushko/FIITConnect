@@ -22,6 +22,7 @@ import type {
   ManageMemberPayload,
 } from '#contracts/channel_contracts'
 import type { UserStatus } from '#enums/global_enums'
+import type { UpdateSettingsPayload, UpdateProfilePayload } from '#contracts/user_contracts'
 
 // ДОДАЄМО ПРАВИЛЬНИЙ ІМПОРТ ДЛЯ ПОВІДОМЛЕНЬ
 import type { GetMessagesPayload, SendMessagePayload } from '#contracts/message_contracts'
@@ -133,6 +134,16 @@ class Ws {
       const cb = typeof arg1 === 'function' ? arg1 : arg2
       return usersController.listChannels(socket, cb)
     })
+
+    // 🔥 SETTINGS
+    socket.on('user:update:settings', (payload: UpdateSettingsPayload, cb) =>
+      usersController.updateSettings(socket, payload, cb)
+    )
+
+    // 🔥 PROFILE UPDATE
+    socket.on('user:update:profile', (payload: UpdateProfilePayload, cb) =>
+      usersController.updateProfile(socket, payload, cb)
+    )
 
     socket.on('channel:join', (payload: JoinChannelPayload, cb) =>
       channelsController.joinOrCreate(socket, payload, cb)

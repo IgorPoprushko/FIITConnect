@@ -11,6 +11,7 @@ import type {
   UserFullDto,
   UserSettingsDto,
   UpdateSettingsPayload,
+  UpdateProfilePayload,
   UserStatusEvent,
 } from 'src/contracts/user_contracts';
 import type {
@@ -61,13 +62,19 @@ interface ClientToServerEvents {
   // Users
   'user:get:public_info': (
     payload: { nickname: string },
-    cb: (res: BaseResponse<UserDto>) => void
+    cb: (res: BaseResponse<UserDto>) => void,
   ) => void;
   'user:get:full_info': (cb: (res: BaseResponse<UserFullDto>) => void) => void;
   'user:get:channels': (cb: (res: BaseResponse<ChannelDto[]>) => void) => void;
+
   'user:update:settings': (
     payload: UpdateSettingsPayload,
     cb: (res: BaseResponse<UserSettingsDto>) => void,
+  ) => void;
+
+  'user:update:profile': (
+    payload: UpdateProfilePayload,
+    cb: (res: BaseResponse<UserFullDto>) => void,
   ) => void;
 
   'channel:join': (
@@ -269,6 +276,11 @@ class SocketService {
 
   async updateSettings(settings: UpdateSettingsPayload): Promise<UserSettingsDto> {
     const res = await this.emitWithAck<UserSettingsDto>('user:update:settings', settings);
+    return res.data!;
+  }
+
+  async updateProfile(payload: UpdateProfilePayload): Promise<UserFullDto> {
+    const res = await this.emitWithAck<UserFullDto>('user:update:profile', payload);
     return res.data!;
   }
 

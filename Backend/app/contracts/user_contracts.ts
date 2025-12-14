@@ -34,6 +34,13 @@ export interface UpdateSettingsPayload {
   directNotificationsOnly?: boolean
 }
 
+// 🔥 ADDED THIS
+export interface UpdateProfilePayload {
+  firstName?: string
+  lastName?: string
+  email?: string
+}
+
 // --- EVENTS ---
 
 export interface UserStatusEvent {
