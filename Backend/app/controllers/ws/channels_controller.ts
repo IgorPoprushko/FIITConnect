@@ -386,7 +386,7 @@ export default class ChannelsController {
         .first()
       if (!targetMember) throw new Exception('User is not in channel')
 
-    if (channel.ownerUserId !== currentUser.id) {
+      if (channel.ownerUserId !== currentUser.id) {
         throw new Exception('Only the channel owner can kick directly. Use vote instead.')
       }
 
