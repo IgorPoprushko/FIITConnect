@@ -2,11 +2,8 @@
   <div class="main-page-container">
     <!-- 🔥 ХЕДЕР КАНАЛУ (ВИВІСКА) -->
     <!-- Показуємо тільки якщо є активний канал -->
-    <q-toolbar
-      v-if="currentChannel"
-      class="bg-primary text-white shadow-1 z-top"
-      style="height: 60px; min-height: 60px"
-    >
+    <q-toolbar v-if="currentChannel" class="bg-primary text-white shadow-1 z-top"
+      style="height: 60px; min-height: 60px">
       <!-- ЛІВА ЧАСТИНА: Інформація про канал (Як у Telegram) -->
       <div class="row no-wrap items-center cursor-pointer q-mr-md" @click="toggleChatDrawer">
         <q-avatar size="40px" color="secondary" text-color="white" class="q-mr-sm">
@@ -16,12 +13,7 @@
         <div class="column justify-center" style="line-height: 1.2">
           <div class="text-subtitle1 text-weight-bold row items-center q-gutter-xs">
             <span>{{ currentChannel.name }}</span>
-            <q-icon
-              v-if="currentChannel.type === ChannelType.PRIVATE"
-              name="lock"
-              size="xs"
-              color="grey"
-            />
+            <q-icon v-if="currentChannel.type === ChannelType.PRIVATE" name="lock" size="xs" color="grey" />
           </div>
           <!-- Підзаголовок: учасники або опис -->
           <div class="text-caption text-grey-7">
@@ -41,7 +33,7 @@
         </q-btn>
 
         <!-- Покинути канал -->
-        <q-btn flat round dense color="negative" icon="logout" @click="confirmLeave = true">
+        <q-btn flat round dense color="negative" icon="logout" @click="leaveDialog.open()">
           <q-tooltip>Leave channel</q-tooltip>
         </q-btn>
 
@@ -65,22 +57,10 @@
     </div>
 
     <!-- 🔥 ДІАЛОГ ПІДТВЕРДЖЕННЯ ВИХОДУ -->
-    <q-dialog v-model="confirmLeave" persistent>
-      <q-card>
-        <q-card-section class="row items-center">
-          <q-avatar icon="warning" color="negative" text-color="white" />
-          <span class="q-ml-sm"
-            >Are you sure you want to leave <b>{{ currentChannel?.name }}</b
-            >?</span
-          >
-        </q-card-section>
-
-        <q-card-actions align="right">
-          <q-btn flat label="Cancel" color="primary" v-close-popup />
-          <q-btn flat label="Leave" color="negative" @click="onLeaveChannel" v-close-popup />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+    <FormDialog v-model="leaveDialog.isOpen.value" title="Leave Channel" confirm-color="negative"
+      description="Do you want to leave channel?" confirm-label="Leave" :loading="leaveDialog.loading.value"
+      @confirm="leaveChannel" @cancel="closeLeaveDialog" @close="closeLeaveDialog">
+    </FormDialog>
 
     <!-- Правий Drawer (Профіль) -->
     <q-drawer class="q-pa-md bg-primary" v-model="chatDrawer" side="right" :width="300" bordered>
@@ -120,21 +100,21 @@
 
 <script setup lang="ts">
 // 🔥 ДОДАНО: import onUnmounted
-import { computed, watch, onMounted, onUnmounted, ref } from 'vue';
+import { computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useChatDrawer } from 'src/composables/useChatDrawer';
 import MessageList from 'components/MessageList.vue';
+import FormDialog from 'src/components/FormDialog.vue';
 import { useChatStore } from 'src/stores/chat';
 import { useQuasar } from 'quasar';
 import { ChannelType } from 'src/enums/global_enums';
+import { useFormDialog } from 'src/composables/useFormDialog';
 
 const { chatDrawer, toggleChatDrawer } = useChatDrawer();
 const chat = useChatStore();
 const route = useRoute();
 const router = useRouter();
 const $q = useQuasar();
-
-const confirmLeave = ref(false);
 
 const messages = computed(() => chat.activeMessages);
 
@@ -189,31 +169,21 @@ const onInvite = () => {
   });
 };
 
-const onLeaveChannel = async () => {
+// Form Dialog
+
+const leaveDialog = useFormDialog();
+
+const leaveChannel = async () => {
   if (!currentChannel.value) return;
+  await chat.leaveChannel(currentChannel.value.id);
+  await router.push('/chat');
 
-  const channelName = currentChannel.value.name;
+  closeLeaveDialog()
+};
 
-  try {
-    // 1. Чекаємо виконання виходу (async)
-    await chat.leaveChannel(currentChannel.value.id);
-
-    $q.notify({
-      message: `You left ${channelName}`,
-      color: 'positive',
-      icon: 'check',
-    });
-
-    // 2. FIX: Додали await і змінили шлях на /chat
-    await router.push('/chat');
-  } catch {
-    // 3. FIX: Прибрали (error), бо ми його не використовуємо (no-unused-vars)
-    $q.notify({
-      message: 'Failed to leave channel',
-      color: 'negative',
-      icon: 'error',
-    });
-  }
+const closeLeaveDialog = () => {
+  leaveDialog.setLoading(false);
+  leaveDialog.close();
 };
 </script>
 

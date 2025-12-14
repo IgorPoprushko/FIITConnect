@@ -157,6 +157,9 @@ class Ws {
     socket.on('channel:kick', (payload: ManageMemberPayload, cb) =>
       channelsController.kick(socket, payload, cb)
     )
+    socket.on('channel:vote', (payload: ManageMemberPayload, cb) =>
+      channelsController.vote(socket, payload, cb)
+    )
     socket.on('channel:list_members', (payload: ChannelActionPayload, cb) =>
       channelsController.listMembers(socket, payload, cb)
     )

@@ -58,13 +58,10 @@ interface ClientToServerEvents {
   // Users
   'user:get:public_info': (
     payload: { nickname: string },
-    cb: (res: BaseResponse<UserDto>) => void,
+    cb: (res: BaseResponse<UserDto>) => void
   ) => void;
   'user:get:full_info': (cb: (res: BaseResponse<UserFullDto>) => void) => void;
-
-  // 🔥 FIX 1: Вказуємо, що тут повертається МАСИВ каналів (ChannelDto[])
   'user:get:channels': (cb: (res: BaseResponse<ChannelDto[]>) => void) => void;
-
   'user:update:settings': (
     payload: UpdateSettingsPayload,
     cb: (res: BaseResponse<UserSettingsDto>) => void,
@@ -80,6 +77,7 @@ interface ClientToServerEvents {
   'channel:invite': (payload: ManageMemberPayload, cb: (res: BaseVoidResponse) => void) => void;
   'channel:revoke': (payload: ManageMemberPayload, cb: (res: BaseVoidResponse) => void) => void;
   'channel:kick': (payload: ManageMemberPayload, cb: (res: BaseVoidResponse) => void) => void;
+  'channel:vote': (payload: ChannelActionPayload, cb: (res: BaseVoidResponse) => void) => void;
   'channel:list_members': (
     payload: ChannelActionPayload,
     cb: (res: BaseResponse<MemberDto[]>) => void,
@@ -216,6 +214,11 @@ class SocketService {
   async kickUser(channelId: string, nickname: string): Promise<void> {
     const payload: ManageMemberPayload = { channelId, nickname };
     return this.emitVoidAck('channel:kick', payload);
+  }
+
+  async voteToKick(channelId: string, nickname: string): Promise<void> {
+    const payload: ManageMemberPayload = { channelId, nickname };
+    return this.emitVoidAck('channel:vote', payload);
   }
 
   async revokeUser(channelId: string, nickname: string): Promise<void> {

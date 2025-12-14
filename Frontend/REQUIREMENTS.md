@@ -59,13 +59,13 @@
   - [x] Logic
   - [x] Visual
 - Join to Public channel with **/join [ChannelName]**. If channel dont exist create one
-  - [ ] Logic
+  - [x] Logic
   - [x] Visual
 - Invire to Public channel with **/invite [Username]**
   - [ ] Logic
   - [x] Visual
 - Ban to Public channel with **/kick [Username]**. Need to have 3 user vote or 1 admin vote
-  - [ ] Logic
+  - [x] Logic
   - [x] Visual
 - Invite back after ban in Public channels only by admin with **/invite [Username]**
   - [ ] Logic
@@ -74,12 +74,12 @@
   - [x] Logic
   - [x] Visual
 - Delete channel only by admin with **/quit**
-  - [ ] Logic
+  - [x] Logic
   - [x] Visual
 
 ### 5. Používateľ môže zrušiť svoje členstvo v kanáli príkazom /cancel, ak tak spraví správca kanála, kanál zaniká
 - Leave chnnel with **/cancel** command
-  - [ ] Logic
+  - [x] Logic
   - [x] Visual
 - If admin leave channel, it deletes
   - [x] Logic

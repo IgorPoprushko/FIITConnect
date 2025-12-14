@@ -322,14 +322,38 @@ export default class ChannelsController {
         .first()
       if (!targetMember) throw new Exception('User is not in channel')
 
-      const io = Ws.getIo()
-      const isOwner = channel.ownerUserId === currentUser.id // 1. АДМІН КІКАЄ
+    if (channel.ownerUserId !== currentUser.id) {
+        throw new Exception('Only the channel owner can kick directly. Use vote instead.')
+      }
 
-      if (isOwner) {
-        await this.performBan(channel, targetUser, 'Kicked by owner')
-        if (callback) callback({ status: 'ok', message: `${nickname} kicked and banned.` })
-        return
-      } // 2. ГОЛОСУВАННЯ
+      await this.performBan(channel, targetUser, 'Kicked by owner')
+      if (callback) callback({ status: 'ok', message: `${nickname} kicked and banned.` })
+    } catch (error) {
+      if (callback) callback({ status: 'error', message: error.message })
+    }
+  }
+
+  public async vote(
+    socket: AuthenticatedSocket,
+    payload: ManageMemberPayload,
+    callback?: (res: BaseResponse) => void
+  ) {
+    const { channelId, nickname } = payload
+    const currentUser = socket.user!
+
+    try {
+      const channel = await Channel.findOrFail(channelId)
+      const targetUser = await User.findBy('nickname', nickname)
+      if (!targetUser) throw new Exception('User not found')
+
+      if (targetUser.id === currentUser.id) throw new Exception('Cannot vote against yourself')
+      if (targetUser.id === channel.ownerUserId) throw new Exception('Cannot vote against owner')
+
+      const targetMember = await Member.query()
+        .where('channelId', channel.id)
+        .where('userId', targetUser.id)
+        .first()
+      if (!targetMember) throw new Exception('User is not in channel')
 
       if (channel.type !== ChannelType.PUBLIC)
         throw new Exception('Voting is only for public channels.')
@@ -356,6 +380,7 @@ export default class ChannelsController {
       const total = Number(votes[0].$extras.total)
       const REQUIRED = 3
 
+      const io = Ws.getIo()
       io.to(channel.id).emit('channel:vote_update', {
         channelId: channel.id,
         targetUserId: targetUser.id,
@@ -372,6 +397,15 @@ export default class ChannelsController {
     } catch (error) {
       if (callback) callback({ status: 'error', message: error.message })
     }
+  }
+
+  public async voteAndKick(
+    socket: AuthenticatedSocket,
+    payload: ManageMemberPayload,
+    callback?: (res: BaseResponse) => void
+  ) {
+    // Просто викликаємо метод vote, оскільки логіка голосування реалізована тут
+    return this.vote(socket, payload, callback)
   }
 
   private async performBan(channel: Channel, user: User, reason: string) {

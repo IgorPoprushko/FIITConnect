@@ -2,27 +2,13 @@
   <q-layout view="lHr LpR lFr">
     <q-drawer v-model="groupDrawer" side="left" show-if-above bordered class="q-pa-xs">
       <q-toolbar class="q-pa-none justify-between">
-        <q-btn
-          outline
-          rounded
-          color="secondary"
-          class="text-bold"
-          :label="auth.nickname"
-          @click="profileDialog.open()"
-        />
+        <q-btn outline rounded color="secondary" class="text-bold" :label="auth.nickname"
+          @click="profileDialog.open()" />
         <q-btn round flat dense icon="mail" class="q-ml-xs" />
       </q-toolbar>
 
       <q-toolbar class="q-pa-none">
-        <q-input
-          rounded
-          standout
-          dense
-          clearable
-          placeholder="Search"
-          v-model="search"
-          class="fit text-accent"
-        >
+        <q-input rounded standout dense clearable placeholder="Search" v-model="search" class="fit text-accent">
           <template v-slot:append>
             <q-icon name="search" color="secondary" />
           </template>
@@ -33,76 +19,36 @@
       <q-separator class="q-mt-md" />
 
       <q-list>
-        <GroupItem
-          v-for="group in filteredGroups"
-          :key="group.id"
-          clickable
-          v-bind="group"
-          @select="(id) => void selectChannel(id)"
-        />
+        <GroupItem v-for="group in filteredGroups" :key="group.id" clickable v-bind="group"
+          @select="(id) => void selectChannel(id)" />
       </q-list>
     </q-drawer>
 
     <q-footer class="q-pa-none">
-      <MessageInput
-        :channel-type="activeChannel?.type ?? ChannelType.PUBLIC"
-        :user-role="activeUserRole"
-        @send="handleSend"
-      />
+      <MessageInput :channel-type="activeChannel?.type ?? null" :user-role="activeUserRole ?? null"
+        @send="handleSend" />
     </q-footer>
 
-    <FormDialog
-      v-model="createDialog.isOpen.value"
-      title="Create Channel"
-      confirm-color="secondary"
-      description="Create a new channel to start chatting with others"
-      confirm-label="Create"
-      :loading="createDialog.loading.value"
-      :disable-confirm="!createForm.name.trim()"
-      @confirm="submitCreate"
-      @cancel="closeCreate"
-      @close="closeCreate"
-    >
+    <FormDialog v-model="createDialog.isOpen.value" title="Create Channel" confirm-color="secondary"
+      description="Create a new channel to start chatting with others" confirm-label="Create"
+      :loading="createDialog.loading.value" :disable-confirm="!createForm.name.trim()" @confirm="submitCreate"
+      @cancel="closeCreate" @close="closeCreate">
       <template #content>
         <q-form class="column q-gutter-md">
-          <q-input
-            v-model="createForm.name"
-            label="Channel Name"
-            color="secondary"
-            dense
-            outlined
-            required
-            :rules="[(val) => !!val?.trim() || 'Name is required']"
-          >
+          <q-input v-model="createForm.name" label="Channel Name" color="secondary" dense outlined required
+            :rules="[(val) => !!val?.trim() || 'Name is required']">
             <template v-slot:prepend> <q-icon name="tag" /> </template>
           </q-input>
 
-          <q-input
-            v-model="createForm.description"
-            label="Description (optional)"
-            type="textarea"
-            color="secondary"
-            autogrow
-            dense
-            outlined
-            rows="2"
-            max-rows="4"
-          >
+          <q-input v-model="createForm.description" label="Description (optional)" type="textarea" color="secondary"
+            autogrow dense outlined rows="2" max-rows="4">
             <template v-slot:prepend>
               <q-icon name="description" />
             </template>
           </q-input>
 
-          <q-select
-            v-model="createForm.type"
-            :options="channelTypeOptions"
-            label="Channel Type"
-            color="secondary"
-            dense
-            outlined
-            emit-value
-            map-options
-          >
+          <q-select v-model="createForm.type" :options="channelTypeOptions" label="Channel Type" color="secondary" dense
+            outlined emit-value map-options>
             <template v-slot:prepend>
               <q-icon name="visibility" />
             </template>
@@ -111,17 +57,9 @@
       </template>
     </FormDialog>
 
-    <FormDialog
-      v-model="profileDialog.isOpen.value"
-      title="User Profile"
-      confirm-color="secondary"
-      confirm-label="Apply"
-      :loading="profileDialog.loading.value"
-      :disable-confirm="checkChange()"
-      @confirm="submitProfile"
-      @cancel="closeProfile"
-      @close="closeProfile"
-    >
+    <FormDialog v-model="profileDialog.isOpen.value" title="User Profile" confirm-color="secondary"
+      confirm-label="Apply" :loading="profileDialog.loading.value" :disable-confirm="checkChange()"
+      @confirm="submitProfile" @cancel="closeProfile" @close="closeProfile">
       <template #content>
         <div class="column q-gutter-md">
           <div class="column q-gutter-sm q-pb-md">
@@ -145,53 +83,26 @@
           <q-separator />
 
           <q-form class="column q-gutter-md q-pt-sm">
-            <q-input
-              v-model="profileForm.firstName"
-              label="First Name"
-              dense
-              outlined
-              color="secondary"
-            >
+            <q-input v-model="profileForm.firstName" label="First Name" dense outlined color="secondary">
               <template v-slot:prepend>
                 <q-icon name="person" color="secondary" />
               </template>
             </q-input>
 
-            <q-input
-              v-model="profileForm.lastName"
-              label="Last Name"
-              dense
-              outlined
-              color="secondary"
-            >
+            <q-input v-model="profileForm.lastName" label="Last Name" dense outlined color="secondary">
               <template v-slot:prepend>
                 <q-icon name="person" color="secondary" />
               </template>
             </q-input>
 
-            <q-input
-              v-model="profileForm.email"
-              label="Email"
-              type="email"
-              dense
-              outlined
-              color="secondary"
-            >
+            <q-input v-model="profileForm.email" label="Email" type="email" dense outlined color="secondary">
               <template v-slot:prepend>
                 <q-icon name="email" color="secondary" />
               </template>
             </q-input>
 
-            <q-select
-              v-model="profileForm.status"
-              :options="statusOptions"
-              label="Status"
-              dense
-              outlined
-              color="secondary"
-              emit-value
-              map-options
-            >
+            <q-select v-model="profileForm.status" :options="statusOptions" label="Status" dense outlined
+              color="secondary" emit-value map-options>
               <template v-slot:prepend>
                 <q-icon name="circle" :color="getStatusColor(profileForm.status)" />
               </template>
@@ -215,15 +126,8 @@
               <q-toggle v-model="profileForm.directNotificationsOnly" color="secondary" />
             </div>
 
-            <q-btn
-              outline
-              rounded
-              dense
-              color="negative"
-              label="Logout"
-              class="text-h6 text-bold"
-              @click="() => void handleLogout()"
-            />
+            <q-btn outline rounded dense color="negative" label="Logout" class="text-h6 text-bold"
+              @click="() => void handleLogout()" />
           </q-form>
         </div>
       </template>
@@ -322,7 +226,7 @@ const filteredGroups = computed(() =>
     }),
 );
 
-//#region Create channel dialog
+//region Create channel dialog
 const createDialog = useFormDialog();
 const createForm = reactive<CreateFormPayload>({
   name: '',
@@ -471,7 +375,7 @@ const handleLogout = async () => {
     chat.disconnectSocket();
     // 🔥 FIX: Додаємо .catch(), щоб обробити можливі помилки роутера (наприклад, якщо ми вже на /login)
     // Це задовольняє правило no-floating-promises
-    await router.push('/login').catch(() => {});
+    await router.push('/login').catch(() => { });
   }
 };
 </script>

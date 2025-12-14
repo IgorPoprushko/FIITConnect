@@ -15,14 +15,14 @@ const routes: RouteRecordRaw[] = [
     ],
 
     // Логіка перенаправлення: якщо залогінений, йдемо в чат
-    // beforeEnter: (to, from, next) => {
-    //   const auth = useAuthStore();
-    //   if (auth.isLoggedIn) {
-    //     next({ path: '/chat' });
-    //   } else {
-    //     next();
-    //   }
-    // },
+    beforeEnter: (to, from, next) => {
+      const auth = useAuthStore();
+      if (auth.isLoggedIn) {
+        next({ path: '/chat' });
+      } else {
+        next();
+      }
+    },
   },
   {
     path: '/chat',
