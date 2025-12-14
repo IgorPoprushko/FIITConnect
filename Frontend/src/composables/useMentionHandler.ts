@@ -9,6 +9,19 @@ const isOnline = (user: UserDto): boolean => {
   return user.status === UserStatus.ONLINE;
 };
 
+function getStatusLabel(status: UserStatus): string {
+  switch (status) {
+    case UserStatus.ONLINE:
+      return 'Online';
+    case UserStatus.DND:
+      return 'Do Not Disturb';
+    case UserStatus.OFFLINE:
+      return 'Offline';
+    default:
+      return 'Unknown';
+  }
+}
+
 export function useMentionHandler(): SuggestionHandler {
   const trigger = '@';
   const chatStore = useChatStore();
@@ -42,7 +55,8 @@ export function useMentionHandler(): SuggestionHandler {
           type: 'mention',
           value: `@${user.nickname}`,
           label: user.nickname,
-          description: isOnline(user) ? 'Online' : user.status.toString(),
+          // Опис, що базується на UserStatus
+          description: getStatusLabel(user.status), // Показуємо статус
           user,
         }),
       );

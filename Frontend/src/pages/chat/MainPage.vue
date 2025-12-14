@@ -1,10 +1,7 @@
 <template>
   <div class="main-page-container">
-    <q-toolbar
-      v-if="currentChannel"
-      class="bg-primary text-white shadow-1 z-top"
-      style="height: 60px; min-height: 60px"
-    >
+    <q-toolbar v-if="currentChannel" class="bg-primary text-white shadow-1 z-top"
+      style="height: 60px; min-height: 60px">
       <div class="row no-wrap items-center cursor-pointer q-mr-md" @click="toggleChatDrawer">
         <q-avatar size="40px" color="secondary" text-color="white" class="q-mr-sm">
           {{ currentChannel.name.charAt(0).toUpperCase() }}
@@ -13,12 +10,7 @@
         <div class="column justify-center" style="line-height: 1.2">
           <div class="text-subtitle1 text-weight-bold row items-center q-gutter-xs">
             <span>{{ currentChannel.name }}</span>
-            <q-icon
-              v-if="currentChannel.type === ChannelType.PRIVATE"
-              name="lock"
-              size="xs"
-              color="grey-4"
-            />
+            <q-icon v-if="currentChannel.type === ChannelType.PRIVATE" name="lock" size="xs" color="grey-4" />
           </div>
 
           <div class="text-caption text-grey-4">{{ members.length }} members</div>
@@ -54,40 +46,17 @@
       <div class="text-caption">Open the menu on the left to create or join a channel</div>
     </div>
 
-    <FormDialog
-      v-model="leaveDialog.isOpen.value"
-      title="Leave Channel"
-      confirm-color="negative"
-      description="Do you want to leave channel?"
-      confirm-label="Leave"
-      :loading="leaveDialog.loading.value"
-      @confirm="leaveChannel"
-      @cancel="closeLeaveDialog"
-      @close="closeLeaveDialog"
-    >
+    <FormDialog v-model="leaveDialog.isOpen.value" title="Leave Channel" confirm-color="negative"
+      description="Do you want to leave channel?" confirm-label="Leave" :loading="leaveDialog.loading.value"
+      @confirm="leaveChannel" @cancel="closeLeaveDialog" @close="closeLeaveDialog">
     </FormDialog>
 
-    <FormDialog
-      v-model="inviteDialog.isOpen.value"
-      title="Invite User"
-      confirm-label="Invite"
-      confirm-color="secondary"
-      :loading="inviteDialog.loading.value"
-      :disable-confirm="!inviteNickname.trim()"
-      @confirm="submitInvite"
-      @cancel="closeInvite"
-      @close="closeInvite"
-    >
+    <FormDialog v-model="inviteDialog.isOpen.value" title="Invite User" confirm-label="Invite" confirm-color="secondary"
+      :loading="inviteDialog.loading.value" :disable-confirm="!inviteNickname.trim()" @confirm="submitInvite"
+      @cancel="closeInvite" @close="closeInvite">
       <template #content>
-        <q-input
-          v-model="inviteNickname"
-          label="User Nickname"
-          dense
-          outlined
-          autofocus
-          @keyup.enter="submitInvite"
-          hint="Enter the exact nickname of the user"
-        >
+        <q-input v-model="inviteNickname" label="User Nickname" dense outlined autofocus @keyup.enter="submitInvite"
+          hint="Enter the exact nickname of the user">
           <template v-slot:prepend>
             <q-icon name="person_search" />
           </template>
@@ -95,25 +64,14 @@
       </template>
     </FormDialog>
 
-    <FormDialog
-      v-model="memberInfoOpen"
-      title="User Info"
-      confirm-label="Close"
-      cancel-label=""
-      @confirm="memberInfoOpen = false"
-      @cancel="memberInfoOpen = false"
-      @close="memberInfoOpen = false"
-    >
+    <FormDialog v-model="memberInfoOpen" title="User Info" confirm-label="Close" cancel-label=""
+      @confirm="memberInfoOpen = false" @cancel="memberInfoOpen = false" @close="memberInfoOpen = false">
       <template #content>
         <div class="column items-center q-pb-md" v-if="selectedMember">
           <q-avatar size="100px" color="primary" text-color="white" class="q-mb-md shadow-3">
             {{ selectedMember.nickname.charAt(0).toUpperCase() }}
-            <q-badge
-              floating
-              :color="getStatusColor(selectedMember.status)"
-              rounded
-              style="height: 20px; width: 20px; right: 6px; bottom: 6px"
-            />
+            <q-badge floating :color="getStatusColor(selectedMember.status)" rounded
+              style="height: 20px; width: 20px; right: 6px; bottom: 6px" />
           </q-avatar>
 
           <div class="text-h5 text-weight-bold">
@@ -150,25 +108,11 @@
       </template>
     </FormDialog>
 
-    <FormDialog
-      v-model="chat.isMembersListOpen"
-      title="Channel Members"
-      confirm-label="Close"
-      cancel-label=""
-      @confirm="chat.closeMembersList()"
-      @cancel="chat.closeMembersList()"
-      @close="chat.closeMembersList()"
-    >
+    <FormDialog v-model="chat.isMembersListOpen" title="Channel Members" confirm-label="Close" cancel-label=""
+      @confirm="chat.closeMembersList()" @cancel="chat.closeMembersList()" @close="chat.closeMembersList()">
       <template #content>
         <div class="column q-gutter-sm">
-          <q-input
-            v-model="membersListSearch"
-            placeholder="Search members..."
-            dense
-            outlined
-            clearable
-            class="q-mb-sm"
-          >
+          <q-input v-model="membersListSearch" placeholder="Search members..." dense outlined clearable class="q-mb-sm">
             <template v-slot:prepend>
               <q-icon name="search" />
             </template>
@@ -176,13 +120,8 @@
 
           <q-scroll-area style="height: 400px; max-height: 50vh">
             <q-list separator>
-              <q-item
-                v-for="member in filteredMembersForList"
-                :key="member.id"
-                clickable
-                v-ripple
-                @click="openMemberInfo(member)"
-              >
+              <q-item v-for="member in filteredMembersForList" :key="member.id" clickable v-ripple
+                @click="openMemberInfo(member)">
                 <q-item-section avatar>
                   <q-avatar color="primary" text-color="white" size="40px">
                     {{ member.nickname.charAt(0).toUpperCase() }}
@@ -213,14 +152,8 @@
       </template>
     </FormDialog>
 
-    <q-drawer
-      class="bg-dark text-white"
-      v-model="chatDrawer"
-      side="right"
-      :width="320"
-      bordered
-      overlaybehavior="mobile"
-    >
+    <q-drawer class="bg-dark text-white" v-model="chatDrawer" side="right" :width="320" bordered
+      overlaybehavior="mobile">
       <div v-if="currentChannel" class="column full-height">
         <div class="column items-center q-pa-md bg-grey-10 border-bottom">
           <q-avatar size="80px" color="secondary" text-color="white" class="shadow-2 q-mb-sm">
@@ -239,23 +172,14 @@
         <q-separator />
 
         <div class="col column">
-          <q-item-label
-            header
-            class="text-weight-bold text-grey-7 q-py-md q-px-md row justify-between items-center"
-          >
+          <q-item-label header class="text-weight-bold text-grey-7 q-py-md q-px-md row justify-between items-center">
             <span>Members</span>
             <q-badge color="grey-4" text-color="black">{{ members.length }}</q-badge>
           </q-item-label>
 
           <q-scroll-area class="col">
             <q-list>
-              <q-item
-                v-for="member in members"
-                :key="member.id"
-                clickable
-                v-ripple
-                @click="openMemberInfo(member)"
-              >
+              <q-item v-for="member in members" :key="member.id" clickable v-ripple @click="openMemberInfo(member)">
                 <q-item-section avatar>
                   <q-avatar color="primary" text-color="white" size="40px">
                     {{ member.nickname.charAt(0).toUpperCase() }}
@@ -493,10 +417,6 @@ const closeLeaveDialog = () => {
 
 .opacity-50 {
   opacity: 0.5;
-}
-
-.z-top {
-  z-index: 10;
 }
 
 .border-bottom {

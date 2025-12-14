@@ -538,6 +538,6 @@ export const useChatStore = defineStore('chat', {
       }
     },
 
-    hydrateMockMessages() {},
+    hydrateMockMessages() { },
   },
 });

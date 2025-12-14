@@ -34,8 +34,8 @@
   - [x] Logic
   - [x] Visual
 - Delete channel after 30 days of inactivity
-  - [ ] Logic
-  - [ ] Visual
+  - [x] Logic
+  - [x] Visual
 
 ### 3. Používateľ odosiela správy a príkazy cez "príkazový riadok", ktorý je "fixným" prvkom aplikácie. Používateľ môže odoslať správu v kanáli, ktorého je členom
 - Chat Input always on screen
@@ -100,11 +100,11 @@
 
 ### 8. Používateľ je informovaný o každej novej správe prostredníctvom notifikácie
 - Notification will send only if app not visible (use quasar App Visibility)
-  - [ ] Logic
-  - [ ] Visual
+  - [x] Logic
+  - [x] Visual
 - Notification containt sender and part of message
-  - [ ] Logic
-  - [ ] Visual
+  - [x] Logic
+  - [x] Visual
 - Setup to send only addressed messages
   - [ ] Logic
   - [ ] Visual
@@ -112,7 +112,7 @@
 ### 9. Používateľ si môže nastaviť stav (online, DND, offline)
 - Status is displayed to the user
   - [x] Logic
-  - [ ] Visual
+  - [x] Visual
 - If DND status is set, notifications do not arrive
   - [x] Logic
   - [x] Visual
@@ -123,7 +123,7 @@
 ### 10. Používateľ si môže pozrieť zoznam členov kanála (ak je tiež členom kanála) príkazom /list
 - Use **/list** to show all members
   - [ ] Logic
-  - [ ] Visual
+  - [x] Visual
 
 ### 11. Ak má používateľ aktívny niektorý z kanálov (nachádza sa v okne správ pre daný kanál) vidí v stavovej lište informáciu o tom, kto aktuálne píše správu (napr. Ed is typing) 
 - Show nickname when someone typing

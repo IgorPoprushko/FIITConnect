@@ -1,6 +1,7 @@
 <template>
-  <q-dialog v-model="isOpen" @hide="onClose" class="z-top">
+  <q-dialog v-model="isOpen" @hide="onClose">
     <q-card :style="cardWidth">
+      <!-- Header -->
       <q-card-section class="row items-center q-pb-none">
         <div class="text-h6">{{ title }}</div>
         <q-space />
@@ -17,14 +18,8 @@
 
       <q-card-actions align="right" class="q-px-md q-pb-md">
         <q-btn flat :label="cancelLabel" color="secondary" v-close-popup @click="onCancel" />
-        <q-btn
-          unelevated
-          :color="confirmColor"
-          :label="confirmLabel"
-          :loading="loading"
-          :disable="disableConfirm"
-          @click="onConfirm"
-        />
+        <q-btn unelevated :color="confirmColor" :label="confirmLabel" :loading="loading" :disable="disableConfirm"
+          @click="onConfirm" />
       </q-card-actions>
     </q-card>
   </q-dialog>
