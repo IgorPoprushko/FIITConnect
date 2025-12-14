@@ -326,7 +326,7 @@ export default class ChannelsController {
       await member.delete()
 
       Ws.getIo().in(targetUser.id).socketsLeave(channel.id)
-      Ws.getIo().to(channel.id).emit('channel:member_kicked', {
+      Ws.getIo().to(targetUser.id).emit('channel:member_kicked', {
         channelId: channel.id,
         userId: targetUser.id,
         reason: 'Revoked by owner',
@@ -474,7 +474,7 @@ export default class ChannelsController {
 
     const io = Ws.getIo()
     io.in(user.id).socketsLeave(channel.id)
-    io.to(channel.id).emit('channel:member_kicked', {
+    io.to(user.id).emit('channel:member_kicked', {
       channelId: channel.id,
       userId: user.id,
       reason,

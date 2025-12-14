@@ -370,7 +370,16 @@ export const useChatStore = defineStore('chat', {
     },
 
     async revokeUser(nickname: string) {
-      if (!nickname || !this.activeChannelId) return;
+      if (!nickname) {
+        console.warn('Nickname is required to revoke a user');
+        return;
+      }
+
+      if (!this.activeChannelId) {
+        console.warn('No active channel selected for revoke');
+        return;
+      }
+
       try {
         await socketService.revokeUser(this.activeChannelId, nickname);
       } catch (error) {
@@ -431,6 +440,6 @@ export const useChatStore = defineStore('chat', {
       }
     },
 
-    hydrateMockMessages() {},
+    hydrateMockMessages() { },
   },
 });

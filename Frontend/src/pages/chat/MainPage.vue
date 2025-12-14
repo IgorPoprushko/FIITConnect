@@ -130,10 +130,6 @@ const { chatDrawer, toggleChatDrawer } = useChatDrawer();
 const chat = useChatStore();
 const route = useRoute();
 const router = useRouter();
-const $q = useQuasar();
-// const $q = useQuasar(); // Більше не потрібно для Notify
-
-const confirmLeave = ref(false);
 
 const messages = computed(() => chat.activeMessages);
 const currentChannel = computed(() => chat.activeChannel);
@@ -218,14 +214,6 @@ watch(
     syncChannelFromRoute();
   },
 );
-
-const onInvite = () => {
-  $q.notify({
-    message: 'Invite feature coming soon!',
-    color: 'info',
-    icon: 'person_add',
-  });
-};
 
 // Form Dialog
 
