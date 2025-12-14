@@ -49,6 +49,7 @@
     </q-drawer>
 
     <q-footer class="q-pa-none">
+      <TypingIndicator :typing-users="chat.activeTypingUsers" />
       <MessageInput :channel-type="activeChannel?.type ?? null" :user-role="activeUserRole ?? null"
         @send="handleSend" />
     </q-footer>
@@ -176,6 +177,7 @@ import { useFormDialog } from 'src/composables/useFormDialog';
 import { useAuthStore } from 'src/stores/auth';
 import { useChatStore } from 'src/stores/chat';
 import MessageInput from 'src/components/MessageInput.vue';
+import TypingIndicator from 'src/components/TypingIndicator.vue';
 import { authService } from 'src/services/authService';
 
 const router = useRouter();

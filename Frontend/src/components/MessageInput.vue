@@ -13,9 +13,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, nextTick } from 'vue';
+import { computed, ref, nextTick, onUnmounted } from 'vue';
 import SuggestionMenu from 'components/SuggestionMenu.vue';
 import { useCommandHandler } from 'src/composables/useCommandHandler';
+import { useChatStore } from 'src/stores/chat';
+import { socketService } from 'src/services/socketService';
 
 // === КОНТРАКТИ ТА ЕНАМИ ===
 import type { ChannelType, UserRole } from 'src/enums/global_enums'; // <--- ВИПРАВЛЕНО: Використовуємо глобальні енами
@@ -42,11 +44,16 @@ const props = defineProps<Props>();
 
 const emit = defineEmits<Emits>();
 
+const chatStore = useChatStore();
 const messageText = ref('');
 // Припускаємо, що inputRef є QInput (Quasar)
 const inputRef = ref();
 const suggestionMenuRef = ref();
 const showSuggestionMenu = ref(false);
+
+// Typing indicator state
+let typingTimeout: ReturnType<typeof setTimeout> | null = null;
+const isTyping = ref(false);
 
 const commandHandler = useCommandHandler() as ReturnType<typeof useCommandHandler> & {
   executeCommand: (commandText: string, context?: CommandContext) => Promise<boolean>;
@@ -91,6 +98,42 @@ const onInputChange = (): void => {
   if (showSuggestionMenu.value) {
     void nextTick(); // ВИПРАВЛЕНО: void для nextTick
     suggestionMenuRef.value?.updatePosition();
+  }
+
+  // Typing indicator logic
+  const trimmedText = messageText.value.trim();
+
+  if (trimmedText.length === 0) {
+    // User cleared the text - send stop typing
+    if (isTyping.value && chatStore.activeChannelId) {
+      socketService.stopTyping(chatStore.activeChannelId);
+      isTyping.value = false;
+    }
+    if (typingTimeout) {
+      clearTimeout(typingTimeout);
+      typingTimeout = null;
+    }
+  } else {
+    // User is typing - send start typing with draft
+    if (!isTyping.value && chatStore.activeChannelId) {
+      socketService.startTyping(chatStore.activeChannelId, trimmedText);
+      isTyping.value = true;
+    } else if (isTyping.value && chatStore.activeChannelId) {
+      // Update the draft content
+      socketService.startTyping(chatStore.activeChannelId, trimmedText);
+    }
+
+    // Reset timeout - if user stops typing for 3 seconds, send stop event
+    if (typingTimeout) {
+      clearTimeout(typingTimeout);
+    }
+
+    typingTimeout = setTimeout(() => {
+      if (isTyping.value && chatStore.activeChannelId) {
+        socketService.stopTyping(chatStore.activeChannelId);
+        isTyping.value = false;
+      }
+    }, 3000);
   }
 };
 
@@ -149,13 +192,42 @@ const handleSend = async (): Promise<void> => {
     const success = await commandHandler.executeCommand(text, commandContext.value);
     if (success) {
       messageText.value = '';
+      // Stop typing indicator
+      if (isTyping.value && chatStore.activeChannelId) {
+        socketService.stopTyping(chatStore.activeChannelId);
+        isTyping.value = false;
+      }
+      if (typingTimeout) {
+        clearTimeout(typingTimeout);
+        typingTimeout = null;
+      }
       return;
     }
   }
 
   emit('send', text);
   messageText.value = '';
+
+  // Stop typing indicator
+  if (isTyping.value && chatStore.activeChannelId) {
+    socketService.stopTyping(chatStore.activeChannelId);
+    isTyping.value = false;
+  }
+  if (typingTimeout) {
+    clearTimeout(typingTimeout);
+    typingTimeout = null;
+  }
 };
+
+// Cleanup on unmount
+onUnmounted(() => {
+  if (typingTimeout) {
+    clearTimeout(typingTimeout);
+  }
+  if (isTyping.value && chatStore.activeChannelId) {
+    socketService.stopTyping(chatStore.activeChannelId);
+  }
+});
 </script>
 
 <style scoped lang="scss">

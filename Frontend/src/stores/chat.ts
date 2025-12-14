@@ -10,7 +10,7 @@ import type {
   MemberJoinedEvent,
   MemberLeftEvent,
 } from 'src/contracts/channel_contracts';
-import type { NewMessageEvent, MessageDto } from 'src/contracts/message_contracts';
+import type { NewMessageEvent, MessageDto, TypingEvent } from 'src/contracts/message_contracts';
 // ==========================
 
 import { useAuthStore } from './auth';
@@ -48,11 +48,18 @@ function mapMessageDtoToDisplay(payload: NewMessageEvent): IMessage {
 }
 
 // --- STATE ---
+interface TypingUser {
+  userId: string;
+  nickname: string;
+  draft: string;
+}
+
 interface ChatState {
   channels: ChannelDto[];
   activeChannelId: string | null;
   messagesByChannel: Record<string, IMessage[]>;
   membersByChannel: Record<string, MemberDto[]>;
+  typingUsersByChannel: Record<string, TypingUser[]>;
   loadingChannels: boolean;
   connecting: boolean;
   connected: boolean;
@@ -64,6 +71,7 @@ export const useChatStore = defineStore('chat', {
     activeChannelId: null,
     messagesByChannel: {},
     membersByChannel: {},
+    typingUsersByChannel: {},
     loadingChannels: false,
     connecting: false,
     connected: false,
@@ -85,6 +93,11 @@ export const useChatStore = defineStore('chat', {
     activeMembers(state): MemberDto[] {
       if (!state.activeChannelId) return [];
       return state.membersByChannel[state.activeChannelId] ?? [];
+    },
+
+    activeTypingUsers(state): TypingUser[] {
+      if (!state.activeChannelId) return [];
+      return state.typingUsersByChannel[state.activeChannelId] ?? [];
     },
   },
 
@@ -327,6 +340,34 @@ export const useChatStore = defineStore('chat', {
             this.activeChannelId = null;
           }
           void this.loadChannels();
+        }
+      });
+
+      socketService.onTyping((payload: TypingEvent) => {
+        console.debug(`[WS IN] Typing event: ${payload.nickname} in ${payload.channelId}`);
+
+        // Don't show typing indicator for ourselves
+        if (payload.userId === auth.user?.id) return;
+
+        const typingUsers = (this.typingUsersByChannel[payload.channelId] ||= []);
+        const existingIndex = typingUsers.findIndex((u) => u.userId === payload.userId);
+
+        if (payload.isTyping) {
+          const typingUser: TypingUser = {
+            userId: payload.userId,
+            nickname: payload.nickname,
+            draft: payload.draft ?? '',
+          };
+
+          if (existingIndex !== -1) {
+            typingUsers[existingIndex] = typingUser;
+          } else {
+            typingUsers.push(typingUser);
+          }
+        } else {
+          if (existingIndex !== -1) {
+            typingUsers.splice(existingIndex, 1);
+          }
         }
       });
 

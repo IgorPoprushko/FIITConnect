@@ -1,7 +1,14 @@
 <template>
   <q-chat-message text-color="white" :label="dateLabel" :name="shouldShowName ? message.sender : undefined"
-    :text="[message.text]" :stamp="getTime(message.date)" :sent="message.own" :bg-color="getBgColor"
-    :class="['q-mb-sm', 'q-px-sm', 'message-item', { 'mentioned-message': message.mentionsMe }]" />
+    :text="[message.text]" :stamp="getTime(message.date)" :sent="message.own" :bg-color="getBgColor" :class="[
+      'q-mb-sm',
+      'q-px-sm',
+      'message-item',
+      {
+        'mentioned-message': message.mentionsMe,
+        'mentioned-message--own': message.mentionsMe && message.own,
+      },
+    ]" />
 </template>
 
 <script setup lang="ts">
@@ -65,8 +72,11 @@ function getTime(date: Date) {
 }
 
 .mentioned-message :deep(.q-message-container) {
-  background: linear-gradient(135deg, var(--q-dark) 0%, #ffa00044 100%) !important;
-  border-left: 3px solid #ffa000;
+  background: linear-gradient(315deg, #121212 25%, #ffa00044 100%) !important;
+}
+
+.mentioned-message--own :deep(.q-message-container) {
+  background: linear-gradient(135deg, #121212 25%, #ffa00044 100%) !important;
 }
 
 @keyframes pulse-mention {
