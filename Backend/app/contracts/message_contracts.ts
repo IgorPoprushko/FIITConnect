@@ -1,15 +1,14 @@
-// app/contracts/message_contracts.ts
 import { UserDto } from '#contracts/user_contracts'
 
 // --- MODELS (DTOs) ---
 
 export interface MessageDto {
-  id: string // ID повідомлення (BigInt краще передавати як string, якщо JS, але тут number ок для < 2^53)
+  id: string
   content: string
-  sentAt: string // ISO Date string
-  userId: string // ID автора (для швидкого порівняння "чи це я")
-  user?: UserDto // Об'єкт автора (може бути пустим, якщо ми вже закешували юзера на фронті)
-  mentions: string[] // Масив ID користувачів, яких тегнули
+  sentAt: string
+  userId: string
+  user?: UserDto
+  mentions: string[]
 }
 
 // --- PAYLOADS (INPUT) ---
@@ -21,24 +20,22 @@ export interface SendMessagePayload {
 
 export interface GetMessagesPayload {
   channelId: string
-  cursor?: number // ID останнього завантаженого повідомлення (для Infinite Scroll)
-  limit?: number // Скільки грузити (за замовчуванням 50)
+  cursor?: number
+  limit?: number
 }
 
 export interface TypingPayload {
   channelId: string
   isTyping: boolean
-  draft?: string // Опціонально: передавати сам текст драфта
+  draft?: string
 }
 
 // --- EVENTS (OUTPUT) ---
 
-// Подія нового повідомлення
 export interface NewMessageEvent extends MessageDto {
   channelId: string
 }
 
-// Подія "хтось пише"
 export interface TypingEvent {
   userId: string
   nickname: string

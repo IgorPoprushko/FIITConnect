@@ -1,14 +1,10 @@
 import { computed } from 'vue';
 import type { MentionSuggestion, Suggestion, SuggestionHandler } from 'src/types/suggestions';
 
-// === ІМПОРТИ КОНТРАКТІВ ===
-// Використовуємо типи, що ви надали раніше, та статус, який ви надали зараз
 import type { UserDto } from 'src/contracts/user_contracts';
-import { UserStatus } from 'src/enums/global_enums'; // <--- Використовуємо лише ці енуми
+import { UserStatus } from 'src/enums/global_enums';
 import { useChatStore } from 'src/stores/chat';
-// ==========================
 
-// Допоміжна функція для перевірки статусу (використовує ваші значення енуму)
 const isOnline = (user: UserDto): boolean => {
   return user.status === UserStatus.ONLINE;
 };
@@ -33,22 +29,20 @@ export function useMentionHandler(): SuggestionHandler {
         return user.nickname.toLowerCase().startsWith(normalizedQuery);
       })
       .sort((a, b) => {
-        // Сортування: ONLINE першим, потім за нікнеймом
         const aIsOnline = isOnline(a);
         const bIsOnline = isOnline(b);
 
         if (aIsOnline === bIsOnline) {
           return a.nickname.localeCompare(b.nickname);
         }
-        return aIsOnline ? -1 : 1; // -1 = a перед b (ONLINE іде нагору)
+        return aIsOnline ? -1 : 1;
       })
       .map(
         (user): MentionSuggestion => ({
           type: 'mention',
           value: `@${user.nickname}`,
           label: user.nickname,
-          // Опис, що базується на UserStatus
-          description: isOnline(user) ? 'Online' : user.status.toString(), // Показуємо статус
+          description: isOnline(user) ? 'Online' : user.status.toString(),
           user,
         }),
       );

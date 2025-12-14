@@ -1,7 +1,6 @@
 <template>
   <q-page class="flex flex-center fit q-my-md">
     <q-card class="q-pa-xl column items-stretch justify-between">
-      <!-- Header -->
       <div class="column items-center q-mb-md">
         <q-icon :name="logo" size="80px" class="q-mb-md rounded-borders overflow-hidden" />
         <div class="text-h5 text-weight-bold text-center">Create your account</div>
@@ -9,7 +8,6 @@
       </div>
       <q-separator inset class="q-mb-lg" color="primary" />
 
-      <!--Form: inputs and buttons-->
       <q-form @submit.prevent="onSubmit" class="column q-gutter-md">
         <q-input
           v-model="name"

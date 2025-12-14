@@ -27,7 +27,6 @@ export default class extends BaseSchema {
 
       table.timestamp('created_at', { useTz: true }).defaultTo(this.now()).index()
 
-      // Індекси для прискорення запитів
       table.index('channel_id', 'messages_channel_id_index')
       table.index('user_id', 'messages_user_id_index')
     })

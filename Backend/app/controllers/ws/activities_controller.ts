@@ -5,35 +5,20 @@ import Member from '#models/member'
 import { Exception } from '@adonisjs/core/exceptions'
 
 export default class ActivitiesController {
-  /**
-   * Отримуємо сервіс Ws динамічно.
-   * Це розриває циклічну залежність.
-   */
   private async getWs() {
-    // 👇 ГОЛОВНИЙ ФІКС ТУТ 👇
-    // Ми імпортуємо default export, який (завдяки минулому кроку) вже є ГОТОВИМ ОБ'ЄКТОМ (new Ws())
     const { default: wsInstance } = await import('#services/ws')
-
-    // ❌ Було: return app.container.make(Ws) -> Це створювало клона!
-    // ✅ Стало: повертаємо сам імпортований об'єкт
     return wsInstance
   }
 
-  // 👇 Цей метод викликав помилку, тепер буде працювати
   private async broadcastToSharedChannels(userId: string, event: string, payload: any) {
     const userMemberships = await Member.query().where('userId', userId).preload('channel')
 
-    // Отримуємо живий, запущений екземпляр Ws
     const ws = await this.getWs()
-    // Тепер io існує, бо це той самий Ws, що запускався в server.ts
     const io = ws.getIo()
 
     userMemberships.forEach((member) => {
       if (member.channel) {
-        // io.to(...) працює ідеально
         io.to(member.channel.id).emit(event, payload)
-        // Примітка: перевір, чи використовуєш ти channel.name чи channel.id для кімнат.
-        // У ws.ts ти робив socket.join(member.channel.id), тому тут краще теж .id
       }
     })
   }

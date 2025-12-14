@@ -3,13 +3,13 @@ import type { UserDto } from './user_contracts';
 // --- DTOs ---
 
 export interface MessageDto {
-  id: string; // JS спокійно тримає числа до 2^53
-  channelId: string; // <-- ДОДАНО: Для коректної роботи в store
+  id: string;
+  channelId: string;
   content: string;
-  sentAt: string; // ISO Date string
-  userId: string; // ID автора
-  user?: UserDto; // Автор (може не прийти, якщо кешований)
-  mentions: string[]; // ID тегнутих юзерів
+  sentAt: string;
+  userId: string;
+  user?: UserDto;
+  mentions: string[];
 }
 
 // --- PAYLOADS ---
@@ -21,7 +21,7 @@ export interface SendMessagePayload {
 
 export interface GetMessagesPayload {
   channelId: string;
-  cursor?: number | undefined; // ID останнього повідомлення для підгрузки
+  cursor?: number | undefined;
   limit?: number | undefined;
 }
 

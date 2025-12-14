@@ -1,14 +1,31 @@
 <template>
   <div class="relative">
     <div class="row items-center q-pa-sm bg-dark">
-      <q-input ref="inputRef" v-model="messageText" placeholder="Type your message here..." class="col q-mx-md" dense
-        borderless type="textarea" autogrow rows="1" max-rows="6" maxlength="1024" @update:model-value="onInputChange"
-        @keydown="handleKeyDown" />
+      <q-input
+        ref="inputRef"
+        v-model="messageText"
+        placeholder="Type your message here..."
+        class="col q-mx-md"
+        dense
+        borderless
+        type="textarea"
+        autogrow
+        rows="1"
+        max-rows="6"
+        maxlength="1024"
+        @update:model-value="onInputChange"
+        @keydown="handleKeyDown"
+      />
       <q-btn round icon="send" @click="handleSend" :disable="!messageText.trim()" />
     </div>
 
-    <SuggestionMenu ref="suggestionMenuRef" v-model="showSuggestionMenu" :query="currentSuggestionQuery"
-      :context="commandContext" @select="handleSuggestionSelect" />
+    <SuggestionMenu
+      ref="suggestionMenuRef"
+      v-model="showSuggestionMenu"
+      :query="currentSuggestionQuery"
+      :context="commandContext"
+      @select="handleSuggestionSelect"
+    />
   </div>
 </template>
 
@@ -19,17 +36,14 @@ import { useCommandHandler } from 'src/composables/useCommandHandler';
 import { useChatStore } from 'src/stores/chat';
 import { socketService } from 'src/services/socketService';
 
-// === КОНТРАКТИ ТА ЕНАМИ ===
-import type { ChannelType, UserRole } from 'src/enums/global_enums'; // <--- ВИПРАВЛЕНО: Використовуємо глобальні енами
+import type { ChannelType, UserRole } from 'src/enums/global_enums';
 import type { CommandContext } from 'src/types/suggestions';
 
-// Припускаємо, що це тип для випадаючого меню команд/меншинів
 export interface Suggestion {
   label: string;
   value: string;
   type: 'command' | 'mention';
 }
-// ------------------------------------------------
 
 interface Props {
   channelType: ChannelType | null;
@@ -46,7 +60,6 @@ const emit = defineEmits<Emits>();
 
 const chatStore = useChatStore();
 const messageText = ref('');
-// Припускаємо, що inputRef є QInput (Quasar)
 const inputRef = ref();
 const suggestionMenuRef = ref();
 const showSuggestionMenu = ref(false);
@@ -96,7 +109,7 @@ const onInputChange = (): void => {
   showSuggestionMenu.value = shouldShowSuggestions.value;
 
   if (showSuggestionMenu.value) {
-    void nextTick(); // ВИПРАВЛЕНО: void для nextTick
+    void nextTick();
     suggestionMenuRef.value?.updatePosition();
   }
 
@@ -104,7 +117,6 @@ const onInputChange = (): void => {
   const trimmedText = messageText.value.trim();
 
   if (trimmedText.length === 0) {
-    // User cleared the text - send stop typing
     if (isTyping.value && chatStore.activeChannelId) {
       socketService.stopTyping(chatStore.activeChannelId);
       isTyping.value = false;
@@ -123,7 +135,6 @@ const onInputChange = (): void => {
       socketService.startTyping(chatStore.activeChannelId, trimmedText);
     }
 
-    // Reset timeout - if user stops typing for 3 seconds, send stop event
     if (typingTimeout) {
       clearTimeout(typingTimeout);
     }
@@ -172,7 +183,6 @@ const handleSuggestionSelect = (suggestion: Suggestion): void => {
   messageText.value = textBefore + replacement + textAfter;
 
   void nextTick(() => {
-    // ВИПРАВЛЕНО: void для nextTick
     const newCursorPos = (textBefore + replacement).length;
     const inputElement = inputRef.value?.getNativeElement();
     if (inputElement) {

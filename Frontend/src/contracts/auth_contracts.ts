@@ -1,7 +1,5 @@
 import type { UserFullDto } from './user_contracts';
 
-// *** Payloads (Вхідні дані форм) ***
-
 export interface RegisterPayload {
   first_name: string;
   last_name: string;
@@ -15,9 +13,6 @@ export interface LoginPayload {
   password: string;
 }
 
-// *** Responses (Що відповідає сервер) ***
-
-// Це структура токена AdonisJS
 export interface ApiToken {
   type: string;
   token: string;
@@ -26,7 +21,7 @@ export interface ApiToken {
 
 export interface AuthResponse {
   user: UserFullDto;
-  token: ApiToken; // На фронті це об'єкт, а не клас
+  token: ApiToken;
 }
 
 export interface MeResponse {
