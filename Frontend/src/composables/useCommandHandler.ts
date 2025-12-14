@@ -31,14 +31,14 @@ const commands: Command[] = [
       );
 
       if (existing) {
-        await chat.setActiveChannel(existing.id);
+        chat.setActiveChannel(existing.id);
         return;
       }
 
       const payload: JoinChannelPayload = { channelName };
       const channel = await chat.createChannel(payload);
       if (channel) {
-        await chat.setActiveChannel(channel.id);
+        chat.setActiveChannel(channel.id);
       }
     },
   },
@@ -124,7 +124,7 @@ const commands: Command[] = [
     usage: '/quit',
     requiredChannelType: [ChannelType.PRIVATE, ChannelType.PUBLIC],
     requiredUserRole: [UserRole.ADMIN],
-    handler: async () => {
+    handler: () => {
       console.log('Deleting channel');
     },
   },
@@ -135,7 +135,7 @@ const commands: Command[] = [
     usage: '/cancel',
     requiredChannelType: [ChannelType.PRIVATE, ChannelType.PUBLIC],
     requiredUserRole: [UserRole.ADMIN],
-    handler: async () => {
+    handler: () => {
       console.log('Deleting channel');
     },
   },
@@ -145,7 +145,7 @@ const commands: Command[] = [
     usage: '/cancel',
     requiredChannelType: [ChannelType.PRIVATE, ChannelType.PUBLIC],
     requiredUserRole: [UserRole.MEMBER],
-    handler: async () => {
+    handler: () => {
       console.log('Canceling message');
     },
   },
@@ -213,7 +213,10 @@ export function useCommandHandler(): SuggestionHandler {
     return suggestion.value;
   };
 
-  const executeCommand = async (commandText: string, context?: CommandContext): Promise<boolean> => {
+  const executeCommand = async (
+    commandText: string,
+    context?: CommandContext,
+  ): Promise<boolean> => {
     const parts = commandText.trim().split(/\s+/);
     const commandName = parts[0];
     const args = parts.slice(1);
