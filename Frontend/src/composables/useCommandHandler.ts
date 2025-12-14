@@ -47,6 +47,21 @@ const commands: Command[] = [
     },
   },
 
+  // LIST
+  {
+    name: '/list',
+    description: 'Show list of members in the current channel',
+    usage: '/list',
+    handler: async () => {
+      if (!chat.activeChannel) {
+        console.warn('No active channel to list members from');
+        return;
+      }
+      console.log("List of memebers command");
+
+    }
+  },
+
   // INVITE
   {
     name: '/invite',
