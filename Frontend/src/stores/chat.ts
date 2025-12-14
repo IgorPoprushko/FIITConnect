@@ -245,6 +245,86 @@ export const useChatStore = defineStore('chat', {
       }
     },
 
+    // 🔥 НОВИЙ МЕТОД: Явно просимо дозволу (виклич це десь при старті або по кліку)
+    async requestNotificationPermission() {
+      if (!('Notification' in window)) return false;
+      if (Notification.permission === 'granted') return true;
+
+      console.log('🔔 ChatStore: Requesting notification permission...');
+      const result = await Notification.requestPermission();
+      return result === 'granted';
+    },
+
+    // 🔥 НОВИЙ МЕТОД ДЛЯ СИСТЕМНИХ СПОВІЩЕНЬ
+    async sendSystemNotification(payload: NewMessageEvent) {
+      const auth = useAuthStore();
+
+      // LOGS для відлагодження
+      const debugInfo = {
+        status: auth.settings?.status,
+        expectedStatus: UserStatus.ONLINE,
+        hasFocus: document.hasFocus(),
+        permission: 'Notification' in window ? Notification.permission : 'not_supported',
+      };
+
+      // 1. Якщо статус НЕ ONLINE - виходимо (DND/Offline ігноруються)
+      if (auth.settings?.status !== UserStatus.ONLINE) {
+        console.log('🔕 Notification skipped: User not ONLINE', debugInfo);
+        return;
+      }
+
+      // 2. Якщо вікно має фокус, сповіщення НЕ показуємо.
+      if (document.hasFocus()) {
+        console.log('🔕 Notification skipped: Window has focus', debugInfo);
+        return;
+      }
+
+      // 3. Перевіряємо підтримку та дозволи
+      if (!('Notification' in window)) {
+        console.warn('⚠️ Notifications not supported in this browser');
+        return;
+      }
+
+      if (Notification.permission === 'granted') {
+        this.spawnNotification(payload);
+      } else if (Notification.permission === 'default') {
+        // ⚠️ Увага: Браузери можуть заблокувати цей запит, якщо він не викликаний кліком.
+        // Краще викликати requestNotificationPermission() заздалегідь.
+        console.log('🔔 Trying to request permission inside event...');
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          this.spawnNotification(payload);
+        } else {
+          console.warn('🔕 Permission denied or dismissed');
+        }
+      } else {
+        console.log('🔕 Notification permission is DENIED. Please enable in browser settings.');
+      }
+    },
+
+    spawnNotification(payload: NewMessageEvent) {
+      try {
+        const title = payload.user?.nickname ?? 'New Message';
+        const notification = new Notification(title, {
+          body: payload.content,
+          // icon: '/icons/logo.png', // Додай сюди шлях до логотипу, якщо є
+          tag: `channel-${payload.channelId}`, // Групування сповіщень
+          silent: false,
+        });
+
+        notification.onclick = () => {
+          window.focus();
+          if (payload.channelId) {
+            this.setActiveChannel(payload.channelId);
+          }
+          notification.close();
+        };
+        console.log('✅ Notification sent successfully!');
+      } catch (e) {
+        console.error('❌ Error showing notification:', e);
+      }
+    },
+
     connectSocket() {
       const auth = useAuthStore();
       if (!auth.token) return;
@@ -266,6 +346,9 @@ export const useChatStore = defineStore('chat', {
         }
 
         this.appendMessage(mapMessageDtoToDisplay(payload));
+
+        // 🔥 СПРОБУВАТИ ВІДПРАВИТИ СИСТЕМНЕ СПОВІЩЕННЯ
+        void this.sendSystemNotification(payload);
       });
 
       socketService.onUserInvited((channel: ChannelDto) => {
@@ -329,6 +412,10 @@ export const useChatStore = defineStore('chat', {
         console.log('✅ ChatStore: WS Connected.');
         this.connected = true;
         this.connecting = false;
+
+        // 🔥 Спробуємо запросити дозволи при підключенні (може не спрацювати в деяких браузерах без кліку)
+        // Але оскільки connectSocket часто викликається при mount, це може бути ОК.
+        // Краще це робити по кнопці "Enable Notifications" десь в UI.
 
         void this.loadChannels().then(() => {
           if (this.activeChannelId) {
