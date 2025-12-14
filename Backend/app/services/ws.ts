@@ -21,7 +21,7 @@ import type {
   ChannelActionPayload,
   ManageMemberPayload,
 } from '#contracts/channel_contracts'
-import type { UserStatus } from '#enums/global_enums'
+import { UserStatus } from '#enums/global_enums' // 🔥 Додано імпорт UserStatus
 import type { UpdateSettingsPayload, UpdateProfilePayload } from '#contracts/user_contracts'
 
 // ДОДАЄМО ПРАВИЛЬНИЙ ІМПОРТ ДЛЯ ПОВІДОМЛЕНЬ
@@ -140,7 +140,7 @@ class Ws {
       usersController.updateSettings(socket, payload, cb)
     )
 
-    // 🔥 PROFILE UPDATE
+    // 🔥 PROFILE
     socket.on('user:update:profile', (payload: UpdateProfilePayload, cb) =>
       usersController.updateProfile(socket, payload, cb)
     )
@@ -203,15 +203,26 @@ class Ws {
     console.log('[WS DEBUG] Successfully registered all commands.')
 
     // 2. ПІСЛЯ РЕЄСТРАЦІЇ ВИКОНУЄМО ПОВІЛЬНІ АСИНХРОННІ ОПЕРАЦІЇ
-    // Дії при підключенні (статус онлайн, джойн в кімнати)
-    await activitiesController.onConnected(user.id)
 
-    // 🔥🔥🔥 ВИПРАВЛЕННЯ: Примусово додаємо сокет в "особисту кімнату" юзера.
-    // Без цього повідомлення io.to(userId) не доходять!
+    // 🔥🔥🔥 FIX: Перевіряємо збережений статус.
+    // Якщо юзер зберіг статус OFFLINE, ми НЕ оголошуємо його онлайн і НЕ додаємо в канали.
+
+    const savedStatus = user.setting?.status ?? UserStatus.ONLINE
+
+    if (savedStatus !== UserStatus.OFFLINE) {
+      // Якщо НЕ offline -> поводимось як звичайно
+      await activitiesController.onConnected(user.id)
+      await this.joinUserToChannels(socket, user.id)
+    } else {
+      // Якщо OFFLINE -> заходимо "інкогніто"
+      console.log(
+        `[WS DEBUG] User ${user.nickname} connected silently (OFFLINE status). Skipping join/notify.`
+      )
+    }
+
+    // В особисту кімнату заходимо завжди, щоб отримувати системні повідомлення (інвайти і т.д.)
     socket.join(user.id)
     console.log(`[WS DEBUG] Joined personal room: ${user.id}`)
-
-    await this.joinUserToChannels(socket, user.id)
   }
 
   public findSocketByUserId(userId: string): AuthenticatedSocket | undefined {

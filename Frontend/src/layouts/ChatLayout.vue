@@ -1,79 +1,120 @@
 <template>
   <q-layout view="lHr LpR lFr">
-    <q-drawer v-model="groupDrawer" side="left" show-if-above bordered class="q-pa-xs">
-      <q-toolbar class="q-pa-none justify-between">
-        <q-btn
-          outline
-          rounded
-          color="secondary"
-          class="text-bold"
-          :label="auth.nickname"
+    <q-drawer v-model="groupDrawer" side="left" show-if-above bordered class="q-pa-xs column">
+      <!-- 🔥 НОВИЙ ХЕДЕР ПРОФІЛЮ -->
+      <div class="q-pa-sm">
+        <q-item
+          clickable
+          v-ripple
+          style="background: #353739; border-radius: 40px"
+          class="q-mb-sm"
           @click="profileDialog.open()"
-        />
-        <q-btn round flat dense icon="mail" class="q-ml-xs" />
-      </q-toolbar>
-
-      <q-toolbar class="q-pa-none">
-        <q-input
-          rounded
-          standout
-          dense
-          clearable
-          placeholder="Search"
-          v-model="search"
-          class="fit text-accent"
         >
-          <template v-slot:append>
-            <q-icon name="search" color="secondary" />
-          </template>
-        </q-input>
-        <q-btn round flat dense icon="add" class="q-ml-xs" @click="createDialog.open()" />
-      </q-toolbar>
+          <!-- Аватарка з індикатором статусу -->
+          <q-item-section avatar>
+            <q-avatar color="primary" text-color="white" size="40px" font-size="18px">
+              {{ auth.nickname ? auth.nickname.charAt(0).toUpperCase() : '?' }}
 
-      <q-separator class="q-mt-md" />
+              <!-- Індикатор статусу -->
+              <q-badge
+                floating
+                rounded
+                :color="getStatusColor(auth.settings?.status ?? UserStatus.ONLINE)"
+                style="right: -2px; bottom: -2px; top: auto"
+              />
+            </q-avatar>
+          </q-item-section>
 
-      <!-- 🔥 СЕКЦІЯ НОВИХ ЗАПРОШЕНЬ -->
-      <div v-if="newGroups.length > 0" class="q-pa-xs">
-        <q-item-label header class="text-weight-bold text-green q-pb-none row items-center q-mb-sm">
-          <q-avatar size="24px" color="green" text-color="white" icon="mail" class="q-mr-sm" />
-          New Invitations
-        </q-item-label>
+          <!-- Текстова частина: Нікнейм та Статус -->
+          <q-item-section>
+            <q-item-label class="text-weight-bold text-subtitle2 ellipsis">
+              {{ auth.nickname }}
+            </q-item-label>
+            <q-item-label
+              caption
+              :class="getStatusTextColor(auth.settings?.status ?? UserStatus.ONLINE)"
+            >
+              {{ getStatusLabel(auth.settings?.status ?? UserStatus.ONLINE) }}
+            </q-item-label>
+          </q-item-section>
 
-        <q-list class="q-mt-sm q-mb-md">
-          <GroupItem
-            v-for="group in newGroups"
-            :key="group.id"
-            clickable
-            v-bind="group"
-            @select="(id) => void selectChannel(id)"
-            class="bg-grey-9"
-          />
-        </q-list>
+          <!-- Іконка налаштувань -->
+          <q-item-section side>
+            <q-icon name="settings" size="xs" color="grey-6" />
+          </q-item-section>
+        </q-item>
 
-        <q-separator />
+        <!-- Пошук та кнопка створення -->
+        <q-toolbar class="q-pa-none">
+          <q-input
+            rounded
+            standout
+            dense
+            clearable
+            placeholder="Search"
+            v-model="search"
+            class="fit text-accent"
+          >
+            <template v-slot:append>
+              <q-icon name="search" color="secondary" />
+            </template>
+          </q-input>
+          <q-btn round flat dense icon="add" class="q-ml-xs" @click="createDialog.open()">
+            <q-tooltip>Create Channel</q-tooltip>
+          </q-btn>
+        </q-toolbar>
       </div>
 
-      <!-- 🔥 СЕКЦІЯ ЗВИЧАЙНИХ КАНАЛІВ -->
-      <div class="q-pa-xs">
-        <q-item-label
-          header
-          v-if="regularGroups.length > 0"
-          class="text-weight-bold text-grey-7 q-pb-none row items-center q-mb-sm"
-        >
-          <q-avatar size="22px" color="grey-7" text-color="white" icon="groups" class="q-mr-sm" />
-          Channels
-        </q-item-label>
+      <q-separator />
 
-        <q-list class="q-mt-xs">
-          <GroupItem
-            v-for="group in regularGroups"
-            :key="group.id"
-            clickable
-            v-bind="group"
-            @select="(id) => void selectChannel(id)"
-          />
-        </q-list>
-      </div>
+      <!-- Скрол-зона для списків -->
+      <q-scroll-area class="col">
+        <!-- 🔥 СЕКЦІЯ НОВИХ ЗАПРОШЕНЬ -->
+        <div v-if="newGroups.length > 0" class="q-pa-xs">
+          <q-item-label
+            header
+            class="text-weight-bold text-green q-pb-none row items-center q-mb-sm"
+          >
+            <q-avatar size="24px" color="green" text-color="white" icon="mail" class="q-mr-sm" />
+            New Invitations
+          </q-item-label>
+
+          <q-list class="q-mt-sm q-mb-md">
+            <GroupItem
+              v-for="group in newGroups"
+              :key="group.id"
+              clickable
+              v-bind="group"
+              @select="(id) => void selectChannel(id)"
+              class="bg-grey-9"
+            />
+          </q-list>
+
+          <q-separator />
+        </div>
+
+        <!-- 🔥 СЕКЦІЯ ЗВИЧАЙНИХ КАНАЛІВ -->
+        <div class="q-pa-xs">
+          <q-item-label
+            header
+            v-if="regularGroups.length > 0"
+            class="text-weight-bold text-grey-7 q-pb-none row items-center q-mb-sm"
+          >
+            <q-avatar size="22px" color="grey-7" text-color="white" icon="groups" class="q-mr-sm" />
+            Channels
+          </q-item-label>
+
+          <q-list class="q-mt-xs">
+            <GroupItem
+              v-for="group in regularGroups"
+              :key="group.id"
+              clickable
+              v-bind="group"
+              @select="(id) => void selectChannel(id)"
+            />
+          </q-list>
+        </div>
+      </q-scroll-area>
     </q-drawer>
 
     <q-footer class="q-pa-none">
@@ -158,21 +199,21 @@
       <template #content>
         <div class="column q-gutter-md">
           <div class="column q-gutter-sm q-pb-md">
-            <div class="text-h4 text-weight-bold">{{ profileForm.nickname }}</div>
-
-            <div class="row items-center justify-between">
-              <div class="row items-center q-gutter-xs">
-                <q-icon name="circle" :color="getStatusColor(profileForm.status)" size="12px" />
-
-                <span class="text-caption text-grey-7">{{
-                  statusDisplayMap[profileForm.status]
-                }}</span>
-              </div>
-
-              <div class="column items-end">
-                <span class="text-caption text-grey-6">Info not available</span>
-              </div>
+            <!-- Великий аватар в профілі -->
+            <div class="row justify-center q-mb-sm">
+              <q-avatar size="80px" color="primary" text-color="white" class="shadow-3">
+                {{ profileForm.nickname.charAt(0).toUpperCase() }}
+                <q-badge
+                  floating
+                  :color="getStatusColor(profileForm.status)"
+                  rounded
+                  style="right: 2px; bottom: 2px; width: 20px; height: 20px"
+                />
+              </q-avatar>
             </div>
+
+            <div class="text-h5 text-weight-bold text-center">{{ profileForm.nickname }}</div>
+            <div class="text-caption text-grey-6 text-center">{{ profileForm.email }}</div>
           </div>
 
           <q-separator />
@@ -243,7 +284,7 @@
             </q-select>
 
             <q-separator />
-            <div class="justify-between row">
+            <div class="justify-between row items-center">
               <span class="content-center">Direct Notifications Only</span>
               <q-toggle v-model="profileForm.directNotificationsOnly" color="secondary" />
             </div>
@@ -254,7 +295,7 @@
               dense
               color="negative"
               label="Logout"
-              class="text-h6 text-bold"
+              class="text-bold q-mt-md"
               @click="() => void handleLogout()"
             />
           </q-form>
@@ -317,6 +358,46 @@ interface ProfileFormPayload {
   nickname: string;
   status: UserStatus;
   directNotificationsOnly: boolean;
+}
+
+// === HELPER FUNCTIONS FOR STATUS ===
+function getStatusColor(status: UserStatus): string {
+  switch (status) {
+    case UserStatus.ONLINE:
+      return 'positive';
+    case UserStatus.DND:
+      return 'negative';
+    case UserStatus.OFFLINE:
+      return 'grey-5';
+    default:
+      return 'grey';
+  }
+}
+
+function getStatusLabel(status: UserStatus): string {
+  switch (status) {
+    case UserStatus.ONLINE:
+      return 'Online';
+    case UserStatus.DND:
+      return 'Do Not Disturb';
+    case UserStatus.OFFLINE:
+      return 'Offline';
+    default:
+      return 'Unknown';
+  }
+}
+
+function getStatusTextColor(status: UserStatus): string {
+  switch (status) {
+    case UserStatus.ONLINE:
+      return 'text-positive';
+    case UserStatus.DND:
+      return 'text-negative';
+    case UserStatus.OFFLINE:
+      return 'text-grey-6';
+    default:
+      return 'text-grey';
+  }
 }
 
 // === КОМП'ЮТЕРНІ ВЛАСТИВОСТІ ===
@@ -462,19 +543,6 @@ const statusOptions = [
   { label: statusDisplayMap[UserStatus.OFFLINE], value: UserStatus.OFFLINE },
 ];
 
-function getStatusColor(status: UserStatus): string {
-  switch (status) {
-    case UserStatus.ONLINE:
-      return 'green';
-    case UserStatus.DND:
-      return 'red';
-    case UserStatus.OFFLINE:
-      return 'grey';
-    default:
-      return 'grey';
-  }
-}
-
 function checkChange() {
   return !(
     profileForm.email !== (auth.user?.email ?? '') ||
@@ -553,7 +621,6 @@ async function submitProfile() {
         console.log('Profile updated on server via WebSocket');
 
         // А) Оновлюємо локальний store ПРАВИЛЬНО (через setUser)
-        // Ми беремо updatedUser з сервера, щоб бути впевненими, що дані збереглись
         if (auth.user) {
           auth.setUser(updatedUser);
         }

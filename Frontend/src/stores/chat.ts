@@ -89,8 +89,6 @@ export const useChatStore = defineStore('chat', {
 
       const auth = useAuthStore();
 
-      // 🔥 FIX: Якщо юзер OFFLINE, забороняємо завантаження історії.
-      // Таким чином, він не побачить нових повідомлень, поки не вийде в онлайн.
       if (auth.settings?.status === UserStatus.OFFLINE) {
         console.log(`🚫 ChatStore: User is OFFLINE. Skipping fetchMessages for ${channelId}.`);
         return;
@@ -117,7 +115,6 @@ export const useChatStore = defineStore('chat', {
             channel.unreadCount = 0;
           }
 
-          // Оновлюємо прев'ю каналу
           if (history.length > 0) {
             const latest = history[history.length - 1];
             if (latest) {
@@ -138,7 +135,6 @@ export const useChatStore = defineStore('chat', {
       if (!channelId) return;
 
       const auth = useAuthStore();
-      // 🔥 FIX: Також блокуємо завантаження учасників в офлайні
       if (auth.settings?.status === UserStatus.OFFLINE) {
         console.log(`🚫 ChatStore: User is OFFLINE. Skipping fetchMembers for ${channelId}.`);
         return;
@@ -164,7 +160,6 @@ export const useChatStore = defineStore('chat', {
       const auth = useAuthStore();
 
       try {
-        // 1. Завантажуємо список каналів
         this.channels = await socketService.listChannels();
 
         this.channels.forEach((c) => {
@@ -175,11 +170,7 @@ export const useChatStore = defineStore('chat', {
 
         console.log(`✅ ChatStore: Successfully loaded ${this.channels.length} channels.`);
 
-        // 🔥 АВТО-ОНОВЛЕННЯ ПРИ ЗМІНІ СТАТУСУ НА ONLINE
-        // Якщо ми вже в каналі і перейшли в онлайн, довантажуємо повідомлення
         if (this.activeChannelId) {
-          // Тут fetchMessages спрацює, бо статус вже не Offline
-          // (ми це перевірили перед викликом loadChannels в ChatLayout)
           await this.fetchMessages(this.activeChannelId);
           await this.fetchMembers(this.activeChannelId);
         }
@@ -233,7 +224,6 @@ export const useChatStore = defineStore('chat', {
           this.membersByChannel[channelId] = [];
         }
 
-        // Тут викликаються методи, які тепер мають захист від OFFLINE
         void this.fetchMessages(channelId);
         void this.fetchMembers(channelId);
 
@@ -245,7 +235,6 @@ export const useChatStore = defineStore('chat', {
       }
     },
 
-    // 🔥 НОВИЙ МЕТОД: Явно просимо дозволу (виклич це десь при старті або по кліку)
     async requestNotificationPermission() {
       if (!('Notification' in window)) return false;
       if (Notification.permission === 'granted') return true;
@@ -255,50 +244,24 @@ export const useChatStore = defineStore('chat', {
       return result === 'granted';
     },
 
-    // 🔥 НОВИЙ МЕТОД ДЛЯ СИСТЕМНИХ СПОВІЩЕНЬ
     async sendSystemNotification(payload: NewMessageEvent) {
       const auth = useAuthStore();
 
-      // LOGS для відлагодження
-      const debugInfo = {
-        status: auth.settings?.status,
-        expectedStatus: UserStatus.ONLINE,
-        hasFocus: document.hasFocus(),
-        permission: 'Notification' in window ? Notification.permission : 'not_supported',
-      };
+      if (auth.settings?.status !== UserStatus.ONLINE) return;
 
-      // 1. Якщо статус НЕ ONLINE - виходимо (DND/Offline ігноруються)
-      if (auth.settings?.status !== UserStatus.ONLINE) {
-        console.log('🔕 Notification skipped: User not ONLINE', debugInfo);
-        return;
-      }
-
-      // 2. Якщо вікно має фокус, сповіщення НЕ показуємо.
       if (document.hasFocus()) {
-        console.log('🔕 Notification skipped: Window has focus', debugInfo);
         return;
       }
 
-      // 3. Перевіряємо підтримку та дозволи
-      if (!('Notification' in window)) {
-        console.warn('⚠️ Notifications not supported in this browser');
-        return;
-      }
+      if (!('Notification' in window)) return;
 
       if (Notification.permission === 'granted') {
         this.spawnNotification(payload);
-      } else if (Notification.permission === 'default') {
-        // ⚠️ Увага: Браузери можуть заблокувати цей запит, якщо він не викликаний кліком.
-        // Краще викликати requestNotificationPermission() заздалегідь.
-        console.log('🔔 Trying to request permission inside event...');
+      } else if (Notification.permission !== 'denied') {
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
           this.spawnNotification(payload);
-        } else {
-          console.warn('🔕 Permission denied or dismissed');
         }
-      } else {
-        console.log('🔕 Notification permission is DENIED. Please enable in browser settings.');
       }
     },
 
@@ -307,8 +270,7 @@ export const useChatStore = defineStore('chat', {
         const title = payload.user?.nickname ?? 'New Message';
         const notification = new Notification(title, {
           body: payload.content,
-          // icon: '/icons/logo.png', // Додай сюди шлях до логотипу, якщо є
-          tag: `channel-${payload.channelId}`, // Групування сповіщень
+          tag: `channel-${payload.channelId}`,
           silent: false,
         });
 
@@ -319,7 +281,6 @@ export const useChatStore = defineStore('chat', {
           }
           notification.close();
         };
-        console.log('✅ Notification sent successfully!');
       } catch (e) {
         console.error('❌ Error showing notification:', e);
       }
@@ -346,9 +307,10 @@ export const useChatStore = defineStore('chat', {
         }
 
         this.appendMessage(mapMessageDtoToDisplay(payload));
-
-        // 🔥 СПРОБУВАТИ ВІДПРАВИТИ СИСТЕМНЕ СПОВІЩЕННЯ
-        void this.sendSystemNotification(payload);
+        // 🔥 FIX: Використовуємо .catch() замість void, щоб уникнути no-floating-promises
+        this.sendSystemNotification(payload).catch((err) => {
+          console.error('Failed to send notification', err);
+        });
       });
 
       socketService.onUserInvited((channel: ChannelDto) => {
@@ -372,7 +334,6 @@ export const useChatStore = defineStore('chat', {
       });
 
       socketService.onMemberJoined((payload: MemberJoinedEvent) => {
-        console.debug(`[WS IN] Member joined: ${payload.member.nickname}`);
         const members = this.membersByChannel[payload.channelId];
         if (members) {
           const exists = members.some((m) => m.id === payload.member.id);
@@ -381,7 +342,6 @@ export const useChatStore = defineStore('chat', {
       });
 
       socketService.onMemberLeft((payload: MemberLeftEvent) => {
-        console.debug(`[WS IN] Member left: ${payload.userId}`);
         const members = this.membersByChannel[payload.channelId];
         if (members) {
           const index = members.findIndex((m) => m.id === payload.userId);
@@ -390,7 +350,6 @@ export const useChatStore = defineStore('chat', {
       });
 
       socketService.onMemberKicked((payload: MemberLeftEvent) => {
-        console.debug(`[WS IN] Member kicked: ${payload.userId}`);
         const members = this.membersByChannel[payload.channelId];
         if (members) {
           const index = members.findIndex((m) => m.id === payload.userId);
@@ -413,9 +372,10 @@ export const useChatStore = defineStore('chat', {
         this.connected = true;
         this.connecting = false;
 
-        // 🔥 Спробуємо запросити дозволи при підключенні (може не спрацювати в деяких браузерах без кліку)
-        // Але оскільки connectSocket часто викликається при mount, це може бути ОК.
-        // Краще це робити по кнопці "Enable Notifications" десь в UI.
+        if (auth.settings?.status !== undefined) {
+          console.log(`🔄 ChatStore: Restoring user status to ${auth.settings.status}...`);
+          socketService.updateSettings({ status: auth.settings.status }).catch(console.error);
+        }
 
         void this.loadChannels().then(() => {
           if (this.activeChannelId) {
@@ -470,11 +430,8 @@ export const useChatStore = defineStore('chat', {
     async inviteUser(nickname: string) {
       if (!nickname || !this.activeChannelId) return;
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const response: any = await socketService.inviteUser(this.activeChannelId, nickname);
-        if (response && response.status === 'error') {
-          throw new Error(response.message || 'Failed to invite user');
-        }
+        // 🔥 FIX: Прибрано використання any та зайву перевірку, оскільки socketService кидає помилку при невдачі
+        await socketService.inviteUser(this.activeChannelId, nickname);
       } catch (error) {
         console.error('Failed to invite user:', error);
         throw error;
