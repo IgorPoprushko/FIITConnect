@@ -9,7 +9,7 @@ export interface MessageDto {
   sentAt: string // ISO Date string
   userId: string // ID автора (для швидкого порівняння "чи це я")
   user?: UserDto // Об'єкт автора (може бути пустим, якщо ми вже закешували юзера на фронті)
-  mentions?: string[] // Масив ID користувачів, яких тегнули
+  mentions: string[] // Масив ID користувачів, яких тегнули
 }
 
 // --- PAYLOADS (INPUT) ---

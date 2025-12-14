@@ -34,16 +34,14 @@ export default class MessageRepository {
     // Якщо налаштування не завантажені (раптом), беремо дефолт
     const setting = user.setting
 
-    // Парсинг згадувань (@nickname)
-    const mentionRegex = /@([a-zA-Z0-9_]+)/g
-    const mentionedNicknames = [...message.content.matchAll(mentionRegex)].map((match) => match[1])
-
-    let mentionedUserIds: string[] = [] // ВИПРАВЛЕНО: Тип string[]
-
-    if (mentionedNicknames.length > 0) {
-      // ВИПРАВЛЕНО: 'nickname' (маленькими), як у моделі User
-      const mentionedUsers = await User.query().whereIn('nickname', mentionedNicknames)
-      mentionedUserIds = mentionedUsers.map((u) => u.id)
+    // Parse mentionedUserIds from database (stored as JSON string)
+    let mentionedUserIds: string[] = []
+    if (message.mentionedUserIds) {
+      try {
+        mentionedUserIds = JSON.parse(message.mentionedUserIds)
+      } catch (e) {
+        console.error('Failed to parse mentionedUserIds:', e)
+      }
     }
 
     return {
@@ -67,12 +65,23 @@ export default class MessageRepository {
   }
 
   async create(data: CreateMessagePayload): Promise<SerializedMessage> {
+    // Parse mentions before creating message
+    const mentionRegex = /@([a-zA-Z0-9_]+)/g
+    const mentionedNicknames = [...data.content.matchAll(mentionRegex)].map((match) => match[1])
+
+    let mentionedUserIds: string[] = []
+    if (mentionedNicknames.length > 0) {
+      const mentionedUsers = await User.query().whereIn('nickname', mentionedNicknames)
+      mentionedUserIds = mentionedUsers.map((u) => u.id)
+    }
+
     const message = await Message.create({
       content: data.content,
       userId: data.userId,
       channelId: data.channelId,
       replyToMsgId: data.replyToMsgId ?? null,
       isDeleted: false,
+      mentionedUserIds: mentionedUserIds.length > 0 ? JSON.stringify(mentionedUserIds) : null,
     })
 
     // ВИПРАВЛЕНО: Чистіший синтаксис preload, щоб уникнути помилок типів (Implicit Any)

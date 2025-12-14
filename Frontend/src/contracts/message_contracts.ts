@@ -9,7 +9,7 @@ export interface MessageDto {
   sentAt: string; // ISO Date string
   userId: string; // ID автора
   user?: UserDto; // Автор (може не прийти, якщо кешований)
-  mentions?: string[]; // ID тегнутих юзерів
+  mentions: string[]; // ID тегнутих юзерів
 }
 
 // --- PAYLOADS ---

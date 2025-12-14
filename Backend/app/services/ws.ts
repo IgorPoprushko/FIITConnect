@@ -182,11 +182,11 @@ class Ws {
     socket.on('user:change:status', (payload: { newStatus: UserStatus }) =>
       activitiesController.onChangeStatus({ userId: user.id, newStatus: payload.newStatus })
     )
-    socket.on('typing:start', (payload: ChannelActionPayload) =>
-      activitiesController.onTypingStart(socket, payload.channelId)
+    socket.on('typing:start', (payload: { channelId: string; draft?: string }) =>
+      activitiesController.onTypingStart(socket, payload)
     )
-    socket.on('typing:stop', (payload: ChannelActionPayload) =>
-      activitiesController.onTypingStop(socket, payload.channelId)
+    socket.on('typing:stop', (payload: { channelId: string }) =>
+      activitiesController.onTypingStop(socket, payload)
     )
 
     // 🔌 DISCONNECT (Має бути зареєстрований)

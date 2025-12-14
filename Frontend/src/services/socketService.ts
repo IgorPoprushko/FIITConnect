@@ -103,8 +103,8 @@ interface ClientToServerEvents {
   ) => void;
 
   'user:change:status': (payload: { newStatus: UserStatus }) => void;
-  'typing:start': (payload: ChannelActionPayload) => void;
-  'typing:stop': (payload: ChannelActionPayload) => void;
+  'typing:start': (payload: { channelId: string; draft?: string }) => void;
+  'typing:stop': (payload: { channelId: string }) => void;
 }
 
 class SocketService {
@@ -291,8 +291,12 @@ class SocketService {
     this.socket?.emit('user:change:status', { newStatus });
   }
 
-  startTyping(channelId: string) {
-    this.socket?.emit('typing:start', { channelId });
+  startTyping(channelId: string, draft?: string) {
+    const payload: { channelId: string; draft?: string } = { channelId };
+    if (draft !== undefined) {
+      payload.draft = draft;
+    }
+    this.socket?.emit('typing:start', payload);
   }
 
   stopTyping(channelId: string) {
@@ -353,6 +357,7 @@ class SocketService {
 
   onTyping(handler: (data: TypingEvent) => void) {
     this.socket?.on('user:typing:start', handler);
+    this.socket?.on('user:typing:stop', handler);
   }
 
   off(event: keyof ServerToClientEvents) {

@@ -25,7 +25,7 @@
   - [x] Logic
   - [x] Visual
 - Invite to channel
-  - [ ] Logic
+  - [x] Logic
   - [x] Visual
 - Two types of channels (Private and Public Channel)
   - [x] Logic
@@ -53,7 +53,7 @@
   - [x] Logic
   - [x] Visual
 - Invite to Private channel only by admin with **/invite [Username]**
-  - [ ] Logic
+  - [x] Logic
   - [x] Visual
 - Kick to Private channel only by admin with **/revoke [Username]**
   - [x] Logic
@@ -62,13 +62,13 @@
   - [x] Logic
   - [x] Visual
 - Invire to Public channel with **/invite [Username]**
-  - [ ] Logic
+  - [x] Logic
   - [x] Visual
 - Ban to Public channel with **/kick [Username]**. Need to have 3 user vote or 1 admin vote
   - [x] Logic
   - [x] Visual
 - Invite back after ban in Public channels only by admin with **/invite [Username]**
-  - [ ] Logic
+  - [x] Logic
   - [x] Visual
 - Username and ChannelName are unique
   - [x] Logic
@@ -87,11 +87,11 @@
 
 ### 6. Správu v kanáli je možné adresovať konkrétnemu používateľovi cez príkaz @nickname 
 - Message can be addressed to user with **@[Username]**
-  - [ ] Logic
+  - [x] Logic
   - [x] Visual
 - Addressed message will be highlight for user
-  - [ ] Logic
-  - [ ] Visual
+  - [x] Logic
+  - [x] Visual
   
 ### 7. Používateľ si môže pozrieť kompletnú históriu správ
 - Load messages with Infinite Scroll
@@ -111,14 +111,14 @@
 
 ### 9. Používateľ si môže nastaviť stav (online, DND, offline)
 - Status is displayed to the user
-  - [ ] Logic
-  - [x] Visual
+  - [x] Logic
+  - [ ] Visual
 - If DND status is set, notifications do not arrive
-  - [ ] Logic
-  - [ ] Visual
+  - [x] Logic
+  - [x] Visual
 - If the offline status is set, the used doesn't recive messages, after switching back load data
-  - [ ] Logic
-  - [ ] Visual
+  - [x] Logic
+  - [x] Visual
 
 ### 10. Používateľ si môže pozrieť zoznam členov kanála (ak je tiež členom kanála) príkazom /list
 - Use **/list** to show all members
@@ -127,10 +127,10 @@
 
 ### 11. Ak má používateľ aktívny niektorý z kanálov (nachádza sa v okne správ pre daný kanál) vidí v stavovej lište informáciu o tom, kto aktuálne píše správu (napr. Ed is typing) 
 - Show nickname when someone typing
-  - [ ] Logic
-  - [ ] Visual
+  - [x] Logic
+  - [x] Visual
 - After clicking on nickname, he can view the typing text in real time
-  - [ ] Logic
+  - [x] Logic
   - [ ] Visual
 
 ### Dátový model:

@@ -1,12 +1,6 @@
 <template>
-  <q-item
-    clickable
-    v-ripple
-    :active="isActive"
-    active-class="bg-blue-grey-10 text-white"
-    class="q-px-sm q-py-md group-item"
-    @click="$emit('select', id)"
-  >
+  <q-item clickable v-ripple :active="isActive" active-class="bg-blue-grey-10 text-white"
+    class="q-px-sm q-py-md group-item" @click="$emit('select', id)">
     <!-- 1. АВАТАРКА (Перша літера) -->
     <q-item-section avatar class="q-pr-sm" style="min-width: 0">
       <q-avatar color="cyan-10" text-color="white" size="48px" class="shadow-1">
@@ -31,20 +25,15 @@
 
       <!-- Нижній рядок: Текст повідомлення + Бейдж -->
       <div class="row items-center justify-between no-wrap q-mt-xs">
-        <div class="text-body2 text-grey-5 ellipsis col q-pr-sm" style="font-size: 13px">
-          <span v-if="lastSender" class="text-blue-grey-6 text-weight-medium"
-            >{{ lastSender }}:
+        <div class="text-body2 text-grey-5 truncate col q-pr-sm" style="font-size: 13px; max-width: 211px;">
+          <span v-if="lastSender" class="text-blue-grey-6 text-weight-medium">{{ lastSender }}:
           </span>
           <span>{{ lastMessage || 'No messages yet' }}</span>
         </div>
 
         <!-- Бейдж непрочитаних (показуємо, якщо > 0) -->
-        <q-badge
-          v-if="unreadCount > 0"
-          color="green-6"
-          :label="unreadCount > 99 ? '99+' : unreadCount"
-          class="q-pt-xs"
-        />
+        <q-badge v-if="unreadCount > 0" color="green-6" :label="unreadCount > 99 ? '99+' : unreadCount"
+          class="q-pt-xs" />
       </div>
     </q-item-section>
   </q-item>
@@ -82,5 +71,12 @@ const formattedTime = computed(() => {
 .group-item {
   border-bottom: 1px solid #3f3f3f;
   transition: background-color 0.2s;
+}
+
+/* Truncate overflowing text with three dots */
+.truncate {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 </style>

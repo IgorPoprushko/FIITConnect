@@ -1,14 +1,14 @@
 <template>
-  <q-chat-message
-    text-color="white"
-    :label="dateLabel"
-    :name="shouldShowName ? message.sender : undefined"
-    :text="[message.text]"
-    :stamp="getTime(message.date)"
-    :sent="message.own"
-    :bg-color="message.own ? 'primary' : 'secondary'"
-    class="q-mb-sm q-px-sm message-item"
-  />
+  <q-chat-message text-color="white" :label="dateLabel" :name="shouldShowName ? message.sender : undefined"
+    :text="[message.text]" :stamp="getTime(message.date)" :sent="message.own" :bg-color="getBgColor" :class="[
+      'q-mb-sm',
+      'q-px-sm',
+      'message-item',
+      {
+        'mentioned-message': message.mentionsMe,
+        'mentioned-message--own': message.mentionsMe && message.own,
+      },
+    ]" />
 </template>
 
 <script setup lang="ts">
@@ -53,7 +53,41 @@ const shouldShowName = computed(() => {
   return false;
 });
 
+// 3. Background color based on mention status
+const getBgColor = computed(() => {
+  if (props.message.mentionsMe) {
+    return 'amber-8'; // Highlighted color for mentions
+  }
+  return props.message.own ? 'primary' : 'secondary';
+});
+
 function getTime(date: Date) {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 </script>
+
+<style scoped>
+.mentioned-message {
+  animation: pulse-mention 1s ease-in-out;
+}
+
+.mentioned-message :deep(.q-message-container) {
+  background: linear-gradient(315deg, #121212 25%, #ffa00044 100%) !important;
+}
+
+.mentioned-message--own :deep(.q-message-container) {
+  background: linear-gradient(135deg, #121212 25%, #ffa00044 100%) !important;
+}
+
+@keyframes pulse-mention {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.8;
+  }
+}
+</style>

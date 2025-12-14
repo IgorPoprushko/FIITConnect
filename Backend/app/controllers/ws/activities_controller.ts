@@ -38,21 +38,29 @@ export default class ActivitiesController {
     })
   }
 
-  public async onTypingStart(socket: AuthenticatedSocket, channelName: string) {
+  public async onTypingStart(
+    socket: AuthenticatedSocket,
+    payload: { channelId: string; draft?: string }
+  ) {
     const user = socket.user!
-    socket.to(channelName).emit('user:typing:start', {
+    const { channelId, draft } = payload
+    socket.to(channelId).emit('user:typing:start', {
       userId: user.id,
       nickname: user.nickname,
-      channelName,
+      channelId,
+      isTyping: true,
+      draft: draft ?? '',
     })
   }
 
-  public async onTypingStop(socket: AuthenticatedSocket, channelName: string) {
+  public async onTypingStop(socket: AuthenticatedSocket, payload: { channelId: string }) {
     const user = socket.user!
-    socket.to(channelName).emit('user:typing:stop', {
+    const { channelId } = payload
+    socket.to(channelId).emit('user:typing:stop', {
       userId: user.id,
       nickname: user.nickname,
-      channelName,
+      channelId,
+      isTyping: false,
     })
   }
 

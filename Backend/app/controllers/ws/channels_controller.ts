@@ -185,8 +185,20 @@ export default class ChannelsController {
   }
 
   /**
-   * 4. INVITE (/invite)
+   * Helper: Unban a user from a channel
    */
+  private async unbanUser(channelId: string, targetUserId: string): Promise<void> {
+    const ban = await ChannelKickBan.query()
+      .where('channelId', channelId)
+      .where('targetUserId', targetUserId)
+      .first()
+
+    if (ban) {
+      await ban.delete()
+    }
+  }
+
+
   public async invite(
     socket: AuthenticatedSocket,
     payload: ManageMemberPayload,
@@ -196,40 +208,48 @@ export default class ChannelsController {
     const currentUser = socket.user!
 
     try {
+      // 1. Fetch and validate channel and target user
       const channel = await Channel.findOrFail(channelId)
       const targetUser = await User.findBy('nickname', nickname)
-
-      // 1. Перевірки
       if (!targetUser) throw new Exception(`User @${nickname} not found`)
 
+      // 2. Verify inviter is a member
       const inviterMember = await Member.query()
         .where('channelId', channel.id)
         .where('userId', currentUser.id)
         .first()
       if (!inviterMember) throw new Exception('You must be a member to invite.')
 
-      if (channel.type === ChannelType.PRIVATE && channel.ownerUserId !== currentUser.id) {
-        throw new Exception('Only owner can invite to private channels.')
+      // 3. Check permissions based on channel type and user role
+      const isAdmin = channel.ownerUserId === currentUser.id
+
+      if (channel.type === ChannelType.PRIVATE && !isAdmin) {
+        throw new Exception('Only the owner can invite to private channels.')
       }
 
+      // 4. Check if target is already a member
       const existing = await Member.query()
         .where('channelId', channel.id)
         .where('userId', targetUser.id)
         .first()
       if (existing) throw new Exception(`${nickname} is already in the channel.`)
 
+      // 5. Handle ban status
       const ban = await ChannelKickBan.query()
         .where('channelId', channel.id)
         .where('targetUserId', targetUser.id)
         .first()
+
       if (ban) {
-        if (channel.ownerUserId !== currentUser.id) {
-          throw new Exception(`User is banned. Only owner can restore access.`)
+        if (!isAdmin) {
+          // Non-admins cannot unban
+          throw new Exception(`User is banned. Only the owner can restore access.`)
         }
-        await ban.delete()
+        // Admins can unban
+        await this.unbanUser(channel.id, targetUser.id)
       }
 
-      // 2. Створюємо запис в БД як НОВИЙ
+      // 6. Create the new member
       const newMember = await Member.create({
         channelId: channel.id,
         userId: targetUser.id,
@@ -237,10 +257,11 @@ export default class ChannelsController {
       })
       await newMember.load('user')
 
+      // 7. Add target user to the channel room
       const io = Ws.getIo()
       io.in(targetUser.id).socketsJoin(channel.id)
 
-      // 3. Сповіщаємо всіх в кімнаті про нового учасника
+      // 8. Notify all channel members about the new member
       const memberDto: MemberDto = {
         id: newMember.user.id,
         nickname: newMember.user.nickname,
@@ -257,7 +278,7 @@ export default class ChannelsController {
         isInvite: true,
       })
 
-      // 4. 🔥 FIX: Отримуємо реальне останнє повідомлення для прев'ю
+      // 9. Fetch last message for preview
       const lastMsg = await Message.query()
         .where('channelId', channel.id)
         .orderBy('createdAt', 'desc')
@@ -278,16 +299,16 @@ export default class ChannelsController {
         }
       }
 
-      // 5. Відправляємо подію персонально запрошеному
+      // 10. Send personal invitation notification to target user
       const channelDto: ChannelDto = {
         id: channel.id,
         name: channel.name,
         type: channel.type,
         description: channel.description,
         ownerUserId: channel.ownerUserId,
-        unreadCount: 1, // Щоб світилось як нове
-        isNew: true, // Щоб потрапило в "New Invitations"
-        lastMessage: lastMessageDto, // 🔥 Тепер тут не null
+        unreadCount: 1,
+        isNew: true,
+        lastMessage: lastMessageDto,
       }
 
       io.to(targetUser.id).emit('user:invited', channelDto)

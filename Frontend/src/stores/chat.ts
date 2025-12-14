@@ -10,7 +10,7 @@ import type {
   MemberJoinedEvent,
   MemberLeftEvent,
 } from 'src/contracts/channel_contracts';
-import type { NewMessageEvent, MessageDto } from 'src/contracts/message_contracts';
+import type { NewMessageEvent, MessageDto, TypingEvent } from 'src/contracts/message_contracts';
 // ==========================
 
 import { useAuthStore } from './auth';
@@ -27,10 +27,15 @@ export interface IMessage {
   date: Date;
   own: boolean;
   read: boolean;
+  mentionsMe: boolean;
+  mentions: string[];
 }
 
 function mapMessageDtoToDisplay(payload: NewMessageEvent): IMessage {
   const auth = useAuthStore();
+  const mentions = payload.mentions ?? [];
+  const mentionsMe = mentions.includes(auth.user?.id ?? '');
+
   return {
     id: payload.id.toString(),
     channelId: payload.channelId,
@@ -39,15 +44,24 @@ function mapMessageDtoToDisplay(payload: NewMessageEvent): IMessage {
     date: new Date(payload.sentAt),
     own: payload.userId === auth.user?.id,
     read: true,
+    mentionsMe,
+    mentions,
   };
 }
 
 // --- STATE ---
+interface TypingUser {
+  userId: string;
+  nickname: string;
+  draft: string;
+}
+
 interface ChatState {
   channels: ChannelDto[];
   activeChannelId: string | null;
   messagesByChannel: Record<string, IMessage[]>;
   membersByChannel: Record<string, MemberDto[]>;
+  typingUsersByChannel: Record<string, TypingUser[]>;
   loadingChannels: boolean;
   connecting: boolean;
   connected: boolean;
@@ -59,6 +73,7 @@ export const useChatStore = defineStore('chat', {
     activeChannelId: null,
     messagesByChannel: {},
     membersByChannel: {},
+    typingUsersByChannel: {},
     loadingChannels: false,
     connecting: false,
     connected: false,
@@ -80,6 +95,11 @@ export const useChatStore = defineStore('chat', {
     activeMembers(state): MemberDto[] {
       if (!state.activeChannelId) return [];
       return state.membersByChannel[state.activeChannelId] ?? [];
+    },
+
+    activeTypingUsers(state): TypingUser[] {
+      if (!state.activeChannelId) return [];
+      return state.typingUsersByChannel[state.activeChannelId] ?? [];
     },
   },
 
@@ -367,6 +387,34 @@ export const useChatStore = defineStore('chat', {
         }
       });
 
+      socketService.onTyping((payload: TypingEvent) => {
+        console.debug(`[WS IN] Typing event: ${payload.nickname} in ${payload.channelId}`);
+
+        // Don't show typing indicator for ourselves
+        if (payload.userId === auth.user?.id) return;
+
+        const typingUsers = (this.typingUsersByChannel[payload.channelId] ||= []);
+        const existingIndex = typingUsers.findIndex((u) => u.userId === payload.userId);
+
+        if (payload.isTyping) {
+          const typingUser: TypingUser = {
+            userId: payload.userId,
+            nickname: payload.nickname,
+            draft: payload.draft ?? '',
+          };
+
+          if (existingIndex !== -1) {
+            typingUsers[existingIndex] = typingUser;
+          } else {
+            typingUsers.push(typingUser);
+          }
+        } else {
+          if (existingIndex !== -1) {
+            typingUsers.splice(existingIndex, 1);
+          }
+        }
+      });
+
       socketService.onConnect(() => {
         console.log('✅ ChatStore: WS Connected.');
         this.connected = true;
@@ -380,6 +428,7 @@ export const useChatStore = defineStore('chat', {
         void this.loadChannels().then(() => {
           if (this.activeChannelId) {
             void this.fetchMessages(this.activeChannelId);
+            void this.fetchMembers(this.activeChannelId);
           }
         });
       });
@@ -443,6 +492,12 @@ export const useChatStore = defineStore('chat', {
 
       const tempId = `temp-${Date.now()}`;
       const auth = useAuthStore();
+
+      // Parse mentions from content to check if user mentions themselves
+      const mentionRegex = /@([a-zA-Z0-9_]+)/g;
+      const mentionedNicknames = [...content.matchAll(mentionRegex)].map((match) => match[1]);
+      const mentionsMe = mentionedNicknames.includes(auth.nickname || '');
+
       const optimisticMessage: IMessage = {
         id: tempId,
         channelId: this.activeChannelId,
@@ -451,6 +506,8 @@ export const useChatStore = defineStore('chat', {
         date: new Date(),
         own: true,
         read: true,
+        mentionsMe,
+        mentions: [],
       };
 
       this.appendMessage(optimisticMessage);
