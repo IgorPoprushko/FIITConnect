@@ -5,8 +5,6 @@ import app from '@adonisjs/core/services/app'
 import { Exception } from '@adonisjs/core/exceptions'
 import { Server, Socket } from 'socket.io'
 import { Secret } from '@adonisjs/core/helpers'
-
-// 👇 Імпорт наших потужних контролерів
 import ActivitiesController from '#controllers/ws/activities_controller'
 import MessagesController from '#controllers/ws/messages_controller'
 import UsersController from '#controllers/ws/users_controller'
@@ -15,16 +13,13 @@ import ChannelsController from '#controllers/ws/channels_controller'
 import User from '#models/user'
 import Member from '#models/member'
 
-// Імпорт контрактів для типізації
 import type {
   JoinChannelPayload,
   ChannelActionPayload,
   ManageMemberPayload,
 } from '#contracts/channel_contracts'
-import { UserStatus } from '#enums/global_enums' // 🔥 Додано імпорт UserStatus
+import { UserStatus } from '#enums/global_enums'
 import type { UpdateSettingsPayload, UpdateProfilePayload } from '#contracts/user_contracts'
-
-// ДОДАЄМО ПРАВИЛЬНИЙ ІМПОРТ ДЛЯ ПОВІДОМЛЕНЬ
 import type { GetMessagesPayload, SendMessagePayload } from '#contracts/message_contracts'
 
 export interface AuthenticatedSocket extends Socket {
@@ -96,31 +91,20 @@ class Ws {
     }
   }
 
-  /**
-   * 🎛️ ГОЛОВНИЙ ПУЛЬТ КЕРУВАННЯ
-   * Тут ми підключаємо контролери до подій
-   */
   private async handleConnection(socket: AuthenticatedSocket) {
     const user = socket.user!
     console.log(`Socket connected: ${user.nickname} (ID: ${user.id}, Socket: ${socket.id})`)
 
-    // 1. Ініціалізуємо контролери (Це відбувається швидко)
     const usersController = await app.container.make(UsersController)
     const channelsController = await app.container.make(ChannelsController)
     const messagesController = await app.container.make(MessagesController)
     const activitiesController = await app.container.make(ActivitiesController)
 
-    // Мапінг сокетів для внутрішніх потреб
     this.socketIdToUserId.set(socket.id, user.id)
     this.userIdToSocketId.set(user.id, socket.id)
 
     console.log('[WS DEBUG] Registering all socket commands...')
 
-    // ==========================================
-    // 🔥🔥 КРИТИЧНИЙ БЛОК: РЕЄСТРАЦІЯ УСІХ КОМАНД 🔥🔥
-    // ==========================================
-
-    // 👤 USERS CONTROLLER (Профіль, налаштування)
     socket.on('user:get:public_info', (payload, cb) =>
       usersController.getPublicInfo(socket, payload, cb)
     )
@@ -135,12 +119,10 @@ class Ws {
       return usersController.listChannels(socket, cb)
     })
 
-    // 🔥 SETTINGS
     socket.on('user:update:settings', (payload: UpdateSettingsPayload, cb) =>
       usersController.updateSettings(socket, payload, cb)
     )
 
-    // 🔥 PROFILE
     socket.on('user:update:profile', (payload: UpdateProfilePayload, cb) =>
       usersController.updateProfile(socket, payload, cb)
     )
@@ -170,15 +152,12 @@ class Ws {
       channelsController.listMembers(socket, payload, cb)
     )
 
-    // 💬 MESSAGES CONTROLLER (Чат)
     socket.on('message:send', (payload: SendMessagePayload, cb) =>
       messagesController.sendMessage(socket, payload, cb)
     )
     socket.on('message:list', (payload: GetMessagesPayload, cb) =>
       messagesController.getMessages(socket, payload, cb)
     )
-
-    // ⚡ ACTIVITIES CONTROLLER (Статуси, тайпінг)
     socket.on('user:change:status', (payload: { newStatus: UserStatus }) =>
       activitiesController.onChangeStatus({ userId: user.id, newStatus: payload.newStatus })
     )
@@ -189,7 +168,6 @@ class Ws {
       activitiesController.onTypingStop(socket, payload)
     )
 
-    // 🔌 DISCONNECT (Має бути зареєстрований)
     socket.on('disconnect', () => {
       const userId = this.socketIdToUserId.get(socket.id)
       if (userId) {
@@ -201,26 +179,17 @@ class Ws {
     })
 
     console.log('[WS DEBUG] Successfully registered all commands.')
-
-    // 2. ПІСЛЯ РЕЄСТРАЦІЇ ВИКОНУЄМО ПОВІЛЬНІ АСИНХРОННІ ОПЕРАЦІЇ
-
-    // 🔥🔥🔥 FIX: Перевіряємо збережений статус.
-    // Якщо юзер зберіг статус OFFLINE, ми НЕ оголошуємо його онлайн і НЕ додаємо в канали.
-
     const savedStatus = user.setting?.status ?? UserStatus.ONLINE
 
     if (savedStatus !== UserStatus.OFFLINE) {
-      // Якщо НЕ offline -> поводимось як звичайно
       await activitiesController.onConnected(user.id)
       await this.joinUserToChannels(socket, user.id)
     } else {
-      // Якщо OFFLINE -> заходимо "інкогніто"
       console.log(
         `[WS DEBUG] User ${user.nickname} connected silently (OFFLINE status). Skipping join/notify.`
       )
     }
 
-    // В особисту кімнату заходимо завжди, щоб отримувати системні повідомлення (інвайти і т.д.)
     socket.join(user.id)
     console.log(`[WS DEBUG] Joined personal room: ${user.id}`)
   }

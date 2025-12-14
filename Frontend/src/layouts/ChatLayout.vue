@@ -1,7 +1,6 @@
 <template>
   <q-layout view="lHr LpR lFr">
     <q-drawer v-model="groupDrawer" side="left" show-if-above bordered class="q-pa-xs column">
-      <!-- 🔥 НОВИЙ ХЕДЕР ПРОФІЛЮ -->
       <div class="q-pa-sm">
         <q-item
           clickable
@@ -10,12 +9,10 @@
           class="q-mb-sm"
           @click="profileDialog.open()"
         >
-          <!-- Аватарка з індикатором статусу -->
           <q-item-section avatar>
             <q-avatar color="primary" text-color="white" size="40px" font-size="18px">
               {{ auth.nickname ? auth.nickname.charAt(0).toUpperCase() : '?' }}
 
-              <!-- Індикатор статусу -->
               <q-badge
                 floating
                 rounded
@@ -25,7 +22,6 @@
             </q-avatar>
           </q-item-section>
 
-          <!-- Текстова частина: Нікнейм та Статус -->
           <q-item-section>
             <q-item-label class="text-weight-bold text-subtitle2 ellipsis">
               {{ auth.nickname }}
@@ -38,13 +34,11 @@
             </q-item-label>
           </q-item-section>
 
-          <!-- Іконка налаштувань -->
           <q-item-section side>
             <q-icon name="settings" size="xs" color="grey-6" />
           </q-item-section>
         </q-item>
 
-        <!-- Пошук та кнопка створення -->
         <q-toolbar class="q-pa-none">
           <q-input
             rounded
@@ -67,9 +61,7 @@
 
       <q-separator />
 
-      <!-- Скрол-зона для списків -->
       <q-scroll-area class="col">
-        <!-- 🔥 СЕКЦІЯ НОВИХ ЗАПРОШЕНЬ -->
         <div v-if="newGroups.length > 0" class="q-pa-xs">
           <q-item-label
             header
@@ -93,7 +85,6 @@
           <q-separator />
         </div>
 
-        <!-- 🔥 СЕКЦІЯ ЗВИЧАЙНИХ КАНАЛІВ -->
         <div class="q-pa-xs">
           <q-item-label
             header
@@ -200,7 +191,6 @@
       <template #content>
         <div class="column q-gutter-md">
           <div class="column q-gutter-sm q-pb-md">
-            <!-- Великий аватар в профілі -->
             <div class="row justify-center q-mb-sm">
               <q-avatar size="80px" color="primary" text-color="white" class="shadow-3">
                 {{ profileForm.nickname.charAt(0).toUpperCase() }}
@@ -312,10 +302,8 @@
 import { ref, reactive, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 
-// === ІМПОРТИ КОНТРАКТІВ ===
 import type { ChannelDto, JoinChannelPayload } from 'src/contracts/channel_contracts';
 import { ChannelType, UserRole, UserStatus } from 'src/enums/global_enums';
-// ==========================
 
 import GroupItem from 'components/GroupItem.vue';
 import FormDialog from 'src/components/FormDialog.vue';
@@ -332,8 +320,6 @@ const groupDrawer = ref(false);
 const auth = useAuthStore();
 const chat = useChatStore();
 const search = ref<string>('');
-
-// === ЛОКАЛЬНІ ТИПИ ===
 
 interface CreateFormPayload {
   name: string;
@@ -362,7 +348,6 @@ interface ProfileFormPayload {
   directNotificationsOnly: boolean;
 }
 
-// === HELPER FUNCTIONS FOR STATUS ===
 function getStatusColor(status: UserStatus): string {
   switch (status) {
     case UserStatus.ONLINE:
@@ -402,8 +387,6 @@ function getStatusTextColor(status: UserStatus): string {
   }
 }
 
-// === КОМП'ЮТЕРНІ ВЛАСТИВОСТІ ===
-
 const activeChannel = computed(
   () => chat.channels.find((c: ChannelDto) => c.id === chat.activeChannelId) || null,
 );
@@ -414,7 +397,6 @@ const activeUserRole = computed(() => {
 
 const normalizedSearch = computed(() => search.value.toLowerCase().trim());
 
-// 1. Спочатку фільтруємо та мапимо все
 const allFilteredGroups = computed(() =>
   chat.channels
     .filter((c: ChannelDto): c is ChannelDto => Boolean(c && c.name))
@@ -434,32 +416,26 @@ const allFilteredGroups = computed(() =>
     ),
 );
 
-// 2. Секція "New Invitations": Тільки isNew === true
 const newGroups = computed(() =>
   allFilteredGroups.value
     .filter((g) => g.isNew)
     .sort((a, b) => {
       const timeA = a.lastTime ? new Date(a.lastTime).getTime() : 0;
       const timeB = b.lastTime ? new Date(b.lastTime).getTime() : 0;
-      // 🔥 Стабільне сортування: якщо час однаковий, сортуємо за назвою
       return timeB - timeA || a.name.localeCompare(b.name);
     }),
 );
 
-// 3. Секція "Channels": Тільки isNew === false
 const regularGroups = computed(() =>
   allFilteredGroups.value
     .filter((g) => !g.isNew)
     .sort((a, b) => {
-      // Сортуємо звичайні по часу останнього повідомлення
       const timeA = a.lastTime ? new Date(a.lastTime).getTime() : 0;
       const timeB = b.lastTime ? new Date(b.lastTime).getTime() : 0;
-      // 🔥 Стабільне сортування: якщо час однаковий, сортуємо за назвою
       return timeB - timeA || a.name.localeCompare(b.name);
     }),
 );
 
-//region Create channel dialog
 const createDialog = useFormDialog();
 const createForm = reactive<CreateFormPayload>({
   name: '',
@@ -477,7 +453,6 @@ onMounted(() => {
 });
 
 async function selectChannel(channelId: string) {
-  // 🔥 Миттєве переміщення: знаходимо канал в сторі і ставимо isNew = false
   const channelInStore = chat.channels.find((c) => c.id === channelId);
   if (channelInStore && channelInStore.isNew) {
     channelInStore.isNew = false;
@@ -518,10 +493,6 @@ async function submitCreate() {
     createDialog.setLoading(false);
   }
 }
-//#endregion
-
-//#region User profile dialog
-
 const statusDisplayMap: Record<UserStatus, string> = {
   [UserStatus.ONLINE]: 'Online',
   [UserStatus.DND]: 'DND',
@@ -570,7 +541,6 @@ async function submitProfile() {
   profileDialog.setLoading(true);
 
   try {
-    // 1. ОНОВЛЕННЯ НАЛАШТУВАНЬ (SOCKET)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const settingsPayload: any = {};
     let settingsChanged = false;
@@ -589,31 +559,25 @@ async function submitProfile() {
       // Send update via socket
       const newSettings = await socketService.updateSettings(settingsPayload);
 
-      // 🔥 FIX: Викликаємо auth.setSettings, щоб зберегти в localStorage
       auth.setSettings(newSettings);
 
-      // Також оновлюємо вкладений об'єкт у user, якщо він існує
       if (auth.user) {
         auth.user.settings = newSettings;
-        auth.setUser(auth.user); // Це оновить і localStorage['user']
+        auth.setUser(auth.user);
       }
 
-      // If we switched FROM Offline TO Online/DND, fetch latest channels
       if (wasOffline && newSettings.status !== UserStatus.OFFLINE) {
         console.log('Switched from OFFLINE to ONLINE -> Refreshing channels...');
         await chat.loadChannels();
       }
     }
 
-    // 2. ОНОВЛЕННЯ ПРОФІЛЮ (ІМ'Я, ПРІЗВИЩЕ, EMAIL)
-    // Перевіряємо, чи змінились дані профілю
     const profileChanged =
       profileForm.firstName !== (auth.user?.firstName ?? '') ||
       profileForm.lastName !== (auth.user?.lastName ?? '') ||
       profileForm.email !== (auth.user?.email ?? '');
 
     if (profileChanged) {
-      // Б) Відправляємо на сервер через WebSocket (так надійніше)
       try {
         const updatedUser = await socketService.updateProfile({
           firstName: profileForm.firstName,
@@ -622,7 +586,6 @@ async function submitProfile() {
         });
         console.log('Profile updated on server via WebSocket');
 
-        // А) Оновлюємо локальний store ПРАВИЛЬНО (через setUser)
         if (auth.user) {
           auth.setUser(updatedUser);
         }

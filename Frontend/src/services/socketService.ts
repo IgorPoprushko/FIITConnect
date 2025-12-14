@@ -124,11 +124,11 @@ class SocketService {
     });
 
     this.socket.on('connect', () => {
-      console.log('✅ Connected to WS');
+      console.log('Connected to WS');
     });
 
     this.socket.on('connect_error', (err) => {
-      console.error('❌ Connection Error:', err.message);
+      console.error(' Connection Error:', err.message);
     });
 
     return this.socket;
@@ -150,9 +150,7 @@ class SocketService {
     return new Promise((resolve, reject) => {
       if (!this.socket) return reject(new Error('Socket not connected'));
 
-      console.log(
-        `[WS CLIENT] 🚀 EMITTING with ACK: ${event} (Payload: ${JSON.stringify(payload)})`,
-      );
+      console.log(`[WS CLIENT] EMITTING with ACK: ${event} (Payload: ${JSON.stringify(payload)})`);
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (this.socket.timeout(timeout).emit as any)(
@@ -164,7 +162,7 @@ class SocketService {
             return reject(new Error(`Socket ACK timeout for event ${event}`));
           }
 
-          console.log(`[WS CLIENT] 🟢 ACK RECEIVED for ${event}. Status: ${response.status}`);
+          console.log(`[WS CLIENT]  ACK RECEIVED for ${event}. Status: ${response.status}`);
 
           if (response.status === 'ok') {
             resolve(response);
@@ -253,7 +251,7 @@ class SocketService {
   }
 
   async getMyChannels(): Promise<ChannelDto[]> {
-    console.log(`[WS CLIENT] ⬇️ Calling getMyChannels, preparing to emit user:get:channels...`);
+    console.log(`[WS CLIENT]  Calling getMyChannels, preparing to emit user:get:channels...`);
 
     const res = await this.emitWithAck<ChannelDto[] | ChannelDto>('user:get:channels');
 
@@ -287,7 +285,7 @@ class SocketService {
   // --- ACTIVITIES (Typing / Status) ---
 
   changeStatus(newStatus: UserStatus) {
-    console.log(`[WS CLIENT] ⚡ Emitting simple event: user:change:status (Status: ${newStatus})`);
+    console.log(`[WS CLIENT] Emitting simple event: user:change:status (Status: ${newStatus})`);
     this.socket?.emit('user:change:status', { newStatus });
   }
 
@@ -303,8 +301,6 @@ class SocketService {
     this.socket?.emit('typing:stop', { channelId });
   }
 
-  // --- LISTENERS (Підписка на події) ---
-
   public onConnect(handler: () => void) {
     this.socket?.on('connect', handler);
   }
@@ -316,11 +312,7 @@ class SocketService {
   onNewMessage(handler: (msg: NewMessageEvent) => void) {
     this.socket?.on('message:new', (payload) => {
       if (!payload.channelId) {
-        console.error(
-          '%c[WS CRITICAL] ❌ Отримано message:new БЕЗ channelId!',
-          'color: red; font-weight: bold; font-size: 14px;',
-          payload,
-        );
+        console.warn('[WS CLIENT] Received new message with missing channelId:', payload);
       }
       handler(payload);
     });
@@ -330,7 +322,6 @@ class SocketService {
     this.socket?.on('channel:member_joined', handler);
   }
 
-  // 🔥 НОВИЙ СЛУХАЧ
   onUserInvited(handler: (channel: ChannelDto) => void) {
     this.socket?.on('user:invited', handler);
   }

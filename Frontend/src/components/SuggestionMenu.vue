@@ -48,7 +48,7 @@ import type {
 } from 'src/types/suggestions';
 import { useCommandHandler } from 'src/composables/useCommandHandler';
 import { useMentionHandler } from 'src/composables/useMentionHandler';
-import { UserStatus } from 'src/enums/global_enums'; // <-- ІМПОРТОВАНО: Для перевірки статусу
+import { UserStatus } from 'src/enums/global_enums';
 
 interface Props {
   modelValue: boolean;
@@ -104,17 +104,9 @@ const showMenu = computed({
   set: (value: boolean) => emit('update:modelValue', value),
 });
 
-/**
- * ПЕРЕВІРКА СТАТУСУ ОНЛАЙН
- * Використовуємо UserStatus, оскільки isOnline відсутній у UserDto.
- */
 const isUserOnline = (suggestion: Suggestion): boolean => {
   if (suggestion.type === 'mention') {
-    // Ми впевнені, що тут MentionSuggestion, тому робимо припущення типу
     const userStatus = (suggestion as MentionSuggestion).user.status;
-
-    // Вважаємо ONLINE або, можливо, AWAY активним статусом.
-    // Примітка: якщо у вас є окремий статус OFFLINE, перевіряйте на UserStatus.ONLINE
     return userStatus === UserStatus.ONLINE;
   }
   return false;

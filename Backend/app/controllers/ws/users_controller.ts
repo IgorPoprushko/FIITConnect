@@ -19,7 +19,6 @@ import db from '@adonisjs/lucid/services/db'
 
 @inject()
 export default class UsersController {
-  // 1. PUBLIC_INFO
   public async getPublicInfo(
     socket: AuthenticatedSocket,
     payload: { nickname: string },
@@ -49,7 +48,6 @@ export default class UsersController {
     }
   }
 
-  // 2. FULL_INFO
   public async getFullInfo(
     socket: AuthenticatedSocket,
     callback?: (response: BaseResponse<UserFullDto>) => void
@@ -88,7 +86,6 @@ export default class UsersController {
     }
   }
 
-  // 3. LIST_CHANNELS
   public async listChannels(
     socket: AuthenticatedSocket,
     callback?: (response: BaseResponse<ChannelDto[]>) => void
@@ -100,7 +97,6 @@ export default class UsersController {
       const user = socket.user!
       const channels: ChannelDto[] = []
 
-      // Створення будівельника підзапиту для обчислення непрочитаних повідомлень
       const unreadCountSubQuery = db
         .query()
         .select(db.raw('count(*)'))
@@ -133,7 +129,6 @@ export default class UsersController {
         const channel = m.channel!
         const unreadCount = m.$extras.unread_count ? Number.parseInt(m.$extras.unread_count, 10) : 0
 
-        // Завантажуємо останнє повідомлення
         const lastMsg = await Message.query()
           .where('channelId', channel.id)
           .orderBy('createdAt', 'desc')
@@ -166,7 +161,6 @@ export default class UsersController {
         } as ChannelDto)
       }
 
-      // Сортуємо канали перед віддачею на клієнт
       channels.sort((a, b) => {
         const dateA = a.lastMessage?.sentAt ? new Date(a.lastMessage.sentAt).getTime() : 0
         const dateB = b.lastMessage?.sentAt ? new Date(b.lastMessage.sentAt).getTime() : 0
@@ -181,7 +175,6 @@ export default class UsersController {
     }
   }
 
-  // 4. UPDATE SETTINGS
   public async updateSettings(
     socket: AuthenticatedSocket,
     payload: UpdateSettingsPayload,
@@ -190,8 +183,6 @@ export default class UsersController {
     const user = socket.user!
 
     try {
-      // 1. Оновлюємо або створюємо запис Setting
-      // 🔥 FIX: Використовуємо `!== undefined`, бо 0 (OFFLINE) це falsy значення!
       const setting = await Setting.updateOrCreate(
         { userId: user.id },
         {
@@ -205,15 +196,12 @@ export default class UsersController {
         }
       )
 
-      // 2. Логіка підключення/відключення кімнат (Offline/Online)
-      // Якщо юзер став OFFLINE -> Виходимо з кімнат каналів
       if (payload.status === UserStatus.OFFLINE) {
         const memberships = await Member.query().where('userId', user.id).exec()
         memberships.forEach((m) => socket.leave(m.channelId))
         console.log(`[WS] User ${user.nickname} went OFFLINE. Left all channels.`)
       }
 
-      // Якщо юзер став ONLINE/DND (і був Offline) -> Заходимо в кімнати
       if (payload.status !== undefined && payload.status !== UserStatus.OFFLINE) {
         const memberships = await Member.query().where('userId', user.id).preload('channel').exec()
         memberships.forEach((m) => {
@@ -222,16 +210,12 @@ export default class UsersController {
         console.log(`[WS] User ${user.nickname} is back ONLINE. Joined channels.`)
       }
 
-      // 3. Формуємо DTO відповіді
       const responseDto: UserSettingsDto = {
         status: setting.status,
         notificationsEnabled: Boolean(setting.notificationsEnabled),
         directNotificationsOnly: Boolean(setting.directNotificationsOnly),
       }
-
-      // 4. Сповіщаємо інші сокети про зміну статусу
       if (payload.status !== undefined) {
-        // Знаходимо всі канали юзера, щоб надіслати туди оновлення
         const memberships = await Member.query().where('userId', user.id).select('channelId').exec()
         const channelIds = memberships.map((m) => m.channelId)
 
@@ -241,10 +225,8 @@ export default class UsersController {
         })
       }
 
-      // 5. Відповідаємо самому собі
       if (callback) callback({ status: 'ok', data: responseDto })
 
-      // Також емітимо подію оновлення налаштувань (щоб інші вкладки синхронізувались)
       socket.emit('user:settings_updated', responseDto)
     } catch (error) {
       console.error('[WS] Update settings error:', error)
@@ -252,7 +234,6 @@ export default class UsersController {
     }
   }
 
-  // 5. UPDATE PROFILE (Ім'я, Прізвище, Email)
   public async updateProfile(
     socket: AuthenticatedSocket,
     payload: UpdateProfilePayload,
@@ -266,7 +247,6 @@ export default class UsersController {
 
       await user.save()
 
-      // Завантажуємо актуальні налаштування для повного DTO
       await user.load('setting')
       const settingsDto: UserSettingsDto = user.setting
         ? {

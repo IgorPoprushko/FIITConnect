@@ -11,11 +11,9 @@ import type {
 import { useRouter } from 'vue-router';
 import { socketService } from 'src/services/socketService';
 
-
 const chat: ReturnType<typeof useChatStore> = useChatStore();
 
 const commands: Command[] = [
-  // JOIN
   {
     name: '/join',
     description: 'Join a public channel or Create new channel',
@@ -47,7 +45,6 @@ const commands: Command[] = [
     },
   },
 
-  // LIST
   {
     name: '/list',
     description: 'Show list of members in the current channel',
@@ -57,12 +54,10 @@ const commands: Command[] = [
         console.warn('No active channel to list members from');
         return;
       }
-      console.log("List of memebers command");
-
-    }
+      chat.openMembersList();
+    },
   },
 
-  // INVITE
   {
     name: '/invite',
     description: 'Invite a user to this channel',
@@ -206,7 +201,8 @@ function isCommandAvailable(command: Command, context?: CommandContext): boolean
   if (!context) return true;
 
   if (command.requiredChannelType?.length) {
-    if (context.channelType == null || !command.requiredChannelType.includes(context.channelType)) return false;
+    if (context.channelType == null || !command.requiredChannelType.includes(context.channelType))
+      return false;
   }
   if (command.requiredUserRole?.length) {
     if (!command.requiredUserRole.includes(context.userRole)) return false;

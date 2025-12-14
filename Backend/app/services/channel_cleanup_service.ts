@@ -6,11 +6,6 @@ import { DateTime } from 'luxon'
 import Ws from '#services/ws'
 
 export default class ChannelCleanupService {
-  /**
-   * Find and delete channels that have been inactive for more than 30 days
-   * A channel is considered inactive if its last message was sent more than 30 days ago
-   * or if it has no messages and was created more than 30 days ago
-   */
   public async cleanupInactiveChannels(): Promise<{
     deletedCount: number
     deletedChannels: string[]
@@ -54,9 +49,7 @@ export default class ChannelCleanupService {
         }
 
         if (shouldDelete) {
-          console.log(
-            `[CLEANUP] Deleting inactive channel: ${channel.name} (ID: ${channel.id})`
-          )
+          console.log(`[CLEANUP] Deleting inactive channel: ${channel.name} (ID: ${channel.id})`)
 
           // Notify all users in the channel that it's being deleted
           const ws = Ws.getIo()
@@ -90,9 +83,6 @@ export default class ChannelCleanupService {
     }
   }
 
-  /**
-   * Get statistics about channel activity
-   */
   public async getChannelActivityStats(): Promise<{
     totalChannels: number
     activeChannels: number

@@ -6,7 +6,6 @@
         @click="showDialog = true"
         v-ripple
       >
-        <!-- Аватари користувачів (максимум 3) -->
         <div class="row q-mr-sm" style="margin-left: -4px">
           <div
             v-for="(user, index) in enrichedTypingUsers.slice(0, 3)"
@@ -19,13 +18,11 @@
                 {{ user.nickname.charAt(0).toUpperCase() }}
               </span>
 
-              <!-- Статус -->
               <q-badge floating rounded :color="getStatusColor(user.status)" class="status-badge" />
             </q-avatar>
             <q-tooltip>{{ user.nickname }}</q-tooltip>
           </div>
 
-          <!-- Якщо більше 3-х користувачів -->
           <div
             v-if="typingUsers.length > 3"
             class="avatar-stack flex flex-center bg-grey-9 text-white"
@@ -43,7 +40,6 @@
           </div>
         </div>
 
-        <!-- Текст та анімація -->
         <div class="row items-center">
           <span class="text-caption text-grey-4 q-mr-xs text-weight-medium">
             {{ typingText }}
@@ -54,7 +50,6 @@
     </div>
   </transition>
 
-  <!-- Діалог перегляду чернетки -->
   <q-dialog v-model="showDialog">
     <q-card style="min-width: 350px" class="bg-dark text-white">
       <q-card-section class="row items-center">
@@ -106,14 +101,12 @@ const props = defineProps<Props>();
 const chatStore = useChatStore();
 const showDialog = ref(false);
 
-// Збагачуємо дані користувачів статусами зі стору
 const enrichedTypingUsers = computed(() => {
   return props.typingUsers.map((u) => {
-    // Шукаємо юзера в активних учасниках каналу, щоб дізнатись його статус
     const member = chatStore.activeMembers.find((m) => m.id === u.userId);
     return {
       ...u,
-      status: member ? member.status : UserStatus.ONLINE, // Якщо друкує, то скоріш за все онлайн
+      status: member ? member.status : UserStatus.ONLINE,
     };
   });
 });
@@ -122,7 +115,6 @@ const typingText = computed(() => {
   const count = props.typingUsers.length;
   if (count === 0) return '';
 
-  // Використовуємо optional chaining (?.) або перевірку індексу
   const user1 = props.typingUsers[0];
   const user2 = props.typingUsers[1];
 
@@ -136,7 +128,6 @@ const typingText = computed(() => {
 });
 
 const dialogTitle = computed(() => {
-  // Те саме тут - додаємо перевірку на існування
   const user1 = props.typingUsers[0];
   return props.typingUsers.length === 1 && user1 ? `${user1.nickname} is typing...` : 'Live Drafts';
 });
@@ -173,34 +164,33 @@ watch(
 
 <style scoped>
 .typing-indicator-container {
-  /* Позиціонування над полем вводу */
   width: 100%;
-  pointer-events: none; /* Щоб кліки проходили крізь контейнер */
+  pointer-events: none;
 }
 
 .typing-pill {
   display: inline-flex;
-  background-color: #292929; /* Темний фон */
+  background-color: #292929;
   border-radius: 20px;
   padding: 4px 12px 4px 8px;
-  border: 1px solid #424242; /* Темна рамка */
-  pointer-events: auto; /* Вмикаємо кліки для самої пігулки */
+  border: 1px solid #424242;
+  pointer-events: auto;
   transition: all 0.2s ease;
 }
 
 .typing-pill:hover {
-  background-color: #383838; /* Трохи світліший при ховері */
+  background-color: #383838;
   transform: translateY(-1px);
 }
 
 .avatar-stack {
-  border: 2px solid #292929; /* Рамка кольору фону пігулки */
+  border: 2px solid #292929;
   border-radius: 50%;
   transition: margin-left 0.2s;
 }
 
 .status-badge {
-  border: 1.5px solid #292929; /* Рамка кольору фону пігулки */
+  border: 1.5px solid #292929;
   box-sizing: content-box;
   right: -2px;
   bottom: -2px;
@@ -216,7 +206,6 @@ watch(
   word-break: break-word;
 }
 
-/* Анімація появи знизу */
 .slide-up-enter-active,
 .slide-up-leave-active {
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.5, 1);

@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia';
 import { socketService } from 'src/services/socketService';
 
-// === ІМПОРТИ КОНТРАКТІВ ===
 import type {
   ChannelDto,
   JoinChannelPayload,
@@ -11,14 +10,11 @@ import type {
   MemberLeftEvent,
 } from 'src/contracts/channel_contracts';
 import type { NewMessageEvent, MessageDto, TypingEvent } from 'src/contracts/message_contracts';
-// ==========================
 
 import { useAuthStore } from './auth';
 import { Notify } from 'quasar';
-// 🔥 ОБОВ'ЯЗКОВО ІМПОРТУЄМО СТАТУС
 import { UserStatus } from 'src/enums/global_enums';
 
-// --- ЛОКАЛЬНІ ТИПИ ДЛЯ ВІДОБРАЖЕННЯ ---
 export interface IMessage {
   id: string;
   channelId: string;
@@ -65,6 +61,7 @@ interface ChatState {
   loadingChannels: boolean;
   connecting: boolean;
   connected: boolean;
+  isMembersListOpen: boolean;
 }
 
 export const useChatStore = defineStore('chat', {
@@ -77,6 +74,7 @@ export const useChatStore = defineStore('chat', {
     loadingChannels: false,
     connecting: false,
     connected: false,
+    isMembersListOpen: false, // Default closed
   }),
 
   getters: {
@@ -104,22 +102,33 @@ export const useChatStore = defineStore('chat', {
   },
 
   actions: {
+    openMembersList() {
+      if (this.activeChannelId) {
+        void this.fetchMembers(this.activeChannelId);
+        this.isMembersListOpen = true;
+      }
+    },
+
+    closeMembersList() {
+      this.isMembersListOpen = false;
+    },
+
     async fetchMessages(channelId: string) {
       if (!channelId) return;
 
       const auth = useAuthStore();
 
       if (auth.settings?.status === UserStatus.OFFLINE) {
-        console.log(`🚫 ChatStore: User is OFFLINE. Skipping fetchMessages for ${channelId}.`);
+        console.log(` ChatStore: User is OFFLINE. Skipping fetchMessages for ${channelId}.`);
         return;
       }
 
       if (!this.connected) {
-        console.log(`⏳ ChatStore: Socket not ready yet. Skipping fetch for ${channelId}.`);
+        console.log(` ChatStore: Socket not ready yet. Skipping fetch for ${channelId}.`);
         return;
       }
 
-      console.log(`📥 ChatStore: Fetching history for ${channelId}...`);
+      console.log(` ChatStore: Fetching history for ${channelId}...`);
       try {
         const history: MessageDto[] = await socketService.getMessages(channelId);
 
@@ -147,7 +156,7 @@ export const useChatStore = defineStore('chat', {
           }
         }
       } catch (err) {
-        console.error('❌ Failed to fetch history:', err);
+        console.error(' Failed to fetch history:', err);
       }
     },
 
@@ -156,22 +165,22 @@ export const useChatStore = defineStore('chat', {
 
       const auth = useAuthStore();
       if (auth.settings?.status === UserStatus.OFFLINE) {
-        console.log(`🚫 ChatStore: User is OFFLINE. Skipping fetchMembers for ${channelId}.`);
+        console.log(` ChatStore: User is OFFLINE. Skipping fetchMembers for ${channelId}.`);
         return;
       }
 
       if (!this.connected) {
-        console.log(`⏳ ChatStore: Socket not ready yet. Skipping member fetch for ${channelId}.`);
+        console.log(` ChatStore: Socket not ready yet. Skipping member fetch for ${channelId}.`);
         return;
       }
 
-      console.log(`👥 ChatStore: Fetching members for ${channelId}...`);
+      console.log(` ChatStore: Fetching members for ${channelId}...`);
       try {
         const members: MemberDto[] = await socketService.getChannelMembers(channelId);
         this.membersByChannel[channelId] = members;
-        console.log(`✅ ChatStore: Loaded ${members.length} members for channel ${channelId}`);
+        console.log(` ChatStore: Loaded ${members.length} members for channel ${channelId}`);
       } catch (err) {
-        console.error('❌ Failed to fetch members:', err);
+        console.error(' Failed to fetch members:', err);
       }
     },
 
@@ -188,14 +197,14 @@ export const useChatStore = defineStore('chat', {
           }
         });
 
-        console.log(`✅ ChatStore: Successfully loaded ${this.channels.length} channels.`);
+        console.log(` ChatStore: Successfully loaded ${this.channels.length} channels.`);
 
         if (this.activeChannelId) {
           await this.fetchMessages(this.activeChannelId);
           await this.fetchMembers(this.activeChannelId);
         }
       } catch (error) {
-        console.error('❌ Failed to load channels:', error);
+        console.error(' Failed to load channels:', error);
       } finally {
         this.loadingChannels = false;
       }
@@ -219,7 +228,7 @@ export const useChatStore = defineStore('chat', {
           this.activeChannelId = null;
         }
       } catch (error) {
-        console.error('❌ Failed to leave channel:', error);
+        console.error(' Failed to leave channel:', error);
         throw error;
       }
     },
@@ -259,7 +268,7 @@ export const useChatStore = defineStore('chat', {
       if (!('Notification' in window)) return false;
       if (Notification.permission === 'granted') return true;
 
-      console.log('🔔 ChatStore: Requesting notification permission...');
+      console.log(' ChatStore: Requesting notification permission...');
       const result = await Notification.requestPermission();
       return result === 'granted';
     },
@@ -302,7 +311,7 @@ export const useChatStore = defineStore('chat', {
           notification.close();
         };
       } catch (e) {
-        console.error('❌ Error showing notification:', e);
+        console.error(' Error showing notification:', e);
       }
     },
 
@@ -312,7 +321,7 @@ export const useChatStore = defineStore('chat', {
 
       if (this.connected || this.connecting) return;
 
-      console.log('🟢 ChatStore: Starting WS connection...');
+      console.log(' ChatStore: Starting WS connection...');
       this.connecting = true;
       socketService.connect(auth.token);
 
@@ -327,7 +336,6 @@ export const useChatStore = defineStore('chat', {
         }
 
         this.appendMessage(mapMessageDtoToDisplay(payload));
-        // 🔥 FIX: Використовуємо .catch() замість void, щоб уникнути no-floating-promises
         this.sendSystemNotification(payload).catch((err) => {
           console.error('Failed to send notification', err);
         });
@@ -416,12 +424,12 @@ export const useChatStore = defineStore('chat', {
       });
 
       socketService.onConnect(() => {
-        console.log('✅ ChatStore: WS Connected.');
+        console.log(' ChatStore: WS Connected.');
         this.connected = true;
         this.connecting = false;
 
         if (auth.settings?.status !== undefined) {
-          console.log(`🔄 ChatStore: Restoring user status to ${auth.settings.status}...`);
+          console.log(` ChatStore: Restoring user status to ${auth.settings.status}...`);
           socketService.updateSettings({ status: auth.settings.status }).catch(console.error);
         }
 
@@ -434,7 +442,7 @@ export const useChatStore = defineStore('chat', {
       });
 
       socketService.onDisconnect(() => {
-        console.warn('🛑 ChatStore: WS Disconnected.');
+        console.warn('ChatStore: WS Disconnected.');
         this.connected = false;
       });
     },
@@ -479,7 +487,6 @@ export const useChatStore = defineStore('chat', {
     async inviteUser(nickname: string) {
       if (!nickname || !this.activeChannelId) return;
       try {
-        // 🔥 FIX: Прибрано використання any та зайву перевірку, оскільки socketService кидає помилку при невдачі
         await socketService.inviteUser(this.activeChannelId, nickname);
       } catch (error) {
         console.error('Failed to invite user:', error);
@@ -527,7 +534,7 @@ export const useChatStore = defineStore('chat', {
           }
         }
       } catch (error) {
-        console.error('❌ Failed to send message:', error);
+        console.error(' Failed to send message:', error);
       }
     },
 

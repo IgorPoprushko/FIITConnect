@@ -4,7 +4,7 @@ import { inject } from '@adonisjs/core'
 import Channel from '#models/channel'
 import Member from '#models/member'
 import User from '#models/user'
-import Message from '#models/message' // 🔥 Додано імпорт
+import Message from '#models/message'
 import ChannelKickBan from '#models/channel_kick_ban'
 import KickVote from '#models/kick_vote'
 import db from '@adonisjs/lucid/services/db'
@@ -22,9 +22,6 @@ import type {
 
 @inject()
 export default class ChannelsController {
-  /**
-   * 1. JOIN OR CREATE
-   */
   public async joinOrCreate(
     socket: AuthenticatedSocket,
     payload: JoinChannelPayload,
@@ -62,7 +59,6 @@ export default class ChannelsController {
           .where('userId', user.id)
           .first()
         if (!existing) {
-          // 🔥 Створюємо як НЕ новий (бо юзер сам зайшов)
           const newMember = await Member.create({
             channelId: channel.id,
             userId: user.id,
@@ -79,7 +75,6 @@ export default class ChannelsController {
           type: isPrivate ? ChannelType.PRIVATE : ChannelType.PUBLIC,
           description: `Channel created by ${user.nickname}`,
         })
-        // 🔥 Створюємо як НЕ новий (автор)
         const newMember = await Member.create({
           channelId: channel.id,
           userId: user.id,
@@ -184,9 +179,6 @@ export default class ChannelsController {
     }
   }
 
-  /**
-   * Helper: Unban a user from a channel
-   */
   private async unbanUser(channelId: string, targetUserId: string): Promise<void> {
     const ban = await ChannelKickBan.query()
       .where('channelId', channelId)
@@ -207,33 +199,33 @@ export default class ChannelsController {
     const currentUser = socket.user!
 
     try {
-      // 1. Fetch and validate channel and target user
+      // Fetch and validate channel and target user
       const channel = await Channel.findOrFail(channelId)
       const targetUser = await User.findBy('nickname', nickname)
       if (!targetUser) throw new Exception(`User @${nickname} not found`)
 
-      // 2. Verify inviter is a member
+      // Verify inviter is a member
       const inviterMember = await Member.query()
         .where('channelId', channel.id)
         .where('userId', currentUser.id)
         .first()
       if (!inviterMember) throw new Exception('You must be a member to invite.')
 
-      // 3. Check permissions based on channel type and user role
+      // Check permissions based on channel type and user role
       const isAdmin = channel.ownerUserId === currentUser.id
 
       if (channel.type === ChannelType.PRIVATE && !isAdmin) {
         throw new Exception('Only the owner can invite to private channels.')
       }
 
-      // 4. Check if target is already a member
+      // Check if target is already a member
       const existing = await Member.query()
         .where('channelId', channel.id)
         .where('userId', targetUser.id)
         .first()
       if (existing) throw new Exception(`${nickname} is already in the channel.`)
 
-      // 5. Handle ban status
+      // Handle ban status
       const ban = await ChannelKickBan.query()
         .where('channelId', channel.id)
         .where('targetUserId', targetUser.id)
@@ -248,7 +240,7 @@ export default class ChannelsController {
         await this.unbanUser(channel.id, targetUser.id)
       }
 
-      // 6. Create the new member
+      // Create the new member
       const newMember = await Member.create({
         channelId: channel.id,
         userId: targetUser.id,
@@ -256,11 +248,11 @@ export default class ChannelsController {
       })
       await newMember.load('user')
 
-      // 7. Add target user to the channel room
+      // Add target user to the channel room
       const io = Ws.getIo()
       io.in(targetUser.id).socketsJoin(channel.id)
 
-      // 8. Notify all channel members about the new member
+      // Notify all channel members about the new member
       const memberDto: MemberDto = {
         id: newMember.user.id,
         nickname: newMember.user.nickname,
@@ -277,7 +269,7 @@ export default class ChannelsController {
         isInvite: true,
       })
 
-      // 9. Fetch last message for preview
+      // Fetch last message for preview
       const lastMsg = await Message.query()
         .where('channelId', channel.id)
         .orderBy('createdAt', 'desc')
@@ -298,7 +290,7 @@ export default class ChannelsController {
         }
       }
 
-      // 10. Send personal invitation notification to target user
+      // Send personal invitation notification to target user
       const channelDto: ChannelDto = {
         id: channel.id,
         name: channel.name,
@@ -467,7 +459,6 @@ export default class ChannelsController {
     payload: ManageMemberPayload,
     callback?: (res: BaseResponse) => void
   ) {
-    // Просто викликаємо метод vote, оскільки логіка голосування реалізована тут
     return this.vote(socket, payload, callback)
   }
 

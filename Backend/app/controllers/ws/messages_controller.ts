@@ -14,7 +14,6 @@ import MessageRepository from '#repositories/message_repository'
 export default class MessagesController {
   constructor(private messageRepository: MessageRepository) {}
 
-  // 1. SEND MESSAGE
   public async sendMessage(
     socket: AuthenticatedSocket,
     payload: SendMessagePayload,
@@ -52,7 +51,6 @@ export default class MessagesController {
         channelId: channel.id,
       })
 
-      // 🔥 FIX: Оновлюємо статус прочитання відразу при відправці
       membership.lastReadMessageId = newMessage.id
       await membership.save()
 
@@ -90,7 +88,6 @@ export default class MessagesController {
     }
   }
 
-  // 2. GET MESSAGES
   public async getMessages(
     socket: AuthenticatedSocket,
     payload: GetMessagesPayload,
@@ -115,30 +112,18 @@ export default class MessagesController {
       const query = Message.query()
         .where('channelId', channelId)
         .preload('user', (q) => q.preload('setting'))
-        // 🔥 FIX: Сортуємо по часу створення, а не по ID!
-        // ID може бути UUID або не послідовним, що ламає порядок.
         .orderBy('createdAt', 'desc')
         .limit(limit)
 
-      // Якщо є курсор (id старого повідомлення), шукаємо старіші за нього
       if (cursor) {
-        // Тут ми припускаємо, що cursor - це ID.
-        // Для точної пагінації краще використовувати cursor based on createdAt,
-        // але якщо ID послідовні (int), то це ок. Якщо UUID - треба переробляти логіку курсору.
-        // Залишаємо поки ID, але майте на увазі цей нюанс.
         query.where('id', '<', cursor)
       }
 
       const messages = await query.exec()
 
-      // 🔥 FIX: Логіка оновлення прочитаного
-      // Якщо ми запитали найсвіжіші повідомлення (!cursor) і вони є,
-      // то ми точно прочитали найновіше з них.
       if (!cursor && messages.length > 0) {
         const newest = messages[0]
 
-        // Просто оновлюємо на найновіше, якщо ID відрізняється.
-        // Видалено перевірку newest.id > lastReadMessageId, бо для UUID вона не працює коректно.
         if (membership.lastReadMessageId !== newest.id) {
           membership.lastReadMessageId = newest.id
           await membership.save()
