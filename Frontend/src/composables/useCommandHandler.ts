@@ -69,9 +69,12 @@ const commands: Command[] = [
     usage: '/invite [nickname]',
     requiredChannelType: [ChannelType.PRIVATE],
     requiredUserRole: [UserRole.ADMIN],
-    handler: (nickname: string) => {
-      console.log('[Private/Admin] Inviting user to private channel:', nickname);
-      return Promise.resolve();
+    handler: async (nickname: string) => {
+      if (!nickname) {
+        console.warn('Nickname is required to invite a user');
+        return;
+      }
+      await chat.inviteUser(nickname);
     },
   },
   {
@@ -80,9 +83,12 @@ const commands: Command[] = [
     usage: '/invite [nickname]',
     requiredChannelType: [ChannelType.PUBLIC],
     requiredUserRole: [UserRole.ADMIN],
-    handler: (nickname: string) => {
-      console.log('[Public/Admin] Inviting/unbanning user to public channel:', nickname);
-      return Promise.resolve();
+    handler: async (nickname: string) => {
+      if (!nickname) {
+        console.warn('Nickname is required to invite a user');
+        return;
+      }
+      await chat.inviteUser(nickname);
     },
   },
   {
@@ -91,9 +97,12 @@ const commands: Command[] = [
     usage: '/invite [nickname]',
     requiredChannelType: [ChannelType.PUBLIC],
     requiredUserRole: [UserRole.MEMBER],
-    handler: (nickname: string) => {
-      console.log('[Public/Normal] Inviting non-banned user to public channel:', nickname);
-      return Promise.resolve();
+    handler: async (nickname: string) => {
+      if (!nickname) {
+        console.warn('Nickname is required to invite a user');
+        return;
+      }
+      await chat.inviteUser(nickname);
     },
   },
 
