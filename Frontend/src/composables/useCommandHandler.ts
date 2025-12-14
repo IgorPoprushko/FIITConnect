@@ -1,12 +1,6 @@
 import { ChannelType, UserRole } from 'src/enums/global_enums';
 import { useChatStore } from 'src/stores/chat';
-
-// ВИПРАВЛЕНО 1: Видалено неіснуючий імпорт 'ChatStore'.
-// Натомість ми визначаємо тип Store за допомогою ReturnType.
-type ChatStoreType = ReturnType<typeof useChatStore>;
-
-import type { ChannelDto } from 'src/contracts/channel_contracts';
-import type { JoinChannelPayload } from 'src/contracts/channel_contracts';
+import type { ChannelDto, JoinChannelPayload } from 'src/contracts/channel_contracts';
 import type {
   Command,
   CommandContext,
@@ -15,53 +9,40 @@ import type {
   CommandSuggestion,
 } from 'src/types/suggestions';
 
-// Define all available commands with their access requirements
+type ChatStoreType = ReturnType<typeof useChatStore>;
+
 const commands: Command[] = [
-  // JOIN commands
   {
     name: '/join',
     description: 'Join a public channel or Create new channel',
     usage: '/join [channel_name]',
     handler: async (args: string[]) => {
       const channelName = args[0];
-
-      // ФІКС: Перевіряємо, чи ввів користувач назву каналу
       if (!channelName) {
         console.warn('Channel name is required');
         return;
       }
 
-      // ВИПРАВЛЕНО 2: Використовуємо визначений тип Store: ChatStoreType
       const chat: ChatStoreType = useChatStore();
       await chat.loadChannels();
 
-      // Логіка пошуку. Шукаємо тільки в активному каналі.
-      let channel: ChannelDto | undefined;
+      const existing = chat.channels.find(
+        (c: ChannelDto) => c.name.toLowerCase() === channelName.toLowerCase(),
+      );
 
-      if (
-        chat.activeChannel &&
-        chat.activeChannel.name.toLowerCase() === channelName.toLowerCase()
-      ) {
-        channel = chat.activeChannel;
+      if (existing) {
+        await chat.setActiveChannel(existing.id);
+        return;
       }
 
-      if (!channel) {
-        // Видалено поле 'type', щоб відповідати контракту JoinChannelPayload
-        const payload: JoinChannelPayload = {
-          channelName: channelName,
-        };
-
-        // Викликаємо метод Store для приєднання/створення
-        channel = await chat.createChannel(payload);
-      }
-
+      const payload: JoinChannelPayload = { channelName };
+      const channel = await chat.createChannel(payload);
       if (channel) {
-        chat.setActiveChannel(channel.id);
+        await chat.setActiveChannel(channel.id);
       }
     },
   },
 
-  // INVITE commands
   {
     name: '/invite',
     description: 'Invite a user to this channel',
@@ -99,7 +80,6 @@ const commands: Command[] = [
     },
   },
 
-  // REVOKE commands
   {
     name: '/revoke',
     description: 'Kick a user from this channel',
@@ -113,7 +93,6 @@ const commands: Command[] = [
     },
   },
 
-  // KICK commands
   {
     name: '/kick',
     description: 'Ban a user from this channel',
@@ -134,40 +113,30 @@ const commands: Command[] = [
     requiredUserRole: [UserRole.MEMBER],
     handler: (args: string[]) => {
       const username = args[0];
-      console.log('Kicking user:', username);
+      console.log('Voting to kick user:', username);
       return Promise.resolve();
     },
   },
 
-  // QUIT commands
   {
     name: '/quit',
     description: 'Permamently DELETE the channel',
     usage: '/quit',
     requiredChannelType: [ChannelType.PRIVATE, ChannelType.PUBLIC],
     requiredUserRole: [UserRole.ADMIN],
-    handler: () => {
-      const chat: ChatStoreType = useChatStore();
-      if (chat.activeChannelId) {
-        chat.setActiveChannel(null);
-      }
-      return Promise.resolve();
+    handler: async () => {
+      console.log('Deleting channel');
     },
   },
 
-  // CANCEL commands
   {
     name: '/cancel',
     description: 'Leave and DELETE the channel',
     usage: '/cancel',
     requiredChannelType: [ChannelType.PRIVATE, ChannelType.PUBLIC],
     requiredUserRole: [UserRole.ADMIN],
-    handler: () => {
-      const chat: ChatStoreType = useChatStore();
-      if (chat.activeChannelId) {
-        chat.setActiveChannel(null);
-      }
-      return Promise.resolve();
+    handler: async () => {
+      console.log('Deleting channel');
     },
   },
   {
@@ -176,32 +145,21 @@ const commands: Command[] = [
     usage: '/cancel',
     requiredChannelType: [ChannelType.PRIVATE, ChannelType.PUBLIC],
     requiredUserRole: [UserRole.MEMBER],
-    handler: () => {
-      const chat: ChatStoreType = useChatStore();
-      chat.setActiveChannel(null);
-      return Promise.resolve();
+    handler: async () => {
+      console.log('Canceling message');
     },
   },
 ];
 
-// Helper function to check if command is available in current context
 function isCommandAvailable(command: Command, context?: CommandContext): boolean {
-  if (!context) return true; // If no context provided, show all commands
+  if (!context) return true;
 
-  // Check channel type requirement
-  if (command.requiredChannelType && command.requiredChannelType.length > 0) {
-    if (!command.requiredChannelType.includes(context.channelType)) {
-      return false;
-    }
+  if (command.requiredChannelType?.length) {
+    if (!command.requiredChannelType.includes(context.channelType)) return false;
   }
-
-  // Check user role requirement
-  if (command.requiredUserRole && command.requiredUserRole.length > 0) {
-    if (!command.requiredUserRole.includes(context.userRole)) {
-      return false;
-    }
+  if (command.requiredUserRole?.length) {
+    if (!command.requiredUserRole.includes(context.userRole)) return false;
   }
-
   return true;
 }
 
@@ -209,34 +167,26 @@ export function useCommandHandler(): SuggestionHandler {
   const trigger = '/';
 
   const getSuggestions = (query: string, context?: CommandContext): Suggestion[] => {
-    // Remove the trigger character and normalize
     const searchQuery = query.startsWith(trigger) ? query.slice(1) : query;
     const normalizedQuery = searchQuery.toLowerCase().trim();
 
-    // Filter commands based on:
-    // 1. Query match (command name starts with query)
-    // 2. Context availability (channel type and user role)
     const availableCommands = commands.filter((cmd) => {
-      const commandName = cmd.name.slice(1); // Remove '/' from command name
+      const commandName = cmd.name.slice(1);
       const matchesQuery = normalizedQuery === '' || commandName.startsWith(normalizedQuery);
       const isAvailable = isCommandAvailable(cmd, context);
-
       return matchesQuery && isAvailable;
     });
 
-    // Remove duplicates (keep the most specific version for the context)
     const uniqueCommands = new Map<string, Command>();
     availableCommands.forEach((cmd) => {
       const existing = uniqueCommands.get(cmd.name);
       if (!existing) {
         uniqueCommands.set(cmd.name, cmd);
       } else {
-        // Prefer more specific command (with more requirements)
         const existingSpecificity =
           (existing.requiredChannelType?.length || 0) + (existing.requiredUserRole?.length || 0);
         const currentSpecificity =
           (cmd.requiredChannelType?.length || 0) + (cmd.requiredUserRole?.length || 0);
-
         if (currentSpecificity > existingSpecificity) {
           uniqueCommands.set(cmd.name, cmd);
         }
@@ -244,14 +194,15 @@ export function useCommandHandler(): SuggestionHandler {
     });
 
     return Array.from(uniqueCommands.values()).map(
-      (cmd): CommandSuggestion => ({
-        type: 'command',
-        value: cmd.name,
-        label: cmd.name,
-        description: cmd.description,
-        usage: cmd.usage,
-        command: cmd,
-      }),
+      (cmd): CommandSuggestion =>
+        ({
+          type: 'command',
+          value: cmd.name,
+          label: cmd.name,
+          description: cmd.description,
+          usage: cmd.usage,
+          command: cmd,
+        }) as CommandSuggestion,
     );
   };
 
@@ -262,25 +213,20 @@ export function useCommandHandler(): SuggestionHandler {
     return suggestion.value;
   };
 
-  const executeCommand = async (
-    commandText: string,
-    context?: CommandContext,
-  ): Promise<boolean> => {
+  const executeCommand = async (commandText: string, context?: CommandContext): Promise<boolean> => {
     const parts = commandText.trim().split(/\s+/);
     const commandName = parts[0];
     const args = parts.slice(1);
 
-    // Find the appropriate command based on context
     const availableCommands = commands.filter(
       (cmd) => cmd.name === commandName && isCommandAvailable(cmd, context),
     );
 
-    if (availableCommands.length === 0) {
+    if (!availableCommands.length) {
       console.warn('Command not available in current context:', commandName);
       return false;
     }
 
-    // Use the most specific command for the context
     const command = availableCommands.reduce((prev, curr) => {
       const prevSpecificity =
         (prev.requiredChannelType?.length || 0) + (prev.requiredUserRole?.length || 0);

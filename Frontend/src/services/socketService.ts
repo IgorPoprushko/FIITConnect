@@ -101,7 +101,7 @@ interface ClientToServerEvents {
 
 class SocketService {
   private socket: Socket<ServerToClientEvents, ClientToServerEvents> | null = null;
-  private readonly url = import.meta.env.VITE_WS_URL || 'http://localhost:3333'; // --- CONNECTION ---
+  private readonly url = import.meta.env.VITE_WS_URL; // --- CONNECTION ---
 
   connect(token: string) {
     console.log(`[WS CLIENT] Attempting connection to ${this.url} with path /ws...`);
