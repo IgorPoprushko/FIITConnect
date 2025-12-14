@@ -119,7 +119,6 @@ import { useChatDrawer } from 'src/composables/useChatDrawer';
 import MessageList from 'components/MessageList.vue';
 import { useChatStore } from 'src/stores/chat';
 // 🔥 FIX: Імпортуємо Notify напряму, щоб уникнути помилок з $q
-import { Notify } from 'quasar';
 import { ChannelType } from 'src/enums/global_enums';
 
 // 🔥 IMPORT COMPONENTS FOR INVITE
@@ -130,10 +129,6 @@ const { chatDrawer, toggleChatDrawer } = useChatDrawer();
 const chat = useChatStore();
 const route = useRoute();
 const router = useRouter();
-const $q = useQuasar();
-// const $q = useQuasar(); // Більше не потрібно для Notify
-
-const confirmLeave = ref(false);
 
 const messages = computed(() => chat.activeMessages);
 const currentChannel = computed(() => chat.activeChannel);
@@ -153,28 +148,9 @@ const submitInvite = async () => {
   inviteDialog.setLoading(true);
   try {
     await chat.inviteUser(inviteNickname.value.trim());
-
-    Notify.create({
-      message: `User ${inviteNickname.value} invited successfully!`,
-      color: 'positive',
-      icon: 'check',
-    });
-
-    closeInvite();
-  } catch (err: unknown) {
-    let message = 'Failed to invite user';
-
-    if (err instanceof Error) {
-      message = err.message;
-    }
-
-    Notify.create({
-      message,
-      color: 'negative',
-      icon: 'error',
-    });
   } finally {
     inviteDialog.setLoading(false);
+    closeInvite();
   }
 };
 // --------------------
@@ -218,14 +194,6 @@ watch(
     syncChannelFromRoute();
   },
 );
-
-const onInvite = () => {
-  $q.notify({
-    message: 'Invite feature coming soon!',
-    color: 'info',
-    icon: 'person_add',
-  });
-};
 
 // Form Dialog
 
